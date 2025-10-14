@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, User, Cloud, Settings2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 export default function Configuracoes() {
   const { user } = useAuth();
@@ -25,6 +26,8 @@ export default function Configuracoes() {
     fonte_api: 'open-meteo',
     unidade_temp: 'C' as 'C' | 'F',
     alerta_chuva_limite_mm: 10,
+    notif_alerta_chuva: true,
+    notif_lembretes_atividades: true,
   });
 
   const [areaUnit, setAreaUnit] = useState<'ha' | 'alq'>('ha');
@@ -63,6 +66,8 @@ export default function Configuracoes() {
         fonte_api: weatherData.fonte_api || 'open-meteo',
         unidade_temp: (weatherData.unidade_temp as 'C' | 'F') || 'C',
         alerta_chuva_limite_mm: weatherData.alerta_chuva_limite_mm || 10,
+        notif_alerta_chuva: weatherData.notif_alerta_chuva ?? true,
+        notif_lembretes_atividades: weatherData.notif_lembretes_atividades ?? true,
       });
     }
 
@@ -105,6 +110,8 @@ export default function Configuracoes() {
         fonte_api: weatherPrefs.fonte_api,
         unidade_temp: weatherPrefs.unidade_temp,
         alerta_chuva_limite_mm: weatherPrefs.alerta_chuva_limite_mm,
+        notif_alerta_chuva: weatherPrefs.notif_alerta_chuva,
+        notif_lembretes_atividades: weatherPrefs.notif_lembretes_atividades,
       });
 
     setLoading(false);
@@ -279,6 +286,40 @@ export default function Configuracoes() {
                 <p className="text-xs text-muted-foreground">
                   Você será alertado quando a precipitação prevista exceder este valor (0-1000mm)
                 </p>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-semibold">Notificações por E-mail</h3>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Alerta de Chuva</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Receber alertas quando houver previsão de chuva acima do limite
+                    </p>
+                  </div>
+                  <Switch
+                    checked={weatherPrefs.notif_alerta_chuva}
+                    onCheckedChange={(checked) => 
+                      setWeatherPrefs({ ...weatherPrefs, notif_alerta_chuva: checked })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Lembretes de Atividades</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Receber lembretes diários às 18:00 sobre atividades do dia seguinte
+                    </p>
+                  </div>
+                  <Switch
+                    checked={weatherPrefs.notif_lembretes_atividades}
+                    onCheckedChange={(checked) => 
+                      setWeatherPrefs({ ...weatherPrefs, notif_lembretes_atividades: checked })
+                    }
+                  />
+                </div>
               </div>
 
               <Button onClick={handleSaveWeatherPrefs} disabled={loading}>
