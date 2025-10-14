@@ -15,6 +15,7 @@ import { FieldNotes } from '@/components/FieldNotes';
 import { ActivityLogComponent } from '@/components/ActivityLogComponent';
 import { WeatherAlerts } from '@/components/WeatherAlerts';
 import { useAgroRecommendations } from '@/hooks/useAgroRecommendations';
+import { LatLonHintDialog, shouldShowLatLonHint } from '@/components/LatLonHintDialog';
 
 export default function Talhoes() {
   const { user } = useAuth();
@@ -31,6 +32,7 @@ export default function Talhoes() {
   const [editingPlot, setEditingPlot] = useState<any>(null);
   const [editingPlanting, setEditingPlanting] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [showLatLonHint, setShowLatLonHint] = useState(false);
   
   // Hook para recomendações agrícolas
   const { recommendations, loading: loadingRecs } = useAgroRecommendations({
@@ -45,6 +47,7 @@ export default function Talhoes() {
     solo_tipo: '',
     latitude: '',
     longitude: '',
+    municipality_name: '',
   });
 
   const [plantingForm, setPlantingForm] = useState({
@@ -145,6 +148,7 @@ export default function Talhoes() {
       solo_tipo: plotForm.solo_tipo || null,
       latitude: plotForm.latitude ? parseFloat(plotForm.latitude) : null,
       longitude: plotForm.longitude ? parseFloat(plotForm.longitude) : null,
+      municipality_name: plotForm.municipality_name || null,
     };
 
     const { error } = editingPlot
@@ -162,6 +166,11 @@ export default function Talhoes() {
     setEditingPlot(null);
     resetPlotForm();
     loadPlots();
+
+    // Show hint dialog if lat/lon missing and not editing
+    if (!editingPlot && !data.latitude && !data.longitude && shouldShowLatLonHint()) {
+      setShowLatLonHint(true);
+    }
   };
 
   const handleDeletePlot = async (id: string) => {
@@ -214,7 +223,7 @@ export default function Talhoes() {
   };
 
   const resetPlotForm = () => {
-    setPlotForm({ farm_id: selectedFarm, nome: '', area_ha: '', solo_tipo: '', latitude: '', longitude: '' });
+    setPlotForm({ farm_id: selectedFarm, nome: '', area_ha: '', solo_tipo: '', latitude: '', longitude: '', municipality_name: '' });
   };
 
   const resetPlantingForm = () => {
@@ -289,7 +298,7 @@ export default function Talhoes() {
                   <div className="flex items-start justify-between">
                     <CardTitle>{plot.nome}</CardTitle>
                     <div className="flex gap-1">
-                      <Button
+                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => {
@@ -302,6 +311,7 @@ export default function Talhoes() {
                             solo_tipo: plot.solo_tipo || '',
                             latitude: plot.latitude?.toString() || '',
                             longitude: plot.longitude?.toString() || '',
+                            municipality_name: plot.municipality_name || '',
                           });
                           setPlotDialogOpen(true);
                         }}
@@ -498,9 +508,18 @@ export default function Talhoes() {
                 placeholder="Ex: Argiloso"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="municipality_name">Município/UF (opcional)</Label>
+              <Input
+                id="municipality_name"
+                value={plotForm.municipality_name}
+                onChange={e => setPlotForm({ ...plotForm, municipality_name: e.target.value })}
+                placeholder="Ex: São Paulo, SP"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="latitude">Latitude</Label>
+                <Label htmlFor="latitude">Latitude (opcional)</Label>
                 <Input
                   id="latitude"
                   type="number"
@@ -509,10 +528,11 @@ export default function Talhoes() {
                   max="90"
                   value={plotForm.latitude}
                   onChange={e => setPlotForm({ ...plotForm, latitude: e.target.value })}
+                  placeholder="-23.5505"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="longitude">Longitude</Label>
+                <Label htmlFor="longitude">Longitude (opcional)</Label>
                 <Input
                   id="longitude"
                   type="number"
@@ -521,9 +541,13 @@ export default function Talhoes() {
                   max="180"
                   value={plotForm.longitude}
                   onChange={e => setPlotForm({ ...plotForm, longitude: e.target.value })}
+                  placeholder="-46.6333"
                 />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Coordenadas melhoram a precisão do clima.
+            </p>
             <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setPlotDialogOpen(false)}>
                 Cancelar
@@ -625,6 +649,29 @@ export default function Talhoes() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Lat/Lon Hint Dialog */}
+      <LatLonHintDialog
+        open={showLatLonHint}
+        onOpenChange={setShowLatLonHint}
+        onAddNow={() => {
+          // Reopen the last created plot for editing
+          const lastPlot = plots[plots.length - 1];
+          if (lastPlot) {
+            setEditingPlot(lastPlot);
+            setPlotForm({
+              farm_id: selectedFarm,
+              nome: lastPlot.nome,
+              area_ha: lastPlot.area_ha?.toString() || '',
+              solo_tipo: lastPlot.solo_tipo || '',
+              latitude: lastPlot.latitude?.toString() || '',
+              longitude: lastPlot.longitude?.toString() || '',
+              municipality_name: lastPlot.municipality_name || '',
+            });
+            setPlotDialogOpen(true);
+          }
+        }}
+      />
     </div>
   );
 }

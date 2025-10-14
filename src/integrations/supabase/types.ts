@@ -279,6 +279,8 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          municipality_ibge_code: string | null
+          municipality_name: string | null
           nome: string
           solo_tipo: string | null
           updated_at: string | null
@@ -290,6 +292,8 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          municipality_ibge_code?: string | null
+          municipality_name?: string | null
           nome: string
           solo_tipo?: string | null
           updated_at?: string | null
@@ -301,6 +305,8 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          municipality_ibge_code?: string | null
+          municipality_name?: string | null
           nome?: string
           solo_tipo?: string | null
           updated_at?: string | null
