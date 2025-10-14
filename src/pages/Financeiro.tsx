@@ -61,7 +61,7 @@ export default function Financeiro() {
     categoria: '',
     descricao: '',
     valor_brl: '',
-    data: new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }).split(',')[0].split('/').reverse().join('-').replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$1-$2'),
+    data: format(new Date(), 'yyyy-MM-dd'),
     origem: '',
   });
 
@@ -130,7 +130,7 @@ export default function Financeiro() {
       farm_id: transactionForm.farm_id,
       plot_id: transactionForm.plot_id || null,
       tipo: transactionForm.tipo as 'custo' | 'receita',
-      categoria: transactionForm.categoria as 'insumo' | 'adubacao' | 'mao_obra' | 'maquinas' | 'energia' | 'transporte' | 'venda' | 'outros',
+      categoria: transactionForm.categoria as any,
       descricao: transactionForm.descricao,
       valor_brl: parseFloat(transactionForm.valor_brl),
       data: transactionForm.data,
@@ -172,7 +172,7 @@ export default function Financeiro() {
       categoria: '',
       descricao: '',
       valor_brl: '',
-      data: new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }).split(',')[0].split('/').reverse().join('-').replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$1-$2'),
+      data: format(new Date(), 'yyyy-MM-dd'),
       origem: '',
     });
   };

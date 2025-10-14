@@ -518,6 +518,7 @@ export type Database = {
         | "transporte"
         | "venda"
         | "outros"
+        | "adubacao"
       transaction_type: "receita" | "custo"
     }
     CompositeTypes: {
@@ -665,6 +666,7 @@ export const Constants = {
         "transporte",
         "venda",
         "outros",
+        "adubacao",
       ],
       transaction_type: ["receita", "custo"],
     },

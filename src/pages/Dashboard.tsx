@@ -78,7 +78,7 @@ export default function Dashboard() {
   };
 
   const loadActivities = async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = format(new Date(), 'yyyy-MM-dd');
     const { data: plotsData } = await supabase.from('plots').select('id').eq('farm_id', selectedFarm);
     
     if (plotsData && plotsData.length > 0) {
