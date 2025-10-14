@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cloud, Droplets, Wind, Thermometer, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Cloud, Droplets, Wind, Thermometer, AlertTriangle, CheckCircle, Loader2, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -32,6 +33,7 @@ export default function Clima() {
   const [selectedPlot, setSelectedPlot] = useState<string>('');
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     loadFarms();
@@ -130,11 +132,95 @@ export default function Clima() {
   const canSpray = weather ? weather.current.windSpeed < 15 && weather.daily[0].precipProb < 30 : null;
   const diseaseRisk = weather ? weather.current.humidity > 80 && weather.daily[0].precipitation > 5 : null;
 
+  const handleSendEmail = async () => {
+    if (!weather || !user?.email) {
+      toast({ title: 'Não foi possível enviar o email', variant: 'destructive' });
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const farm = farms.find(f => f.id === selectedFarm);
+      const plot = plots.find(p => p.id === selectedPlot);
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: user.email,
+          subject: `Relatório Climático - ${farm?.nome} - ${plot?.nome}`,
+          html: `
+            <h1>Relatório Climático</h1>
+            <p><strong>Fazenda:</strong> ${farm?.nome}</p>
+            <p><strong>Talhão:</strong> ${plot?.nome}</p>
+            
+            <h2>Condições Atuais</h2>
+            <ul>
+              <li>Temperatura: ${weather.current.temperature.toFixed(1)}°C</li>
+              <li>Vento: ${weather.current.windSpeed.toFixed(1)} km/h</li>
+              <li>Umidade: ${weather.current.humidity}%</li>
+              <li>Probabilidade de Chuva: ${weather.daily[0].precipProb}%</li>
+            </ul>
+
+            <h2>Recomendações</h2>
+            <p><strong>Janela de Pulverização:</strong> ${
+              canSpray
+                ? 'Condições favoráveis (vento baixo e baixa probabilidade de chuva)'
+                : 'Condições desfavoráveis (vento alto ou chuva prevista)'
+            }</p>
+            <p><strong>Risco de Doenças:</strong> ${
+              diseaseRisk
+                ? 'Alto risco (umidade elevada + chuva)'
+                : 'Risco baixo'
+            }</p>
+
+            <h2>Previsão 7 Dias</h2>
+            <table border="1" cellpadding="5" style="border-collapse: collapse;">
+              <tr>
+                <th>Dia</th>
+                <th>Máx</th>
+                <th>Mín</th>
+                <th>Chuva</th>
+              </tr>
+              ${weather.daily.map((day, i) => `
+                <tr>
+                  <td>${i === 0 ? 'Hoje' : new Date(day.date).toLocaleDateString('pt-BR')}</td>
+                  <td>${day.tempMax.toFixed(0)}°C</td>
+                  <td>${day.tempMin.toFixed(0)}°C</td>
+                  <td>${day.precipitation.toFixed(1)}mm (${day.precipProb}%)</td>
+                </tr>
+              `).join('')}
+            </table>
+          `,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Email enviado com sucesso!' });
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Erro ao enviar email', variant: 'destructive' });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Clima</h1>
-        <p className="text-muted-foreground">Condições meteorológicas e recomendações</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Clima</h1>
+          <p className="text-muted-foreground">Condições meteorológicas e recomendações</p>
+        </div>
+        {weather && (
+          <Button onClick={handleSendEmail} disabled={sendingEmail}>
+            {sendingEmail ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 mr-2" />
+            )}
+            Enviar por Email
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

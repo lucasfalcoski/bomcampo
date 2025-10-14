@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, FileText, Download } from 'lucide-react';
+import { Loader2, FileText, Download, Mail } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -22,6 +22,7 @@ export default function Relatorios() {
   const [plots, setPlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const [filters, setFilters] = useState({
     farm_id: '',
@@ -226,6 +227,95 @@ export default function Relatorios() {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!reportData || !user?.email) {
+      toast({ title: 'Gere um relatório primeiro', variant: 'destructive' });
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const farm = farms.find(f => f.id === filters.farm_id);
+      
+      let htmlContent = `
+        <h1>Relatório ${reportData.tipo === 'financeiro' ? 'Financeiro' : 'Operacional'}</h1>
+        <p><strong>Fazenda:</strong> ${farm?.nome}</p>
+        <p><strong>Período:</strong> ${format(new Date(reportData.periodo.start), 'dd/MM/yyyy')} a ${format(new Date(reportData.periodo.end), 'dd/MM/yyyy')}</p>
+      `;
+
+      if (reportData.tipo === 'financeiro') {
+        htmlContent += `
+          <h2>Resumo Financeiro</h2>
+          <table border="1" cellpadding="8" style="border-collapse: collapse;">
+            <tr>
+              <th>Indicador</th>
+              <th>Mês</th>
+              <th>Ano</th>
+            </tr>
+            <tr>
+              <td>Custos</td>
+              <td>${formatCurrency(reportData.kpis.custosMes)}</td>
+              <td>${formatCurrency(reportData.kpis.custosYTD)}</td>
+            </tr>
+            <tr>
+              <td>Receitas</td>
+              <td>${formatCurrency(reportData.kpis.receitasMes)}</td>
+              <td>${formatCurrency(reportData.kpis.receitasYTD)}</td>
+            </tr>
+            <tr>
+              <td>Resultado</td>
+              <td>${formatCurrency(reportData.kpis.resultadoMes)}</td>
+              <td>${formatCurrency(reportData.kpis.resultadoYTD)}</td>
+            </tr>
+          </table>
+
+          <h2>Top 5 Categorias de Custo</h2>
+          <ul>
+            ${reportData.topCategorias.map(([cat, val]: [string, number]) => `
+              <li>${cat.replace('_', ' ')}: ${formatCurrency(val)}</li>
+            `).join('')}
+          </ul>
+        `;
+      } else {
+        htmlContent += `
+          <h2>Resumo Operacional</h2>
+          <ul>
+            <li><strong>Área Cultivada:</strong> ${reportData.kpis.areaCultivada.toFixed(2)} ha</li>
+            <li><strong>Plantios em Andamento:</strong> ${reportData.kpis.plantiosEmAndamento}</li>
+            <li><strong>DAP Médio:</strong> ${reportData.kpis.dapMedio} dias</li>
+            <li><strong>Produção Esperada:</strong> ${reportData.kpis.producaoEsperada.toFixed(0)} sacas</li>
+          </ul>
+
+          <h2>Atividades Futuras (Próximos 30 dias)</h2>
+          ${reportData.activities.length === 0 ? '<p>Nenhuma atividade programada</p>' : `
+            <ul>
+              ${reportData.activities.map((act: any) => `
+                <li>${act.tipo} - ${act.descricao} - ${format(new Date(act.data), 'dd/MM/yyyy')}</li>
+              `).join('')}
+            </ul>
+          `}
+        `;
+      }
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: user.email,
+          subject: `Relatório ${reportData.tipo === 'financeiro' ? 'Financeiro' : 'Operacional'} - ${farm?.nome}`,
+          html: htmlContent,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Email enviado com sucesso!' });
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Erro ao enviar email', variant: 'destructive' });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -314,11 +404,22 @@ export default function Relatorios() {
             </Button>
 
             {reportData && (
-              <Button variant="outline" onClick={handleExportPDF} disabled={generatingPDF}>
-                {generatingPDF && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                <Download className="h-4 w-4 mr-2" />
-                Exportar PDF
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleExportPDF} disabled={generatingPDF}>
+                  {generatingPDF && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar PDF
+                </Button>
+                
+                <Button variant="outline" onClick={handleSendEmail} disabled={sendingEmail}>
+                  {sendingEmail ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4 mr-2" />
+                  )}
+                  Enviar por Email
+                </Button>
+              </>
             )}
           </div>
         </CardContent>
