@@ -498,6 +498,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      jsonb_merge: {
+        Args: { a: Json; b: Json }
+        Returns: Json
+      }
     }
     Enums: {
       activity_type:
