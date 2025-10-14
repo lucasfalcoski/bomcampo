@@ -19,6 +19,10 @@ import PorTalhao from "./pages/relatorios/PorTalhao";
 import ResumoClimatico from "./pages/relatorios/clima/ResumoClimatico";
 import ConformidadePulverizacao from "./pages/relatorios/clima/ConformidadePulverizacao";
 import RiscoDoencas from "./pages/relatorios/clima/RiscoDoencas";
+import GeadaEstresse from "./pages/relatorios/clima/GeadaEstresse";
+import PerformanceCultura from "./pages/relatorios/culturas/PerformanceCultura";
+import PlanejadoExecutado from "./pages/relatorios/operacao/PlanejadoExecutado";
+import HeatmapAtividades from "./pages/relatorios/operacao/HeatmapAtividades";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
@@ -149,6 +153,46 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <RiscoDoencas />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/clima/geada-estresse"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GeadaEstresse />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/culturas/performance"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PerformanceCultura />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/operacao/planejado-executado"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PlanejadoExecutado />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/operacao/heatmap"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <HeatmapAtividades />
                   </AppLayout>
                 </ProtectedRoute>
               }

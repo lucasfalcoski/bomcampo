@@ -1,7 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { FileText, BarChart3, Map, CloudRain, Droplets, Activity } from "lucide-react";
+import { 
+  FileText, BarChart3, Map, CloudRain, Droplets, Activity,
+  Snowflake, Sprout, CheckSquare, Grid3x3
+} from "lucide-react";
 
 export default function Relatorios() {
   const navigate = useNavigate();
@@ -48,6 +51,34 @@ export default function Relatorios() {
       icon: Activity,
       path: "/relatorios/clima/risco-doencas",
       category: "Clima",
+    },
+    {
+      title: "Geada e Estresse Térmico",
+      description: "Eventos extremos de temperatura e ações de proteção",
+      icon: Snowflake,
+      path: "/relatorios/clima/geada-estresse",
+      category: "Clima",
+    },
+    {
+      title: "Performance por Cultura",
+      description: "Análise de custos e áreas cultivadas por cultura",
+      icon: Sprout,
+      path: "/relatorios/culturas/performance",
+      category: "Culturas",
+    },
+    {
+      title: "Planejado x Executado",
+      description: "Acompanhamento de execução de atividades operacionais",
+      icon: CheckSquare,
+      path: "/relatorios/operacao/planejado-executado",
+      category: "Operação",
+    },
+    {
+      title: "Mapa de Calor de Atividades",
+      description: "Intensidade de atividades por talhão e semana",
+      icon: Grid3x3,
+      path: "/relatorios/operacao/heatmap",
+      category: "Operação",
     },
   ];
 
