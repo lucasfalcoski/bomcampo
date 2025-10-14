@@ -13,6 +13,9 @@ import Clima from "./pages/Clima";
 import Talhoes from "./pages/Talhoes";
 import Financeiro from "./pages/Financeiro";
 import Relatorios from "./pages/Relatorios";
+import AtividadesEstimadoReal from "./pages/relatorios/AtividadesEstimadoReal";
+import PorTipo from "./pages/relatorios/PorTipo";
+import PorTalhao from "./pages/relatorios/PorTalhao";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
@@ -83,6 +86,36 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Relatorios />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/atividades"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AtividadesEstimadoReal />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/tipo"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PorTipo />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/talhao"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PorTalhao />
                   </AppLayout>
                 </ProtectedRoute>
               }

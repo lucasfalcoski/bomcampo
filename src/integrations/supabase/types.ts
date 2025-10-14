@@ -17,6 +17,7 @@ export type Database = {
       activities: {
         Row: {
           anexo_url: string | null
+          clima_conforme: boolean | null
           created_at: string | null
           custo_estimado: number | null
           data: string
@@ -29,9 +30,11 @@ export type Database = {
           responsavel: string | null
           tipo: string
           updated_at: string | null
+          weather_snapshot: Json | null
         }
         Insert: {
           anexo_url?: string | null
+          clima_conforme?: boolean | null
           created_at?: string | null
           custo_estimado?: number | null
           data: string
@@ -44,9 +47,11 @@ export type Database = {
           responsavel?: string | null
           tipo: string
           updated_at?: string | null
+          weather_snapshot?: Json | null
         }
         Update: {
           anexo_url?: string | null
+          clima_conforme?: boolean | null
           created_at?: string | null
           custo_estimado?: number | null
           data?: string
@@ -59,6 +64,7 @@ export type Database = {
           responsavel?: string | null
           tipo?: string
           updated_at?: string | null
+          weather_snapshot?: Json | null
         }
         Relationships: [
           {
@@ -73,6 +79,44 @@ export type Database = {
             columns: ["plot_id"]
             isOneToOne: false
             referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_items: {
+        Row: {
+          activity_id: string
+          created_at: string | null
+          custo_estimado_item: number | null
+          id: string
+          insumo: string
+          quantidade: number | null
+          unidade: string | null
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string | null
+          custo_estimado_item?: number | null
+          id?: string
+          insumo: string
+          quantidade?: number | null
+          unidade?: string | null
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string | null
+          custo_estimado_item?: number | null
+          id?: string
+          insumo?: string
+          quantidade?: number | null
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_items_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
             referencedColumns: ["id"]
           },
         ]
@@ -381,6 +425,7 @@ export type Database = {
       }
       transactions: {
         Row: {
+          activity_id: string | null
           categoria: Database["public"]["Enums"]["transaction_category"]
           created_at: string | null
           data: string
@@ -394,6 +439,7 @@ export type Database = {
           valor_brl: number
         }
         Insert: {
+          activity_id?: string | null
           categoria: Database["public"]["Enums"]["transaction_category"]
           created_at?: string | null
           data: string
@@ -407,6 +453,7 @@ export type Database = {
           valor_brl: number
         }
         Update: {
+          activity_id?: string | null
           categoria?: Database["public"]["Enums"]["transaction_category"]
           created_at?: string | null
           data?: string
