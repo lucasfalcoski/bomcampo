@@ -48,7 +48,7 @@ async function generatePDF(reportData: any, farm: any, filters: any): Promise<Ui
   let y = height - 50;
 
   // Header
-  page.drawText('🌱 Bom Campo', {
+  page.drawText('Bom Campo', {
     x: 50,
     y: y,
     size: 24,
