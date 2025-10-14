@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchWeatherData } from '@/lib/weatherService';
 import { resolverEstagio } from '@/lib/agro/stage';
 import { gerarRecomendacoes } from '@/lib/agro/recommender';
+import { resolverLocalizacao } from '@/lib/location/resolve';
 import type { Recommendation, CropRules } from '@/lib/agro/types';
 
 interface UseAgroRecommendationsProps {
@@ -31,7 +32,7 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
     setError(null);
 
     try {
-      // 1. Buscar plot com coordenadas
+      // 1. Buscar plot e farm
       const { data: plot, error: plotError } = await supabase
         .from('plots')
         .select('*, farm:farms(*)')
@@ -39,11 +40,14 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
         .single();
 
       if (plotError) throw plotError;
-      if (!plot?.latitude || !plot?.longitude) {
-        throw new Error('Talhão sem coordenadas');
+
+      // 2. Resolver localização (coordenadas ou município)
+      const location = await resolverLocalizacao(plot, plot.farm);
+      if (!location) {
+        throw new Error('Localização não encontrada. Adicione coordenadas ou município.');
       }
 
-      // 2. Buscar plantio ativo (mais recente que não está colhido)
+      // 3. Buscar plantio ativo (mais recente que não está colhido)
       const { data: plantings, error: plantingError } = await supabase
         .from('plantings')
         .select('*, crop:crops(*)')
@@ -62,8 +66,8 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
           .single();
 
         const weather = await fetchWeatherData(
-          plot.latitude,
-          plot.longitude,
+          location.lat,
+          location.lon,
           weatherPrefs || {
             spray_wind_max_kmh: 15,
             spray_rain_max_mm: 1,
@@ -110,7 +114,7 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
 
       const planting = plantings[0];
 
-      // 3. Buscar crop_profile
+      // 4. Buscar crop_profile
       const { data: cropProfile, error: cropProfileError } = await supabase
         .from('crop_profiles')
         .select('*')
@@ -121,7 +125,7 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
         console.warn('Crop profile não encontrado, usando defaults');
       }
 
-      // 4. Buscar weather_prefs e farm_crop_rules
+      // 5. Buscar weather_prefs e farm_crop_rules
       const { data: weatherPrefs } = await supabase
         .from('weather_prefs')
         .select('*')
@@ -135,7 +139,7 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
         .eq('crop_code', getCropCode(planting.crop.nome))
         .maybeSingle();
 
-      // 5. Resolver estágio fenológico
+      // 6. Resolver estágio fenológico
       const cropProfileData = cropProfile ? {
         default_rules: cropProfile.default_rules as unknown as CropRules
       } : { default_rules: getDefaultRules() };
@@ -146,10 +150,10 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
         cropProfileData
       );
 
-      // 6. Buscar dados climáticos
+      // 7. Buscar dados climáticos usando a localização resolvida
       const weather = await fetchWeatherData(
-        plot.latitude,
-        plot.longitude,
+        location.lat,
+        location.lon,
         weatherPrefs || {
           spray_wind_max_kmh: 15,
           spray_rain_max_mm: 1,
@@ -160,7 +164,7 @@ export function useAgroRecommendations({ farmId, plotId }: UseAgroRecommendation
         }
       );
 
-      // 7. Gerar recomendações
+      // 8. Gerar recomendações
       const cropRules: CropRules = cropProfile 
         ? (cropProfile.default_rules as unknown as CropRules)
         : getDefaultRules();

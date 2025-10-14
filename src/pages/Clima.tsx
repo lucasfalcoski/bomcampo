@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Cloud, Droplets, Wind, Thermometer, AlertTriangle, CheckCircle, Loader2, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { resolverLocalizacao } from '@/lib/location/resolve';
 
 interface WeatherData {
   current: {
@@ -84,19 +85,26 @@ export default function Clima() {
 
   const loadWeather = async () => {
     const plot = plots.find(p => p.id === selectedPlot);
-    if (!plot?.latitude || !plot?.longitude) {
-      toast({ 
-        title: 'Coordenadas ausentes',
-        description: 'Este talhão não possui coordenadas cadastradas.',
-        variant: 'destructive'
-      });
-      return;
-    }
+    if (!plot) return;
 
     setLoading(true);
     try {
+      // Tentar resolver localização (talhão, fazenda ou município)
+      const farm = farms.find(f => f.id === selectedFarm);
+      const location = await resolverLocalizacao(plot, farm);
+      
+      if (!location) {
+        toast({ 
+          title: 'Localização não encontrada',
+          description: 'Adicione coordenadas ou município para este talhão.',
+          variant: 'destructive'
+        });
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${plot.latitude}&longitude=${plot.longitude}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America/Sao_Paulo&forecast_days=7`
+        `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America/Sao_Paulo&forecast_days=7`
       );
 
       if (!response.ok) throw new Error('Erro ao buscar dados climáticos');
