@@ -1,73 +1,95 @@
-import { BookOpen, MapPin } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Calendar } from 'lucide-react';
 
-const notes = [
-  {
-    id: 1,
-    area: "Talhão A - Soja",
-    location: "Setor Norte",
-    activity: "Aplicação de Herbicida",
-    date: "15/10/2025",
-    status: "completed"
-  },
-  {
-    id: 2,
-    area: "Talhão B - Milho",
-    location: "Setor Sul",
-    activity: "Adubação de Cobertura",
-    date: "14/10/2025",
-    status: "completed"
-  },
-  {
-    id: 3,
-    area: "Talhão C - Trigo",
-    location: "Setor Leste",
-    activity: "Monitoramento de Pragas",
-    date: "13/10/2025",
-    status: "pending"
-  }
-];
+interface FieldNotesProps {
+  plot: {
+    nome: string;
+    area_ha: number | null;
+    solo_tipo: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  };
+  planting?: {
+    crop: { nome: string; variedade: string | null };
+    data_plantio: string;
+    expectativa_sacas_ha: number | null;
+  } | null;
+}
 
-const FieldNotes = () => {
+export function FieldNotes({ plot, planting }: FieldNotesProps) {
+  const daysAfterPlanting = planting
+    ? Math.floor(
+        (new Date().getTime() - new Date(planting.data_plantio).getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : 0;
+
+  const expectedProduction = planting && plot.area_ha && planting.expectativa_sacas_ha
+    ? (plot.area_ha * planting.expectativa_sacas_ha).toFixed(1)
+    : null;
+
   return (
-    <Card className="shadow-medium">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" />
-          Caderno de Campo
+          <MapPin className="h-5 w-5" />
+          {plot.nome}
         </CardTitle>
-        <CardDescription>
-          Registros recentes de atividades nas áreas
-        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {notes.map((note) => (
-            <div
-              key={note.id}
-              className="p-4 rounded-lg border border-border bg-card hover:bg-secondary/30 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-semibold text-sm mb-1">{note.area}</h3>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <MapPin className="w-3 h-3" />
-                    <span>{note.location}</span>
-                  </div>
-                </div>
-                <Badge variant={note.status === 'completed' ? 'default' : 'secondary'}>
-                  {note.status === 'completed' ? 'Concluído' : 'Pendente'}
-                </Badge>
-              </div>
-              <p className="text-sm text-foreground mb-2">{note.activity}</p>
-              <span className="text-xs text-muted-foreground">{note.date}</span>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-sm text-muted-foreground">Área</p>
+            <p className="font-medium">{plot.area_ha?.toFixed(2) || '-'} ha</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Tipo de Solo</p>
+            <p className="font-medium">{plot.solo_tipo || '-'}</p>
+          </div>
+          {plot.latitude && plot.longitude && (
+            <div className="col-span-2">
+              <p className="text-sm text-muted-foreground">Coordenadas</p>
+              <p className="text-sm font-mono">
+                {plot.latitude.toFixed(6)}, {plot.longitude.toFixed(6)}
+              </p>
             </div>
-          ))}
+          )}
         </div>
+
+        {planting && (
+          <>
+            <hr className="border-border" />
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Plantio Atual</span>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Cultura</p>
+                  <p className="font-medium">
+                    {planting.crop.nome}
+                    {planting.crop.variedade && ` - ${planting.crop.variedade}`}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">DAP</p>
+                    <Badge variant="secondary">{daysAfterPlanting} dias</Badge>
+                  </div>
+                  {expectedProduction && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Expectativa</p>
+                      <p className="font-medium">{expectedProduction} sacas</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
-};
-
-export default FieldNotes;
+}

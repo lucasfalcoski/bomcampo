@@ -1,16 +1,9 @@
-import { useState } from "react";
-import { Cloud, Sun, Droplets, Wind, Plus } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import WeatherAlerts from "@/components/WeatherAlerts";
-import FieldNotes from "@/components/FieldNotes";
+import { Cloud, Sun, Droplets, Wind } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ActivityLog from "@/components/ActivityLog";
-import AddActivityDialog from "@/components/AddActivityDialog";
 import logo from "@/assets/logo.png";
 
 const Index = () => {
-  const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary/30 to-background">
@@ -25,10 +18,6 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">Gestão Agrícola Inteligente</p>
               </div>
             </div>
-            <Button onClick={() => setIsAddActivityOpen(true)} className="gradient-primary">
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Atividade
-            </Button>
           </div>
         </div>
       </header>
@@ -91,23 +80,12 @@ const Index = () => {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Alerts and Notes */}
-          <div className="lg:col-span-2 space-y-6">
-            <WeatherAlerts />
-            <FieldNotes />
-          </div>
-
-          {/* Right Column - Activity Log */}
-          <div>
+          {/* Left Column - Activity Log */}
+          <div className="lg:col-span-2">
             <ActivityLog />
           </div>
         </div>
       </main>
-
-      <AddActivityDialog 
-        open={isAddActivityOpen} 
-        onOpenChange={setIsAddActivityOpen} 
-      />
     </div>
   );
 };
