@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,14 +14,10 @@ serve(async (req) => {
   try {
     const { reportData, farm, filters } = await req.json();
 
-    // Gerar HTML para o relatório
-    const html = generateReportHTML(reportData, farm, filters);
+    // Gerar PDF
+    const pdfBytes = await generatePDF(reportData, farm, filters);
 
-    // Converter para PDF usando htmlToPdf (implementação simplificada)
-    // Em produção, use uma biblioteca como puppeteer ou jsPDF
-    const pdfBytes = await convertHTMLtoPDF(html);
-
-    return new Response(JSON.stringify({ pdf: pdfBytes }), {
+    return new Response(JSON.stringify({ pdf: Array.from(pdfBytes) }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -33,7 +30,12 @@ serve(async (req) => {
   }
 });
 
-function generateReportHTML(reportData: any, farm: any, filters: any): string {
+async function generatePDF(reportData: any, farm: any, filters: any): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]); // A4
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  
   const currentDate = new Date().toLocaleString('pt-BR');
   const periodoStart = new Date(reportData.periodo.start).toLocaleDateString('pt-BR');
   const periodoEnd = new Date(reportData.periodo.end).toLocaleDateString('pt-BR');
@@ -42,159 +44,165 @@ function generateReportHTML(reportData: any, farm: any, filters: any): string {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
-  let kpisHTML = '';
-  let contentHTML = '';
+  const { width, height } = page.getSize();
+  let y = height - 50;
+
+  // Header
+  page.drawText('🌱 Bom Campo', {
+    x: 50,
+    y: y,
+    size: 24,
+    font: boldFont,
+    color: rgb(0.55, 0.45, 0.33),
+  });
+  
+  y -= 30;
+  page.drawText(`Relatório ${reportData.tipo === 'financeiro' ? 'Financeiro' : 'Operacional'}`, {
+    x: 50,
+    y: y,
+    size: 18,
+    font: boldFont,
+    color: rgb(0.55, 0.45, 0.33),
+  });
+
+  y -= 25;
+  page.drawText(`Fazenda: ${farm.nome}`, {
+    x: 50,
+    y: y,
+    size: 10,
+    font: font,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
+  y -= 15;
+  page.drawText(`Período: ${periodoStart} a ${periodoEnd}`, {
+    x: 50,
+    y: y,
+    size: 10,
+    font: font,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
+  y -= 15;
+  page.drawText(`Gerado em: ${currentDate}`, {
+    x: 50,
+    y: y,
+    size: 10,
+    font: font,
+    color: rgb(0.4, 0.4, 0.4),
+  });
+
+  // Line separator
+  y -= 15;
+  page.drawLine({
+    start: { x: 50, y: y },
+    end: { x: width - 50, y: y },
+    thickness: 1,
+    color: rgb(0.55, 0.45, 0.33),
+  });
+
+  y -= 30;
 
   if (reportData.tipo === 'financeiro') {
-    kpisHTML = `
-      <div class="kpis">
-        <div class="kpi">
-          <h3>Custos (Mês / YTD)</h3>
-          <p class="value negative">${formatCurrency(reportData.kpis.custosMes)}</p>
-          <p class="subtitle">Ano: ${formatCurrency(reportData.kpis.custosYTD)}</p>
-        </div>
-        <div class="kpi">
-          <h3>Receitas (Mês / YTD)</h3>
-          <p class="value positive">${formatCurrency(reportData.kpis.receitasMes)}</p>
-          <p class="subtitle">Ano: ${formatCurrency(reportData.kpis.receitasYTD)}</p>
-        </div>
-        <div class="kpi">
-          <h3>Resultado (Mês / YTD)</h3>
-          <p class="value ${reportData.kpis.resultadoMes >= 0 ? 'positive' : 'negative'}">
-            ${formatCurrency(reportData.kpis.resultadoMes)}
-          </p>
-          <p class="subtitle ${reportData.kpis.resultadoYTD >= 0 ? 'positive' : 'negative'}">
-            Ano: ${formatCurrency(reportData.kpis.resultadoYTD)}
-          </p>
-        </div>
-      </div>
-    `;
+    // KPIs Financeiros
+    page.drawText('Indicadores Financeiros', {
+      x: 50,
+      y: y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.55, 0.45, 0.33),
+    });
+    y -= 25;
 
-    contentHTML = `
-      <h2>Top 5 Categorias de Custo</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Categoria</th>
-            <th style="text-align: right">Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${reportData.topCategorias.map(([cat, val]: [string, number]) => `
-            <tr>
-              <td style="text-transform: capitalize">${cat.replace('_', ' ')}</td>
-              <td style="text-align: right">${formatCurrency(val)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
+    // Custos
+    page.drawText('Custos (Mês / YTD)', { x: 50, y: y, size: 10, font: font });
+    page.drawText(formatCurrency(reportData.kpis.custosMes), { x: 200, y: y, size: 10, font: font, color: rgb(0.86, 0.15, 0.15) });
+    page.drawText(`Ano: ${formatCurrency(reportData.kpis.custosYTD)}`, { x: 320, y: y, size: 10, font: font, color: rgb(0.4, 0.4, 0.4) });
+    y -= 20;
+
+    // Receitas
+    page.drawText('Receitas (Mês / YTD)', { x: 50, y: y, size: 10, font: font });
+    page.drawText(formatCurrency(reportData.kpis.receitasMes), { x: 200, y: y, size: 10, font: font, color: rgb(0.09, 0.64, 0.29) });
+    page.drawText(`Ano: ${formatCurrency(reportData.kpis.receitasYTD)}`, { x: 320, y: y, size: 10, font: font, color: rgb(0.4, 0.4, 0.4) });
+    y -= 20;
+
+    // Resultado
+    const resColor = reportData.kpis.resultadoMes >= 0 ? rgb(0.09, 0.64, 0.29) : rgb(0.86, 0.15, 0.15);
+    page.drawText('Resultado (Mês / YTD)', { x: 50, y: y, size: 10, font: font });
+    page.drawText(formatCurrency(reportData.kpis.resultadoMes), { x: 200, y: y, size: 10, font: font, color: resColor });
+    const resYTDColor = reportData.kpis.resultadoYTD >= 0 ? rgb(0.09, 0.64, 0.29) : rgb(0.86, 0.15, 0.15);
+    page.drawText(`Ano: ${formatCurrency(reportData.kpis.resultadoYTD)}`, { x: 320, y: y, size: 10, font: font, color: resYTDColor });
+    y -= 30;
+
+    // Top Categorias
+    page.drawText('Top 5 Categorias de Custo', {
+      x: 50,
+      y: y,
+      size: 12,
+      font: boldFont,
+      color: rgb(0.55, 0.45, 0.33),
+    });
+    y -= 20;
+
+    reportData.topCategorias.forEach(([cat, val]: [string, number]) => {
+      if (y < 50) return; // Avoid overflow
+      const catName = cat.replace('_', ' ').charAt(0).toUpperCase() + cat.replace('_', ' ').slice(1);
+      page.drawText(`• ${catName}`, { x: 60, y: y, size: 10, font: font });
+      page.drawText(formatCurrency(val), { x: 400, y: y, size: 10, font: font });
+      y -= 18;
+    });
   } else {
-    kpisHTML = `
-      <div class="kpis">
-        <div class="kpi">
-          <h3>Área Cultivada</h3>
-          <p class="value">${reportData.kpis.areaCultivada.toFixed(2)} ha</p>
-        </div>
-        <div class="kpi">
-          <h3>Plantios em Andamento</h3>
-          <p class="value">${reportData.kpis.plantiosEmAndamento}</p>
-        </div>
-        <div class="kpi">
-          <h3>DAP Médio</h3>
-          <p class="value">${reportData.kpis.dapMedio} dias</p>
-        </div>
-        <div class="kpi">
-          <h3>Produção Esperada</h3>
-          <p class="value">${reportData.kpis.producaoEsperada.toFixed(0)} sacas</p>
-        </div>
-      </div>
-    `;
+    // KPIs Operacionais
+    page.drawText('Indicadores Operacionais', {
+      x: 50,
+      y: y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.55, 0.45, 0.33),
+    });
+    y -= 25;
 
-    contentHTML = `
-      <h2>Atividades Futuras (Próximos 30 dias)</h2>
-      ${reportData.activities.length === 0 ? '<p>Nenhuma atividade programada</p>' : `
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>Descrição</th>
-              <th style="text-align: right">Custo Estimado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${reportData.activities.map((act: any) => `
-              <tr>
-                <td>${new Date(act.data).toLocaleDateString('pt-BR')}</td>
-                <td>${act.tipo}</td>
-                <td>${act.descricao || '-'}</td>
-                <td style="text-align: right">${act.custo_estimado ? formatCurrency(act.custo_estimado) : '-'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `}
-    `;
+    page.drawText(`Área Cultivada: ${reportData.kpis.areaCultivada.toFixed(2)} ha`, { x: 50, y: y, size: 10, font: font });
+    y -= 18;
+    page.drawText(`Plantios em Andamento: ${reportData.kpis.plantiosEmAndamento}`, { x: 50, y: y, size: 10, font: font });
+    y -= 18;
+    page.drawText(`DAP Médio: ${reportData.kpis.dapMedio} dias`, { x: 50, y: y, size: 10, font: font });
+    y -= 18;
+    page.drawText(`Produção Esperada: ${reportData.kpis.producaoEsperada.toFixed(0)} sacas`, { x: 50, y: y, size: 10, font: font });
+    y -= 30;
+
+    // Atividades Futuras
+    page.drawText('Atividades Futuras (Próximos 30 dias)', {
+      x: 50,
+      y: y,
+      size: 12,
+      font: boldFont,
+      color: rgb(0.55, 0.45, 0.33),
+    });
+    y -= 20;
+
+    if (reportData.activities.length === 0) {
+      page.drawText('Nenhuma atividade programada', { x: 60, y: y, size: 10, font: font });
+    } else {
+      reportData.activities.slice(0, 10).forEach((act: any) => {
+        if (y < 50) return; // Avoid overflow
+        const data = new Date(act.data).toLocaleDateString('pt-BR');
+        const custo = act.custo_estimado ? formatCurrency(act.custo_estimado) : '-';
+        page.drawText(`• ${data} | ${act.tipo}`, { x: 60, y: y, size: 9, font: font });
+        page.drawText(custo, { x: 400, y: y, size: 9, font: font });
+        y -= 15;
+      });
+    }
   }
 
-  return `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head>
-      <meta charset="UTF-8">
-      <title>Relatório ${reportData.tipo === 'financeiro' ? 'Financeiro' : 'Operacional'}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-        .header { border-bottom: 3px solid #8B7355; padding-bottom: 20px; margin-bottom: 30px; }
-        .header h1 { color: #8B7355; font-size: 28px; margin-bottom: 10px; }
-        .header p { color: #666; font-size: 14px; }
-        .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .kpi { background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 4px solid #8B7355; }
-        .kpi h3 { font-size: 14px; color: #666; margin-bottom: 8px; }
-        .kpi .value { font-size: 24px; font-weight: bold; color: #333; }
-        .kpi .value.positive { color: #16a34a; }
-        .kpi .value.negative { color: #dc2626; }
-        .kpi .subtitle { font-size: 12px; color: #666; margin-top: 4px; }
-        .kpi .subtitle.positive { color: #16a34a; }
-        .kpi .subtitle.negative { color: #dc2626; }
-        h2 { color: #8B7355; margin-top: 30px; margin-bottom: 15px; font-size: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f9f9f9; font-weight: bold; color: #666; }
-        .footer { margin-top: 50px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; font-size: 12px; color: #999; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h1>🌱 Bom Campo - Relatório ${reportData.tipo === 'financeiro' ? 'Financeiro' : 'Operacional'}</h1>
-        <p><strong>Fazenda:</strong> ${farm.nome}</p>
-        <p><strong>Período:</strong> ${periodoStart} a ${periodoEnd}</p>
-        <p><strong>Gerado em:</strong> ${currentDate}</p>
-      </div>
+  // Footer
+  page.drawText('Gerado por Bom Campo • Confidencial', {
+    x: width / 2 - 100,
+    y: 30,
+    size: 8,
+    font: font,
+    color: rgb(0.6, 0.6, 0.6),
+  });
 
-      ${kpisHTML}
-
-      ${contentHTML}
-
-      <div class="footer">
-        <p>Gerado por Bom Campo • Confidencial</p>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-async function convertHTMLtoPDF(html: string): Promise<any> {
-  // Simulação de conversão HTML para PDF
-  // Em produção, use uma biblioteca real como puppeteer ou jsPDF
-  // Por enquanto, retornamos um buffer de bytes simulado
-  const encoder = new TextEncoder();
-  const htmlBytes = encoder.encode(html);
-  
-  return {
-    data: Array.from(htmlBytes),
-    type: 'Buffer',
-  };
+  return await pdfDoc.save();
 }

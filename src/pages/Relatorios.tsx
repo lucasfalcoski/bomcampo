@@ -210,7 +210,8 @@ export default function Relatorios() {
 
       if (error) throw error;
 
-      const blob = new Blob([new Uint8Array(data.pdf.data)], { type: 'application/pdf' });
+      const pdfData = Array.isArray(data.pdf) ? data.pdf : data.pdf.data || data.pdf;
+      const blob = new Blob([new Uint8Array(pdfData)], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
