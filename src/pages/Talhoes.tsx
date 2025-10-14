@@ -33,6 +33,7 @@ export default function Talhoes() {
   const [weather, setWeather] = useState<any>(null);
   
   const [plotForm, setPlotForm] = useState({
+    farm_id: '',
     nome: '',
     area_ha: '',
     solo_tipo: '',
@@ -125,6 +126,31 @@ export default function Talhoes() {
   };
 
   const handleSavePlot = async () => {
+    if (!selectedFarm) {
+      toast({ title: 'Selecione uma fazenda primeiro', variant: 'destructive' });
+      return;
+    }
+
+    if (!plotForm.nome.trim()) {
+      toast({ title: 'Nome do talhão é obrigatório', variant: 'destructive' });
+      return;
+    }
+
+    if (plotForm.area_ha && parseFloat(plotForm.area_ha) <= 0) {
+      toast({ title: 'Área deve ser maior que zero', variant: 'destructive' });
+      return;
+    }
+
+    if (plotForm.latitude && (parseFloat(plotForm.latitude) < -90 || parseFloat(plotForm.latitude) > 90)) {
+      toast({ title: 'Latitude deve estar entre -90 e 90', variant: 'destructive' });
+      return;
+    }
+
+    if (plotForm.longitude && (parseFloat(plotForm.longitude) < -180 || parseFloat(plotForm.longitude) > 180)) {
+      toast({ title: 'Longitude deve estar entre -180 e 180', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
     const data = {
       farm_id: selectedFarm,
@@ -202,7 +228,7 @@ export default function Talhoes() {
   };
 
   const resetPlotForm = () => {
-    setPlotForm({ nome: '', area_ha: '', solo_tipo: '', latitude: '', longitude: '' });
+    setPlotForm({ farm_id: selectedFarm, nome: '', area_ha: '', solo_tipo: '', latitude: '', longitude: '' });
   };
 
   const resetPlantingForm = () => {
@@ -228,16 +254,24 @@ export default function Talhoes() {
 
       <div className="space-y-2">
         <Label>Fazenda</Label>
-        <Select value={selectedFarm} onValueChange={setSelectedFarm}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione uma fazenda" />
-          </SelectTrigger>
-          <SelectContent>
-            {farms.map(farm => (
-              <SelectItem key={farm.id} value={farm.id}>{farm.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {farms.length === 0 ? (
+          <Card className="p-4 bg-muted">
+            <p className="text-sm text-muted-foreground text-center">
+              Você ainda não possui fazendas cadastradas. Por favor, cadastre uma fazenda primeiro na página de Fazendas.
+            </p>
+          </Card>
+        ) : (
+          <Select value={selectedFarm} onValueChange={setSelectedFarm}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione uma fazenda" />
+            </SelectTrigger>
+            <SelectContent>
+              {farms.map(farm => (
+                <SelectItem key={farm.id} value={farm.id}>{farm.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Tabs defaultValue="talhoes" className="w-full">
@@ -249,7 +283,10 @@ export default function Talhoes() {
 
         <TabsContent value="talhoes" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }}>
+            <Button 
+              onClick={() => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }}
+              disabled={!selectedFarm}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Novo Talhão
             </Button>
@@ -273,6 +310,7 @@ export default function Talhoes() {
                           e.stopPropagation();
                           setEditingPlot(plot);
                           setPlotForm({
+                            farm_id: selectedFarm,
                             nome: plot.nome,
                             area_ha: plot.area_ha?.toString() || '',
                             solo_tipo: plot.solo_tipo || '',
