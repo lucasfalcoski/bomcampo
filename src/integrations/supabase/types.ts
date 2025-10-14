@@ -61,6 +61,30 @@ export type Database = {
           },
         ]
       }
+      crop_profiles: {
+        Row: {
+          created_at: string | null
+          crop_code: string
+          default_rules: Json
+          display_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          crop_code: string
+          default_rules: Json
+          display_name: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          crop_code?: string
+          default_rules?: Json
+          display_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
       crops: {
         Row: {
           ciclo_dias: number | null
@@ -84,6 +108,48 @@ export type Database = {
           variedade?: string | null
         }
         Relationships: []
+      }
+      farm_crop_rules: {
+        Row: {
+          created_at: string | null
+          crop_code: string
+          farm_id: string
+          id: string
+          rules: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          crop_code: string
+          farm_id: string
+          id?: string
+          rules: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          crop_code?: string
+          farm_id?: string
+          id?: string
+          rules?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farm_crop_rules_crop_code_fkey"
+            columns: ["crop_code"]
+            isOneToOne: false
+            referencedRelation: "crop_profiles"
+            referencedColumns: ["crop_code"]
+          },
+          {
+            foreignKeyName: "farm_crop_rules_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       farms: {
         Row: {
@@ -155,6 +221,8 @@ export type Database = {
           expectativa_sacas_ha: number | null
           id: string
           plot_id: string
+          stage: string | null
+          stage_override: boolean | null
           status: Database["public"]["Enums"]["planting_status"] | null
           updated_at: string | null
         }
@@ -167,6 +235,8 @@ export type Database = {
           expectativa_sacas_ha?: number | null
           id?: string
           plot_id: string
+          stage?: string | null
+          stage_override?: boolean | null
           status?: Database["public"]["Enums"]["planting_status"] | null
           updated_at?: string | null
         }
@@ -179,6 +249,8 @@ export type Database = {
           expectativa_sacas_ha?: number | null
           id?: string
           plot_id?: string
+          stage?: string | null
+          stage_override?: boolean | null
           status?: Database["public"]["Enums"]["planting_status"] | null
           updated_at?: string | null
         }
@@ -343,10 +415,21 @@ export type Database = {
         Row: {
           alerta_chuva_limite_mm: number | null
           created_at: string | null
+          disease_rain_24h_mm: number | null
+          disease_rh_pct: number | null
+          disease_temp_max_c: number | null
+          disease_temp_min_c: number | null
           fonte_api: string | null
+          frost_min_temp_c: number | null
+          heat_stress_max_c: number | null
           id: string
           notif_alerta_chuva: boolean | null
           notif_lembretes_atividades: boolean | null
+          spray_dry_window_h: number | null
+          spray_rain_max_mm: number | null
+          spray_rh_min_pct: number | null
+          spray_temp_max_c: number | null
+          spray_wind_max_kmh: number | null
           unidade_temp: Database["public"]["Enums"]["temp_unit"] | null
           updated_at: string | null
           user_id: string
@@ -354,10 +437,21 @@ export type Database = {
         Insert: {
           alerta_chuva_limite_mm?: number | null
           created_at?: string | null
+          disease_rain_24h_mm?: number | null
+          disease_rh_pct?: number | null
+          disease_temp_max_c?: number | null
+          disease_temp_min_c?: number | null
           fonte_api?: string | null
+          frost_min_temp_c?: number | null
+          heat_stress_max_c?: number | null
           id?: string
           notif_alerta_chuva?: boolean | null
           notif_lembretes_atividades?: boolean | null
+          spray_dry_window_h?: number | null
+          spray_rain_max_mm?: number | null
+          spray_rh_min_pct?: number | null
+          spray_temp_max_c?: number | null
+          spray_wind_max_kmh?: number | null
           unidade_temp?: Database["public"]["Enums"]["temp_unit"] | null
           updated_at?: string | null
           user_id: string
@@ -365,10 +459,21 @@ export type Database = {
         Update: {
           alerta_chuva_limite_mm?: number | null
           created_at?: string | null
+          disease_rain_24h_mm?: number | null
+          disease_rh_pct?: number | null
+          disease_temp_max_c?: number | null
+          disease_temp_min_c?: number | null
           fonte_api?: string | null
+          frost_min_temp_c?: number | null
+          heat_stress_max_c?: number | null
           id?: string
           notif_alerta_chuva?: boolean | null
           notif_lembretes_atividades?: boolean | null
+          spray_dry_window_h?: number | null
+          spray_rain_max_mm?: number | null
+          spray_rh_min_pct?: number | null
+          spray_temp_max_c?: number | null
+          spray_wind_max_kmh?: number | null
           unidade_temp?: Database["public"]["Enums"]["temp_unit"] | null
           updated_at?: string | null
           user_id?: string

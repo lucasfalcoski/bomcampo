@@ -14,6 +14,7 @@ import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { FieldNotes } from '@/components/FieldNotes';
 import { ActivityLogComponent } from '@/components/ActivityLogComponent';
 import { WeatherAlerts } from '@/components/WeatherAlerts';
+import { useAgroRecommendations } from '@/hooks/useAgroRecommendations';
 
 export default function Talhoes() {
   const { user } = useAuth();
@@ -30,7 +31,12 @@ export default function Talhoes() {
   const [editingPlot, setEditingPlot] = useState<any>(null);
   const [editingPlanting, setEditingPlanting] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [weather, setWeather] = useState<any>(null);
+  
+  // Hook para recomendações agrícolas
+  const { recommendations, loading: loadingRecs } = useAgroRecommendations({
+    farmId: selectedFarm,
+    plotId: selectedPlot
+  });
   
   const [plotForm, setPlotForm] = useState({
     farm_id: '',
@@ -65,7 +71,6 @@ export default function Talhoes() {
     if (selectedPlot) {
       loadPlantings();
       loadActivities();
-      loadWeather();
     }
   }, [selectedPlot]);
 
@@ -105,25 +110,6 @@ export default function Talhoes() {
     setActivities(data || []);
   };
 
-  const loadWeather = async () => {
-    const plot = plots.find(p => p.id === selectedPlot);
-    if (!plot?.latitude || !plot?.longitude) return;
-
-    try {
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${plot.latitude}&longitude=${plot.longitude}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&daily=precipitation_probability_max&timezone=America/Sao_Paulo&forecast_days=1`
-      );
-      const data = await response.json();
-      setWeather({
-        windSpeed: data.current.wind_speed_10m,
-        precipProb: data.daily.precipitation_probability_max[0],
-        humidity: data.current.relative_humidity_2m,
-        precipitation: data.current.precipitation,
-      });
-    } catch (error) {
-      console.error('Erro ao carregar clima:', error);
-    }
-  };
 
   const handleSavePlot = async () => {
     if (!selectedFarm) {
@@ -358,18 +344,19 @@ export default function Talhoes() {
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <FieldNotes plot={currentPlot!} planting={currentPlanting} />
-                {weather && currentPlot?.latitude && currentPlot?.longitude && (
+                {currentPlot?.latitude && currentPlot?.longitude && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Condições para Pulverização</CardTitle>
+                      <CardTitle>Recomendações Agrícolas</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <WeatherAlerts
-                        windSpeed={weather.windSpeed}
-                        precipProb={weather.precipProb}
-                        humidity={weather.humidity}
-                        precipitation={weather.precipitation}
-                      />
+                      {loadingRecs ? (
+                        <div className="flex justify-center py-4">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <WeatherAlerts recommendations={recommendations} />
+                      )}
                     </CardContent>
                   </Card>
                 )}
