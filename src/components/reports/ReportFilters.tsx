@@ -26,8 +26,8 @@ export function ReportFilters({
   const [plantings, setPlantings] = useState<any[]>([]);
   
   const [selectedFarm, setSelectedFarm] = useState<string>("");
-  const [selectedPlot, setSelectedPlot] = useState<string>("");
-  const [selectedPlanting, setSelectedPlanting] = useState<string>("");
+  const [selectedPlot, setSelectedPlot] = useState<string>("all");
+  const [selectedPlanting, setSelectedPlanting] = useState<string>("all");
   const [periodo, setPeriodo] = useState<'mes' | 'ano' | 'intervalo'>('mes');
   const [dataInicio, setDataInicio] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
@@ -101,8 +101,8 @@ export function ReportFilters({
 
     onFilterChange({
       farm_id: selectedFarm,
-      plot_id: selectedPlot || undefined,
-      planting_id: selectedPlanting || undefined,
+      plot_id: selectedPlot !== "all" ? selectedPlot : undefined,
+      planting_id: selectedPlanting !== "all" ? selectedPlanting : undefined,
       periodo,
       data_inicio: dataInicio,
       data_fim: dataFim,
@@ -140,7 +140,7 @@ export function ReportFilters({
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 {plots.map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                 ))}
@@ -157,7 +157,7 @@ export function ReportFilters({
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 {plantings.map(p => (
                   <SelectItem key={p.id} value={p.id}>
                     {(p.crops as any)?.nome} - {new Date(p.data_plantio).toLocaleDateString('pt-BR')}
