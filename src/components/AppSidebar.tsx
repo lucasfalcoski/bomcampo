@@ -1,4 +1,4 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import {
   Sidebar,
@@ -18,6 +18,7 @@ import { Button } from './ui/button';
 
 const menuItems = [
   { title: 'Dashboard', url: '/', icon: Home },
+  { title: 'Fazendas', url: '/fazendas', icon: MapPin },
   { title: 'Clima', url: '/clima', icon: Cloud },
   { title: 'Talhões & Plantio', url: '/talhoes', icon: Sprout },
   { title: 'Financeiro', url: '/financeiro', icon: DollarSign },

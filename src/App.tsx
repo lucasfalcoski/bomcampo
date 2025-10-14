@@ -8,6 +8,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Fazendas from "./pages/Fazendas";
 import Clima from "./pages/Clima";
 import Talhoes from "./pages/Talhoes";
 import Financeiro from "./pages/Financeiro";
@@ -31,6 +32,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Dashboard />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/fazendas"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Fazendas />
                   </AppLayout>
                 </ProtectedRoute>
               }
