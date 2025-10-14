@@ -7,6 +7,7 @@ import WeatherAlerts from "@/components/WeatherAlerts";
 import FieldNotes from "@/components/FieldNotes";
 import ActivityLog from "@/components/ActivityLog";
 import AddActivityDialog from "@/components/AddActivityDialog";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
@@ -18,11 +19,9 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Cloud className="w-6 h-6 text-primary-foreground" />
-              </div>
+              <img src={logo} alt="Bom Campo Logo" className="w-10 h-10" />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Bom Tempo App</h1>
+                <h1 className="text-2xl font-bold text-foreground">Bom Campo</h1>
                 <p className="text-sm text-muted-foreground">Gestão Agrícola Inteligente</p>
               </div>
             </div>
