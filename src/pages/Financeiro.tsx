@@ -45,9 +45,9 @@ export default function Financeiro() {
 
   const [filters, setFilters] = useState({
     farm_id: '',
-    plot_id: '',
-    categoria: '',
-    tipo: '',
+    plot_id: 'all',
+    categoria: 'all',
+    tipo: 'all',
     periodo: 'mes_atual',
     data_inicio: '',
     data_fim: '',
@@ -91,9 +91,9 @@ export default function Financeiro() {
   const loadTransactions = async () => {
     let query = supabase.from('transactions').select('*').eq('farm_id', filters.farm_id);
 
-    if (filters.plot_id) query = query.eq('plot_id', filters.plot_id);
-    if (filters.categoria) query = query.eq('categoria', filters.categoria as any);
-    if (filters.tipo) query = query.eq('tipo', filters.tipo as any);
+    if (filters.plot_id && filters.plot_id !== 'all') query = query.eq('plot_id', filters.plot_id);
+    if (filters.categoria && filters.categoria !== 'all') query = query.eq('categoria', filters.categoria as any);
+    if (filters.tipo && filters.tipo !== 'all') query = query.eq('tipo', filters.tipo as any);
 
     const { start, end } = getDateRange();
     if (start && end) {
@@ -264,7 +264,7 @@ export default function Financeiro() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label>Fazenda *</Label>
-              <Select value={filters.farm_id} onValueChange={v => setFilters({ ...filters, farm_id: v, plot_id: '' })}>
+              <Select value={filters.farm_id} onValueChange={v => setFilters({ ...filters, farm_id: v, plot_id: 'all' })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
@@ -280,7 +280,7 @@ export default function Financeiro() {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {plots.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -292,7 +292,7 @@ export default function Financeiro() {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
                   {TRANSACTION_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -304,7 +304,7 @@ export default function Financeiro() {
                   <SelectValue placeholder="Todas" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas</SelectItem>
+                  <SelectItem value="all">Todas</SelectItem>
                   {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                 </SelectContent>
               </Select>
