@@ -87,6 +87,11 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html, body {
+    height: auto;
+    overflow: auto;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
   }

@@ -129,7 +129,7 @@ export function AddActivityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85svh] overflow-y-auto [-webkit-overflow-scrolling:touch]">
         <DialogHeader>
           <DialogTitle>{activity ? 'Editar' : 'Nova'} Atividade</DialogTitle>
           <DialogDescription>
@@ -137,7 +137,7 @@ export function AddActivityDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pb-[env(safe-area-inset-bottom)]">
           {suggestedReason && (
             <div className="p-3 bg-primary/10 border border-primary/20 rounded-md text-sm">
               <p className="font-medium text-primary mb-1">💡 Sugestão do clima</p>
@@ -238,13 +238,15 @@ export function AddActivityDialog({
             </Label>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading || !formData.tipo}>
-              {loading ? 'Salvando...' : activity ? 'Atualizar' : 'Criar'}
-            </Button>
+          <div className="sticky bottom-0 inset-x-0 bg-card/95 backdrop-blur-sm border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] -mx-6 px-6 mt-6">
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={loading || !formData.tipo} className="flex-1">
+                {loading ? 'Salvando...' : activity ? 'Atualizar' : 'Criar'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
