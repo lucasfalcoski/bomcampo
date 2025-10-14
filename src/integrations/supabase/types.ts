@@ -27,7 +27,7 @@ export type Database = {
           plot_id: string
           realizado: boolean | null
           responsavel: string | null
-          tipo: Database["public"]["Enums"]["activity_type"]
+          tipo: string
           updated_at: string | null
         }
         Insert: {
@@ -42,7 +42,7 @@ export type Database = {
           plot_id: string
           realizado?: boolean | null
           responsavel?: string | null
-          tipo: Database["public"]["Enums"]["activity_type"]
+          tipo: string
           updated_at?: string | null
         }
         Update: {
@@ -57,7 +57,7 @@ export type Database = {
           plot_id?: string
           realizado?: boolean | null
           responsavel?: string | null
-          tipo?: Database["public"]["Enums"]["activity_type"]
+          tipo?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -541,13 +541,6 @@ export type Database = {
       }
     }
     Enums: {
-      activity_type:
-        | "pulverizacao"
-        | "irrigacao"
-        | "adubacao"
-        | "manejo_fitossanitario"
-        | "colheita"
-        | "outro"
       app_role: "admin" | "produtor"
       planting_status: "planejado" | "em_andamento" | "colhido"
       temp_unit: "C" | "F"
@@ -688,14 +681,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      activity_type: [
-        "pulverizacao",
-        "irrigacao",
-        "adubacao",
-        "manejo_fitossanitario",
-        "colheita",
-        "outro",
-      ],
       app_role: ["admin", "produtor"],
       planting_status: ["planejado", "em_andamento", "colhido"],
       temp_unit: ["C", "F"],
