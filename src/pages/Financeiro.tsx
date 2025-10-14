@@ -20,6 +20,7 @@ const formatCurrency = (value: number) => {
 
 const CATEGORIES = [
   { value: 'insumo', label: 'Insumo' },
+  { value: 'adubacao', label: 'Adubação' },
   { value: 'mao_obra', label: 'Mão de Obra' },
   { value: 'maquinas', label: 'Máquinas' },
   { value: 'energia', label: 'Energia' },
@@ -60,7 +61,7 @@ export default function Financeiro() {
     categoria: '',
     descricao: '',
     valor_brl: '',
-    data: new Date().toISOString().split('T')[0],
+    data: new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }).split(',')[0].split('/').reverse().join('-').replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$1-$2'),
     origem: '',
   });
 
@@ -129,7 +130,7 @@ export default function Financeiro() {
       farm_id: transactionForm.farm_id,
       plot_id: transactionForm.plot_id || null,
       tipo: transactionForm.tipo as 'custo' | 'receita',
-      categoria: transactionForm.categoria as 'insumo' | 'mao_obra' | 'maquinas' | 'energia' | 'transporte' | 'venda' | 'outros',
+      categoria: transactionForm.categoria as 'insumo' | 'adubacao' | 'mao_obra' | 'maquinas' | 'energia' | 'transporte' | 'venda' | 'outros',
       descricao: transactionForm.descricao,
       valor_brl: parseFloat(transactionForm.valor_brl),
       data: transactionForm.data,
@@ -171,7 +172,7 @@ export default function Financeiro() {
       categoria: '',
       descricao: '',
       valor_brl: '',
-      data: new Date().toISOString().split('T')[0],
+      data: new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }).split(',')[0].split('/').reverse().join('-').replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$1-$2'),
       origem: '',
     });
   };
