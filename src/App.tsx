@@ -12,6 +12,7 @@ import Fazendas from "./pages/Fazendas";
 import Clima from "./pages/Clima";
 import Talhoes from "./pages/Talhoes";
 import Financeiro from "./pages/Financeiro";
+import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
@@ -72,6 +73,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Financeiro />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Relatorios />
                   </AppLayout>
                 </ProtectedRoute>
               }
