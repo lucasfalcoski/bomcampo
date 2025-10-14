@@ -16,6 +16,9 @@ import Relatorios from "./pages/Relatorios";
 import AtividadesEstimadoReal from "./pages/relatorios/AtividadesEstimadoReal";
 import PorTipo from "./pages/relatorios/PorTipo";
 import PorTalhao from "./pages/relatorios/PorTalhao";
+import ResumoClimatico from "./pages/relatorios/clima/ResumoClimatico";
+import ConformidadePulverizacao from "./pages/relatorios/clima/ConformidadePulverizacao";
+import RiscoDoencas from "./pages/relatorios/clima/RiscoDoencas";
 import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
@@ -116,6 +119,36 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <PorTalhao />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/clima/resumo"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <ResumoClimatico />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/clima/conformidade"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <ConformidadePulverizacao />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios/clima/risco-doencas"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <RiscoDoencas />
                   </AppLayout>
                 </ProtectedRoute>
               }
