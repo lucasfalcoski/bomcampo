@@ -121,6 +121,30 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications_log: {
+        Row: {
+          created_at: string
+          id: string
+          referencia_data: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referencia_data: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referencia_data?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       plantings: {
         Row: {
           created_at: string | null
@@ -321,6 +345,8 @@ export type Database = {
           created_at: string | null
           fonte_api: string | null
           id: string
+          notif_alerta_chuva: boolean | null
+          notif_lembretes_atividades: boolean | null
           unidade_temp: Database["public"]["Enums"]["temp_unit"] | null
           updated_at: string | null
           user_id: string
@@ -330,6 +356,8 @@ export type Database = {
           created_at?: string | null
           fonte_api?: string | null
           id?: string
+          notif_alerta_chuva?: boolean | null
+          notif_lembretes_atividades?: boolean | null
           unidade_temp?: Database["public"]["Enums"]["temp_unit"] | null
           updated_at?: string | null
           user_id: string
@@ -339,6 +367,8 @@ export type Database = {
           created_at?: string | null
           fonte_api?: string | null
           id?: string
+          notif_alerta_chuva?: boolean | null
+          notif_lembretes_atividades?: boolean | null
           unidade_temp?: Database["public"]["Enums"]["temp_unit"] | null
           updated_at?: string | null
           user_id?: string
