@@ -128,7 +128,7 @@ export default function Financeiro() {
     setLoading(true);
     const data = {
       farm_id: transactionForm.farm_id,
-      plot_id: transactionForm.plot_id || null,
+      plot_id: transactionForm.plot_id && transactionForm.plot_id !== 'none' ? transactionForm.plot_id : null,
       tipo: transactionForm.tipo as 'custo' | 'receita',
       categoria: transactionForm.categoria as any,
       descricao: transactionForm.descricao,
@@ -597,7 +597,7 @@ export default function Financeiro() {
                   <SelectValue placeholder="Nenhum" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {plots.filter(p => p.farm_id === transactionForm.farm_id).map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                   ))}
