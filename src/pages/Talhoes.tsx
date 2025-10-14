@@ -14,8 +14,11 @@ import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { FieldNotes } from '@/components/FieldNotes';
 import { ActivityLogComponent } from '@/components/ActivityLogComponent';
 import { WeatherAlerts } from '@/components/WeatherAlerts';
+import { SuggestedActivities } from '@/components/SuggestedActivities';
 import { useAgroRecommendations } from '@/hooks/useAgroRecommendations';
+import { gerarSugestoesAtividades, ActivitySuggestion } from '@/lib/agro/activitySuggestions';
 import { LatLonHintDialog, shouldShowLatLonHint } from '@/components/LatLonHintDialog';
+import { AddActivityDialog } from '@/components/AddActivityDialog';
 
 export default function Talhoes() {
   const { user } = useAuth();
@@ -33,12 +36,17 @@ export default function Talhoes() {
   const [editingPlanting, setEditingPlanting] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [showLatLonHint, setShowLatLonHint] = useState(false);
+  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [suggestedActivity, setSuggestedActivity] = useState<ActivitySuggestion | null>(null);
   
   // Hook para recomendações agrícolas
   const { recommendations, loading: loadingRecs } = useAgroRecommendations({
     farmId: selectedFarm,
     plotId: selectedPlot
   });
+
+  // Gerar sugestões de atividades baseadas no clima
+  const activitySuggestions = gerarSugestoesAtividades(recommendations);
   
   const [plotForm, setPlotForm] = useState({
     farm_id: '',
@@ -111,6 +119,16 @@ export default function Talhoes() {
       .eq('plot_id', selectedPlot!)
       .order('data', { ascending: false });
     setActivities(data || []);
+  };
+
+  const handleAddSuggestedActivity = (suggestion: ActivitySuggestion) => {
+    setSuggestedActivity(suggestion);
+    setActivityDialogOpen(true);
+  };
+
+  const handleActivityDialogClose = () => {
+    setActivityDialogOpen(false);
+    setSuggestedActivity(null);
   };
 
 
@@ -460,13 +478,22 @@ export default function Talhoes() {
           )}
         </TabsContent>
 
-        <TabsContent value="atividades">
+        <TabsContent value="atividades" className="space-y-4">
           {selectedPlot && (
-            <ActivityLogComponent
-              plotId={selectedPlot}
-              activities={activities}
-              onUpdate={loadActivities}
-            />
+            <>
+              {activitySuggestions.length > 0 && currentPlot?.latitude && currentPlot?.longitude && (
+                <SuggestedActivities
+                  suggestions={activitySuggestions}
+                  onAddActivity={handleAddSuggestedActivity}
+                />
+              )}
+              <ActivityLogComponent
+                plotId={selectedPlot}
+                plantingId={currentPlanting?.id}
+                activities={activities}
+                onUpdate={loadActivities}
+              />
+            </>
           )}
         </TabsContent>
       </Tabs>
@@ -672,6 +699,22 @@ export default function Talhoes() {
           }
         }}
       />
+
+      {/* Suggested Activity Dialog */}
+      {selectedPlot && (
+        <AddActivityDialog
+          open={activityDialogOpen}
+          onOpenChange={handleActivityDialogClose}
+          plotId={selectedPlot}
+          plantingId={currentPlanting?.id}
+          suggestedType={suggestedActivity?.code}
+          suggestedReason={suggestedActivity?.reason}
+          onSuccess={() => {
+            loadActivities();
+            handleActivityDialogClose();
+          }}
+        />
+      )}
     </div>
   );
 }

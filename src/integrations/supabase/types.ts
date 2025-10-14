@@ -16,42 +16,58 @@ export type Database = {
     Tables: {
       activities: {
         Row: {
+          anexo_url: string | null
           created_at: string | null
           custo_estimado: number | null
           data: string
           descricao: string | null
           id: string
           observacoes: string | null
+          planting_id: string | null
           plot_id: string
           realizado: boolean | null
+          responsavel: string | null
           tipo: Database["public"]["Enums"]["activity_type"]
           updated_at: string | null
         }
         Insert: {
+          anexo_url?: string | null
           created_at?: string | null
           custo_estimado?: number | null
           data: string
           descricao?: string | null
           id?: string
           observacoes?: string | null
+          planting_id?: string | null
           plot_id: string
           realizado?: boolean | null
+          responsavel?: string | null
           tipo: Database["public"]["Enums"]["activity_type"]
           updated_at?: string | null
         }
         Update: {
+          anexo_url?: string | null
           created_at?: string | null
           custo_estimado?: number | null
           data?: string
           descricao?: string | null
           id?: string
           observacoes?: string | null
+          planting_id?: string | null
           plot_id?: string
           realizado?: boolean | null
+          responsavel?: string | null
           tipo?: Database["public"]["Enums"]["activity_type"]
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "activities_planting_id_fkey"
+            columns: ["planting_id"]
+            isOneToOne: false
+            referencedRelation: "plantings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "activities_plot_id_fkey"
             columns: ["plot_id"]
@@ -60,6 +76,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      activity_types: {
+        Row: {
+          category: string
+          code: string
+          created_at: string | null
+          display_name: string
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string | null
+          display_name: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string | null
+          display_name?: string
+        }
+        Relationships: []
       }
       crop_profiles: {
         Row: {

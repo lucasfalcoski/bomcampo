@@ -6,6 +6,7 @@ import { Plus, Trash2, Edit } from 'lucide-react';
 import { AddActivityDialog } from './AddActivityDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useActivityTypes } from '@/hooks/useActivityTypes';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -17,27 +18,27 @@ interface Activity {
   custo_estimado: number | null;
   realizado: boolean | null;
   observacoes: string | null;
+  responsavel?: string | null;
+  planting_id?: string | null;
 }
 
 interface ActivityLogComponentProps {
   plotId: string;
+  plantingId?: string | null;
   activities: Activity[];
   onUpdate: () => void;
 }
 
-const ACTIVITY_TYPES = {
-  pulverizacao: 'Pulverização',
-  irrigacao: 'Irrigação',
-  adubacao: 'Adubação',
-  manejo_fitossanitario: 'Manejo Fitossanitário',
-  colheita: 'Colheita',
-  outro: 'Outro',
-};
-
-export function ActivityLogComponent({ plotId, activities, onUpdate }: ActivityLogComponentProps) {
+export function ActivityLogComponent({ plotId, plantingId, activities, onUpdate }: ActivityLogComponentProps) {
   const { toast } = useToast();
+  const { activityTypes } = useActivityTypes();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+
+  const getActivityTypeName = (code: string) => {
+    const type = activityTypes.find((t) => t.code === code);
+    return type?.display_name || code;
+  };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('activities').delete().eq('id', id);
@@ -92,7 +93,7 @@ export function ActivityLogComponent({ plotId, activities, onUpdate }: ActivityL
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium">
-                        {ACTIVITY_TYPES[activity.tipo as keyof typeof ACTIVITY_TYPES]}
+                        {getActivityTypeName(activity.tipo)}
                       </span>
                       <Badge variant={activity.realizado ? 'default' : 'secondary'}>
                         {activity.realizado ? 'Realizado' : 'Pendente'}
@@ -147,6 +148,7 @@ export function ActivityLogComponent({ plotId, activities, onUpdate }: ActivityL
           open={dialogOpen}
           onOpenChange={handleDialogClose}
           plotId={plotId}
+          plantingId={plantingId}
           activity={editingActivity}
           onSuccess={() => {
             onUpdate();
