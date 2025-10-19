@@ -20,10 +20,13 @@ const MARKETS: Record<string, { id: string; label: string }[]> = {
   soja: [
     { id: "CBOT", label: "CBOT (ref. int.)" },
     { id: "MT", label: "Mato Grosso (CONAB)" },
+    { id: "PR", label: "Paraná (CONAB)" },
+    { id: "SP", label: "São Paulo (CONAB)" },
   ],
   milho: [
     { id: "CBOT", label: "CBOT (ref. int.)" },
     { id: "PR", label: "Paraná (CONAB)" },
+    { id: "SP", label: "São Paulo (CONAB)" },
   ],
 };
 
@@ -221,22 +224,27 @@ function PriceMiniChart({ data }: { data: SeriesRow[] }) {
     );
   }
 
+  // Otimização: reduzir pontos do gráfico para melhorar performance
+  const maxPoints = 100;
+  const step = Math.ceil(data.length / maxPoints);
+  const sampledData = data.filter((_, i) => i % step === 0 || i === data.length - 1);
+
   const w = 640;
   const h = 200;
   const pad = 24;
-  const xs = data.map(d => new Date(d.date).getTime());
-  const ys = data.map(d => Number(d.price));
+  const xs = sampledData.map(d => new Date(d.date).getTime());
+  const ys = sampledData.map(d => Number(d.price));
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
   const normX = (t: number) => pad + (t - minX) / Math.max(1, (maxX - minX)) * (w - pad * 2);
   const normY = (v: number) => h - pad - (v - minY) / Math.max(1, (maxY - minY)) * (h - pad * 2);
-  const path = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${normX(new Date(d.date).getTime())} ${normY(Number(d.price))}`).join(" ");
+  const path = sampledData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${normX(new Date(d.date).getTime())} ${normY(Number(d.price))}`).join(" ");
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto">
-      <path d={path} fill="none" stroke="hsl(var(--primary))" strokeWidth={2} />
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto" style={{ willChange: 'auto' }}>
+      <path d={path} fill="none" stroke="hsl(var(--primary))" strokeWidth={2} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
