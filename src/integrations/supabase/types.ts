@@ -142,6 +142,42 @@ export type Database = {
         }
         Relationships: []
       }
+      commodity_prices: {
+        Row: {
+          created_at: string
+          id: string
+          market: string
+          metadata: Json | null
+          price: number
+          product: string
+          quote_at: string
+          source: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          market: string
+          metadata?: Json | null
+          price: number
+          product: string
+          quote_at: string
+          source: string
+          unit: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          market?: string
+          metadata?: Json | null
+          price?: number
+          product?: string
+          quote_at?: string
+          source?: string
+          unit?: string
+        }
+        Relationships: []
+      }
       crop_profiles: {
         Row: {
           created_at: string | null
