@@ -14,15 +14,18 @@ type SeriesRow = { date: string; price: number; unit: string; source: string };
 const PRODUCTS = [
   { id: "soja", label: "Soja" },
   { id: "milho", label: "Milho" },
-  { id: "boi", label: "Boi Gordo" },
 ];
 
-const MARKETS = [
-  { id: "CBOT", label: "CBOT (ref. int.)" },
-  { id: "MT", label: "Mato Grosso (CONAB)" },
-  { id: "PR", label: "Paraná (CONAB)" },
-  { id: "SP", label: "São Paulo (CONAB)" },
-];
+const MARKETS: Record<string, { id: string; label: string }[]> = {
+  soja: [
+    { id: "CBOT", label: "CBOT (ref. int.)" },
+    { id: "MT", label: "Mato Grosso (CONAB)" },
+  ],
+  milho: [
+    { id: "CBOT", label: "CBOT (ref. int.)" },
+    { id: "PR", label: "Paraná (CONAB)" },
+  ],
+};
 
 export default function PrecosPage() {
   const [product, setProduct] = useState("soja");
@@ -30,6 +33,8 @@ export default function PrecosPage() {
   const [days, setDays] = useState(90);
   const [series, setSeries] = useState<SeriesRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const availableMarkets = MARKETS[product] || [];
 
   const load = async () => {
     setLoading(true);
@@ -43,6 +48,13 @@ export default function PrecosPage() {
     }
     setSeries(data || []);
   };
+
+  useEffect(() => {
+    // Reset market when product changes if current market is not available
+    if (!availableMarkets.find(m => m.id === market)) {
+      setMarket(availableMarkets[0]?.id || "CBOT");
+    }
+  }, [product]);
 
   useEffect(() => {
     load();
@@ -81,7 +93,7 @@ export default function PrecosPage() {
                 <SelectValue placeholder="Mercado" />
               </SelectTrigger>
               <SelectContent>
-                {MARKETS.map(m => (
+                {availableMarkets.map(m => (
                   <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
                 ))}
               </SelectContent>
