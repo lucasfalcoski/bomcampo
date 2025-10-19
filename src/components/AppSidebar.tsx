@@ -1,4 +1,4 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import {
   Sidebar,
@@ -21,6 +21,7 @@ const menuItems = [
   { title: 'Fazendas', url: '/fazendas', icon: MapPin },
   { title: 'Clima', url: '/clima', icon: Cloud },
   { title: 'Talhões & Plantio', url: '/talhoes', icon: Sprout },
+  { title: 'Preços', url: '/precos', icon: TrendingUp },
   { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
   { title: 'Relatórios', url: '/relatorios', icon: FileText },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },

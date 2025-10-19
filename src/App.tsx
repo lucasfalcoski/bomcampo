@@ -24,6 +24,7 @@ import PerformanceCultura from "./pages/relatorios/culturas/PerformanceCultura";
 import PlanejadoExecutado from "./pages/relatorios/operacao/PlanejadoExecutado";
 import HeatmapAtividades from "./pages/relatorios/operacao/HeatmapAtividades";
 import Configuracoes from "./pages/Configuracoes";
+import Precos from "./pages/Precos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -193,6 +194,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <HeatmapAtividades />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/precos"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Precos />
                   </AppLayout>
                 </ProtectedRoute>
               }

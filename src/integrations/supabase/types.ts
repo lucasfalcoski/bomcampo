@@ -402,6 +402,78 @@ export type Database = {
           },
         ]
       }
+      price_alerts: {
+        Row: {
+          active: boolean
+          condition: string
+          created_at: string
+          id: string
+          last_triggered_at: string | null
+          market: string
+          product: string
+          threshold: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          condition: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string | null
+          market: string
+          product: string
+          threshold: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          condition?: string
+          created_at?: string
+          id?: string
+          last_triggered_at?: string | null
+          market?: string
+          product?: string
+          threshold?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      price_series: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          market: string
+          price: number
+          product: string
+          source: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          market: string
+          price: number
+          product: string
+          source: string
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          market?: string
+          price?: number
+          product?: string
+          source?: string
+          unit?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -575,6 +647,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_prices_series: {
+        Args: { p_days?: number; p_market: string; p_product: string }
+        Returns: {
+          date: string
+          price: number
+          source: string
+          unit: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
