@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,8 +63,11 @@ export default function PrecosPage() {
     load();
   }, [product, market, days]);
 
-  const last = series[series.length - 1];
-  const avg30 = series.slice(-30).reduce((s, r) => s + Number(r.price || 0), 0) / Math.max(1, Math.min(30, series.length));
+  const last = useMemo(() => series[series.length - 1], [series]);
+  const avg30 = useMemo(() => 
+    series.slice(-30).reduce((s, r) => s + Number(r.price || 0), 0) / Math.max(1, Math.min(30, series.length)),
+    [series]
+  );
 
   return (
     <div className="space-y-6">
@@ -195,14 +198,21 @@ export default function PrecosPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  series.map((r, i) => (
-                    <TableRow key={i}>
+                  series.slice(0, 50).map((r, i) => (
+                    <TableRow key={`${r.date}-${i}`}>
                       <TableCell>{new Date(r.date).toLocaleDateString('pt-BR')}</TableCell>
                       <TableCell>{Number(r.price).toFixed(2)}</TableCell>
                       <TableCell>{r.unit}</TableCell>
                       <TableCell>{r.source}</TableCell>
                     </TableRow>
                   ))
+                )}
+                {series.length > 50 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground text-sm py-2">
+                      Mostrando os primeiros 50 registros de {series.length} total
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
