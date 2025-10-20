@@ -32,7 +32,7 @@ const MARKETS: Record<string, { id: string; label: string }[]> = {
 
 export default function PrecosPage() {
   const [product, setProduct] = useState("soja");
-  const [market, setMarket] = useState("CBOT");
+  const [market, setMarket] = useState("SP");
   const [days, setDays] = useState(90);
   const [series, setSeries] = useState<SeriesRow[]>([]);
   const [loading, setLoading] = useState(false);
