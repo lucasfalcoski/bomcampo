@@ -18,15 +18,15 @@ const PRODUCTS = [
 
 const MARKETS: Record<string, { id: string; label: string }[]> = {
   soja: [
-    { id: "CBOT", label: "CBOT (ref. int.)" },
-    { id: "MT", label: "Mato Grosso (CONAB)" },
-    { id: "PR", label: "Paraná (CONAB)" },
     { id: "SP", label: "São Paulo (CONAB)" },
+    { id: "PR", label: "Paraná (CONAB)" },
+    { id: "MT", label: "Mato Grosso (CONAB)" },
+    { id: "CBOT", label: "CBOT (ref. int.)" },
   ],
   milho: [
-    { id: "CBOT", label: "CBOT (ref. int.)" },
-    { id: "PR", label: "Paraná (CONAB)" },
     { id: "SP", label: "São Paulo (CONAB)" },
+    { id: "PR", label: "Paraná (CONAB)" },
+    { id: "CBOT", label: "CBOT (ref. int.)" },
   ],
 };
 
