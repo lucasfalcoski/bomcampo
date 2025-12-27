@@ -703,6 +703,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "produtor"
+      fala_agronomo_context: "B2C" | "B2B"
+      message_sender_type: "user" | "agronomist" | "system"
       planting_status: "planejado" | "em_andamento" | "colhido"
       temp_unit: "C" | "F"
       transaction_category:
@@ -715,6 +717,7 @@ export type Database = {
         | "outros"
         | "adubacao"
       transaction_type: "receita" | "custo"
+      user_origin: "B2C" | "B2B"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -843,6 +846,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "produtor"],
+      fala_agronomo_context: ["B2C", "B2B"],
+      message_sender_type: ["user", "agronomist", "system"],
       planting_status: ["planejado", "em_andamento", "colhido"],
       temp_unit: ["C", "F"],
       transaction_category: [
@@ -856,6 +861,7 @@ export const Constants = {
         "adubacao",
       ],
       transaction_type: ["receita", "custo"],
+      user_origin: ["B2C", "B2B"],
     },
   },
 } as const
