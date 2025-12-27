@@ -31,6 +31,11 @@ import AgronomistPanel from "./pages/partner/AgronomistPanel";
 import ConversationDetail from "./pages/partner/ConversationDetail";
 import Parceiros from "./pages/admin/Parceiros";
 import Auditoria from "./pages/admin/Auditoria";
+import VisaoGeral from "./pages/admin/VisaoGeral";
+import Conteudo from "./pages/admin/Conteudo";
+import Videos from "./pages/admin/Videos";
+import FalaAgronomoAdmin from "./pages/admin/FalaAgronomoAdmin";
+import Alertas from "./pages/admin/Alertas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -255,6 +260,16 @@ const App = () => (
               }
             />
             <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <VisaoGeral />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/parceiros"
               element={
                 <ProtectedRoute>
@@ -265,11 +280,51 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/conteudo"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Conteudo />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/videos"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Videos />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/fala-agronomo"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <FalaAgronomoAdmin />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/auditoria"
               element={
                 <ProtectedRoute>
                   <AppLayout>
                     <Auditoria />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/alertas"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Alertas />
                   </AppLayout>
                 </ProtectedRoute>
               }

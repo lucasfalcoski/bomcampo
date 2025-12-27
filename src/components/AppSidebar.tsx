@@ -1,4 +1,4 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList, LayoutDashboard, Video, Bell } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
@@ -31,8 +31,13 @@ const menuItems = [
 ];
 
 const adminItems = [
+  { title: 'Visão Geral', url: '/admin', icon: LayoutDashboard },
   { title: 'Parceiros', url: '/admin/parceiros', icon: Users },
+  { title: 'Conteúdo', url: '/admin/conteudo', icon: FileText },
+  { title: 'Vídeos', url: '/admin/videos', icon: Video },
+  { title: 'Fala Agrônomo', url: '/admin/fala-agronomo', icon: MessageSquare },
   { title: 'Auditoria', url: '/admin/auditoria', icon: ClipboardList },
+  { title: 'Alertas', url: '/admin/alertas', icon: Bell },
 ];
 
 export function AppSidebar() {
