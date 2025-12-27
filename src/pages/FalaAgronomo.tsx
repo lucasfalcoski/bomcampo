@@ -14,6 +14,7 @@ export default function FalaAgronomo() {
     conversation,
     messages,
     isB2B,
+    initError,
     sendMessage
   } = useFalaAgronomo();
 
@@ -42,8 +43,8 @@ export default function FalaAgronomo() {
     );
   }
 
-  // Show error if no conversation was created
-  if (!conversation) {
+  // Show error if initialization failed
+  if (initError || !conversation) {
     return (
       <div className="container max-w-2xl mx-auto py-8 px-4">
         <Card>
@@ -51,7 +52,10 @@ export default function FalaAgronomo() {
             <MessageSquare className="h-12 w-12 text-destructive mb-4" />
             <h2 className="text-lg font-medium">Erro ao carregar conversa</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Não foi possível iniciar a conversa. Por favor, recarregue a página.
+              {initError || 'Não foi possível iniciar a conversa.'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Verifique o console para mais detalhes.
             </p>
           </CardContent>
         </Card>
