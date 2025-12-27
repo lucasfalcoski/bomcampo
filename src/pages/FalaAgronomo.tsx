@@ -11,6 +11,7 @@ export default function FalaAgronomo() {
     loading,
     sending,
     partner,
+    conversation,
     messages,
     isB2B,
     sendMessage
@@ -37,6 +38,23 @@ export default function FalaAgronomo() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show error if no conversation was created
+  if (!conversation) {
+    return (
+      <div className="container max-w-2xl mx-auto py-8 px-4">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <MessageSquare className="h-12 w-12 text-destructive mb-4" />
+            <h2 className="text-lg font-medium">Erro ao carregar conversa</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Não foi possível iniciar a conversa. Por favor, recarregue a página.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
