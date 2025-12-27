@@ -1,4 +1,4 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
@@ -32,6 +32,7 @@ const menuItems = [
 
 const adminItems = [
   { title: 'Parceiros', url: '/admin/parceiros', icon: Users },
+  { title: 'Logs de Auditoria', url: '/admin/audit-logs', icon: ClipboardList },
 ];
 
 export function AppSidebar() {
