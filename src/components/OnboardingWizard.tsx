@@ -24,6 +24,10 @@ export function OnboardingWizard({
   const [step, setStep] = useState(1);
   const [pushRequested, setPushRequested] = useState(false);
 
+  // Detect if user is on desktop (not mobile/tablet)
+  const isDesktop = typeof window !== 'undefined' && 
+    !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
   const handleEnablePush = async () => {
     setPushRequested(true);
     await onRequestPush();
@@ -204,6 +208,20 @@ export function OnboardingWizard({
                     Notificações bloqueadas. Você pode ativá-las depois nas configurações do navegador.
                   </p>
                 </div>
+              ) : isDesktop ? (
+                <div className="bg-muted rounded-lg p-4 space-y-2">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-primary/10 p-2 rounded-lg mt-0.5">
+                      <Smartphone className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Notificações no celular</p>
+                      <p className="text-sm text-muted-foreground">
+                        As notificações funcionam melhor no celular Android com o app instalado.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="bg-muted rounded-lg p-4 space-y-2">
                   <p className="text-sm text-muted-foreground">
@@ -218,7 +236,7 @@ export function OnboardingWizard({
               )}
 
               <div className="flex gap-2">
-                {pushEnabled !== true && !pushRequested && (
+                {pushEnabled !== true && !pushRequested && !isDesktop && (
                   <>
                     <Button className="flex-1" onClick={handleEnablePush}>
                       <Bell className="h-4 w-4 mr-2" />
@@ -229,7 +247,13 @@ export function OnboardingWizard({
                     </Button>
                   </>
                 )}
-                {(pushEnabled === true || pushRequested) && (
+                {isDesktop && pushEnabled !== true && (
+                  <Button className="w-full" onClick={handleComplete}>
+                    Continuar
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                )}
+                {(pushEnabled === true || pushRequested) && !isDesktop && (
                   <Button className="w-full" onClick={handleComplete}>
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Concluir Configuração
