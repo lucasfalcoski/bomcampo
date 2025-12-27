@@ -1,5 +1,6 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 const menuItems = [
   { title: 'Dashboard', url: '/', icon: Home },
@@ -28,10 +30,27 @@ const menuItems = [
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
 
+const adminItems = [
+  { title: 'Parceiros', url: '/admin/parceiros', icon: Users },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const collapsed = state === 'collapsed';
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkSystemAdmin() {
+      if (!user) return;
+      const { data } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'system_admin'
+      });
+      setIsSystemAdmin(!!data);
+    }
+    checkSystemAdmin();
+  }, [user]);
 
   return (
     <Sidebar collapsible="icon">
@@ -68,6 +87,32 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isSystemAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={({ isActive }) =>
+                          isActive ? 'bg-muted text-primary font-medium' : 'hover:bg-muted/50'
+                        }
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border p-4">
