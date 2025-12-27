@@ -894,6 +894,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_user_by_email: { Args: { _email: string }; Returns: string }
+      get_partner_users: {
+        Args: { _partner_id: string }
+        Returns: {
+          email: string
+          partner_id: string
+          user_id: string
+        }[]
+      }
       get_prices_series: {
         Args: { p_days?: number; p_market: string; p_product: string }
         Returns: {
@@ -903,6 +912,7 @@ export type Database = {
           unit: string
         }[]
       }
+      get_user_email: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
