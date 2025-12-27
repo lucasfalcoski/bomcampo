@@ -26,6 +26,9 @@ import HeatmapAtividades from "./pages/relatorios/operacao/HeatmapAtividades";
 import Configuracoes from "./pages/Configuracoes";
 import Precos from "./pages/Precos";
 import Mais from "./pages/Mais";
+import FalaAgronomo from "./pages/FalaAgronomo";
+import AgronomistPanel from "./pages/partner/AgronomistPanel";
+import ConversationDetail from "./pages/partner/ConversationDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -215,6 +218,36 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Mais />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/fala-agronomo"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <FalaAgronomo />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partner/agronomo"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AgronomistPanel />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/partner/agronomo/:conversationId"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <ConversationDetail />
                   </AppLayout>
                 </ProtectedRoute>
               }
