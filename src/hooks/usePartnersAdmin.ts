@@ -434,9 +434,51 @@ export function usePartnersAdmin() {
     }
   };
 
+  // Check if user is the last partner_admin
+  const isLastPartnerAdmin = useCallback(async (partnerId: string): Promise<boolean> => {
+    try {
+      const { data: users } = await supabase.rpc('get_partner_users', { _partner_id: partnerId });
+      if (!users || users.length === 0) return false;
+
+      const userIds = users.map((u: { user_id: string }) => u.user_id);
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', userIds)
+        .eq('role', 'partner_admin');
+
+      return (roles?.length || 0) <= 1;
+    } catch {
+      return false;
+    }
+  }, []);
+
   // Update user role (promote/demote between partner_admin and partner_agronomist)
   const updateUserRole = async (userId: string, currentRole: 'partner_admin' | 'partner_agronomist', newRole: 'partner_admin' | 'partner_agronomist') => {
-    if (!selectedPartner) return false;
+    if (!selectedPartner) return { success: false, error: null };
+
+    // Security check: never allow setting system_admin
+    if (newRole !== 'partner_admin' && newRole !== 'partner_agronomist') {
+      toast({
+        title: 'Ação não permitida',
+        description: 'Só é possível definir roles de partner_admin ou partner_agronomist.',
+        variant: 'destructive',
+      });
+      return { success: false, error: 'invalid_role' };
+    }
+
+    // Check if trying to demote the last partner_admin
+    if (currentRole === 'partner_admin' && newRole === 'partner_agronomist') {
+      const isLast = await isLastPartnerAdmin(selectedPartner.id);
+      if (isLast) {
+        toast({
+          title: 'Ação não permitida',
+          description: 'Não é possível rebaixar o último administrador do parceiro.',
+          variant: 'destructive',
+        });
+        return { success: false, error: 'last_admin' };
+      }
+    }
 
     try {
       // Remove old role
@@ -457,6 +499,7 @@ export function usePartnersAdmin() {
 
       await logAction('update_partner_user_role', 'user', userId, { 
         partner_id: selectedPartner.id,
+        partner_name: selectedPartner.name,
         old_role: currentRole,
         new_role: newRole 
       });
@@ -467,7 +510,7 @@ export function usePartnersAdmin() {
       });
 
       await loadPartnerUsers(selectedPartner.id);
-      return true;
+      return { success: true, error: null };
     } catch (err: unknown) {
       console.error('Error updating user role:', err);
       const message = err instanceof Error ? err.message : 'Não foi possível atualizar a função.';
@@ -476,13 +519,27 @@ export function usePartnersAdmin() {
         description: message,
         variant: 'destructive',
       });
-      return false;
+      return { success: false, error: 'update_failed' };
     }
   };
 
   // Remove user from partner
-  const removeUserFromPartner = async (userId: string) => {
-    if (!selectedPartner) return false;
+  const removeUserFromPartner = async (userId: string, userRoles: string[]) => {
+    if (!selectedPartner) return { success: false, error: null };
+
+    // Check if trying to remove the last partner_admin
+    const isPartnerAdmin = userRoles.includes('partner_admin');
+    if (isPartnerAdmin) {
+      const isLast = await isLastPartnerAdmin(selectedPartner.id);
+      if (isLast) {
+        toast({
+          title: 'Ação não permitida',
+          description: 'Não é possível remover o último administrador do parceiro.',
+          variant: 'destructive',
+        });
+        return { success: false, error: 'last_admin' };
+      }
+    }
 
     try {
       const { error: profileError } = await supabase
@@ -504,8 +561,9 @@ export function usePartnersAdmin() {
         .eq('user_id', userId)
         .eq('role', 'partner_agronomist');
 
-      await logAction('unlink_producer_from_partner', 'user', userId, { 
-        partner_id: selectedPartner.id 
+      await logAction('remove_partner_user', 'user', userId, { 
+        partner_id: selectedPartner.id,
+        partner_name: selectedPartner.name
       });
 
       toast({
@@ -514,7 +572,7 @@ export function usePartnersAdmin() {
       });
 
       await loadPartnerUsers(selectedPartner.id);
-      return true;
+      return { success: true, error: null };
     } catch (err: unknown) {
       console.error('Error removing user from partner:', err);
       const message = err instanceof Error ? err.message : 'Não foi possível remover o usuário.';
@@ -523,9 +581,28 @@ export function usePartnersAdmin() {
         description: message,
         variant: 'destructive',
       });
-      return false;
+      return { success: false, error: 'remove_failed' };
     }
   };
+
+  // Get count of partner admins
+  const getPartnerAdminCount = useCallback(async (partnerId: string): Promise<number> => {
+    try {
+      const { data: users } = await supabase.rpc('get_partner_users', { _partner_id: partnerId });
+      if (!users || users.length === 0) return 0;
+
+      const userIds = users.map((u: { user_id: string }) => u.user_id);
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('user_id', userIds)
+        .eq('role', 'partner_admin');
+
+      return roles?.length || 0;
+    } catch {
+      return 0;
+    }
+  }, []);
 
   return {
     loading,
@@ -543,6 +620,7 @@ export function usePartnersAdmin() {
     unlinkProducerFromPartner,
     updateUserRole,
     removeUserFromPartner,
+    getPartnerAdminCount,
     refreshPartners: loadPartners,
   };
 }

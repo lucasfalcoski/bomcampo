@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus, Users, Building2, ArrowLeft, Copy, Check, UserPlus, UserMinus, ArrowUpDown } from 'lucide-react';
+import { Loader2, Plus, Users, Building2, ArrowLeft, Copy, Check, UserPlus, UserMinus, ArrowUpDown, MessageSquare, Sparkles } from 'lucide-react';
 import { usePartnersAdmin } from '@/hooks/usePartnersAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,11 +104,13 @@ export default function Parceiros() {
   const [showUnlinkProducerDialog, setShowUnlinkProducerDialog] = useState(false);
 
   // Confirmation dialogs
-  const [userToRemove, setUserToRemove] = useState<{ id: string; email: string } | null>(null);
+  const [userToRemove, setUserToRemove] = useState<{ id: string; email: string; roles: string[] } | null>(null);
   const [removingUser, setRemovingUser] = useState(false);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
 
-  // Copy ID state
+  // Copy states
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedOnboarding, setCopiedOnboarding] = useState(false);
 
   // Redirect if not system_admin
   useEffect(() => {
@@ -139,6 +141,26 @@ export default function Parceiros() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleCopyOnboardingText = async () => {
+    if (!selectedPartner) return;
+    
+    const text = `Olá! Para participar do programa da ${selectedPartner.name} no Bom Campo:
+
+1. Baixe/abra o Bom Campo e crie sua conta com seu e-mail.
+2. Envie seu e-mail para nosso time para vinculação ao programa.
+3. Após vinculado, você verá o "Canal Técnico da ${selectedPartner.name}" no menu Fala Agrônomo.
+
+Qualquer dúvida, responda esta mensagem.`;
+
+    await navigator.clipboard.writeText(text);
+    setCopiedOnboarding(true);
+    toast({
+      title: 'Texto copiado',
+      description: 'Texto de onboarding copiado para a área de transferência.',
+    });
+    setTimeout(() => setCopiedOnboarding(false), 2000);
+  };
+
   const handleCreatePartner = async () => {
     if (!newPartnerName.trim() || !newPartnerType) return;
     
@@ -155,6 +177,16 @@ export default function Parceiros() {
 
   const handleAddUser = async () => {
     if (!newUserEmail.trim() || !newUserRole) return;
+
+    // Security: Only allow partner_admin or partner_agronomist
+    if (newUserRole !== 'partner_admin' && newUserRole !== 'partner_agronomist') {
+      toast({
+        title: 'Ação não permitida',
+        description: 'Só é possível adicionar usuários como Administrador ou Agrônomo do parceiro.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setAddingUser(true);
     const success = await addUserToPartner(newUserEmail.trim(), newUserRole);
@@ -197,14 +229,19 @@ export default function Parceiros() {
     if (!userToRemove) return;
 
     setRemovingUser(true);
-    await removeUserFromPartner(userToRemove.id);
+    const result = await removeUserFromPartner(userToRemove.id, userToRemove.roles);
     setRemovingUser(false);
-    setUserToRemove(null);
+    
+    if (result.success) {
+      setUserToRemove(null);
+    }
   };
 
   const handleUpdateRole = async (userId: string, currentRole: 'partner_admin' | 'partner_agronomist') => {
     const newRole = currentRole === 'partner_admin' ? 'partner_agronomist' : 'partner_admin';
+    setUpdatingRole(userId);
     await updateUserRole(userId, currentRole, newRole);
+    setUpdatingRole(null);
   };
 
   const truncateId = (id: string) => `${id.slice(0, 8)}...`;
@@ -224,53 +261,96 @@ export default function Parceiros() {
           Voltar
         </Button>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  {selectedPartner.name}
-                </CardTitle>
-                <CardDescription className="flex items-center gap-2 mt-1">
-                  <span className="font-mono text-xs">{truncateId(selectedPartner.id)}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => handleCopyId(selectedPartner.id)}
-                  >
-                    {copiedId === selectedPartner.id ? (
-                      <Check className="h-3 w-3 text-green-500" />
-                    ) : (
-                      <Copy className="h-3 w-3" />
-                    )}
-                  </Button>
-                </CardDescription>
-              </div>
-              {metrics && (
-                <div className="flex gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="font-bold text-lg">{metrics.total_users}</div>
-                    <div className="text-muted-foreground text-xs">Total</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-lg">{metrics.partner_admin_count}</div>
-                    <div className="text-muted-foreground text-xs">Admins</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-lg">{metrics.partner_agronomist_count}</div>
-                    <div className="text-muted-foreground text-xs">Agrônomos</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-bold text-lg">{metrics.producer_count}</div>
-                    <div className="text-muted-foreground text-xs">Produtores</div>
+        {/* Kit Piloto Card */}
+        <Card className="mb-6 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Kit Piloto</CardTitle>
+            </div>
+            <CardDescription>
+              Informações e ferramentas para onboarding de produtores
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Left: Partner info */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Nome do Parceiro</p>
+                  <p className="font-semibold text-lg">{selectedPartner.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Partner ID</p>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-muted px-2 py-1 rounded text-sm font-mono">
+                      {selectedPartner.id}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleCopyId(selectedPartner.id)}
+                    >
+                      {copiedId === selectedPartner.id ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
-              )}
+                {metrics && (
+                  <div className="flex gap-6">
+                    <div>
+                      <p className="text-2xl font-bold">{metrics.producer_count}</p>
+                      <p className="text-sm text-muted-foreground">Produtores vinculados</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{metrics.partner_admin_count + metrics.partner_agronomist_count}</p>
+                      <p className="text-sm text-muted-foreground">Usuários internos</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Onboarding text */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Texto de Onboarding</p>
+                </div>
+                <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-2">
+                  <p>Olá! Para participar do programa da <strong>{selectedPartner.name}</strong> no Bom Campo:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Baixe/abra o Bom Campo e crie sua conta</li>
+                    <li>Envie seu e-mail para vinculação</li>
+                    <li>Acesse o "Canal Técnico" no menu</li>
+                  </ol>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleCopyOnboardingText}
+                >
+                  {copiedOnboarding ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2 text-green-500" />
+                      Copiado!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copiar texto de onboarding
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          </CardHeader>
+          </CardContent>
         </Card>
+
+        <Separator className="my-6" />
 
         {/* Users Section */}
         <Card className="mb-6">
@@ -377,15 +457,20 @@ export default function Parceiros() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleUpdateRole(user.user_id, partnerRole)}
+                                  disabled={updatingRole === user.user_id}
                                   title={partnerRole === 'partner_admin' ? 'Rebaixar para Agrônomo' : 'Promover para Admin'}
                                 >
-                                  <ArrowUpDown className="h-4 w-4" />
+                                  {updatingRole === user.user_id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <ArrowUpDown className="h-4 w-4" />
+                                  )}
                                 </Button>
                               )}
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => setUserToRemove({ id: user.user_id, email: user.email })}
+                                onClick={() => setUserToRemove({ id: user.user_id, email: user.email, roles: user.roles })}
                               >
                                 Remover
                               </Button>

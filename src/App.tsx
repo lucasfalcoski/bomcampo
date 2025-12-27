@@ -30,7 +30,7 @@ import FalaAgronomo from "./pages/FalaAgronomo";
 import AgronomistPanel from "./pages/partner/AgronomistPanel";
 import ConversationDetail from "./pages/partner/ConversationDetail";
 import Parceiros from "./pages/admin/Parceiros";
-import AuditLogs from "./pages/admin/AuditLogs";
+import Auditoria from "./pages/admin/Auditoria";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -265,11 +265,11 @@ const App = () => (
               }
             />
             <Route
-              path="/admin/audit-logs"
+              path="/admin/auditoria"
               element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <AuditLogs />
+                    <Auditoria />
                   </AppLayout>
                 </ProtectedRoute>
               }
