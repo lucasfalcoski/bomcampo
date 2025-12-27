@@ -226,6 +226,76 @@ export type Database = {
         }
         Relationships: []
       }
+      fala_agronomo_conversation: {
+        Row: {
+          context: Database["public"]["Enums"]["fala_agronomo_context"]
+          created_at: string | null
+          id: string
+          partner_id: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          context: Database["public"]["Enums"]["fala_agronomo_context"]
+          created_at?: string | null
+          id?: string
+          partner_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          context?: Database["public"]["Enums"]["fala_agronomo_context"]
+          created_at?: string | null
+          id?: string
+          partner_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fala_agronomo_conversation_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fala_agronomo_message: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string | null
+          id: string
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          sender_type?: Database["public"]["Enums"]["message_sender_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fala_agronomo_message_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "fala_agronomo_conversation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_crop_rules: {
         Row: {
           created_at: string | null
@@ -325,6 +395,33 @@ export type Database = {
           referencia_data?: string
           tipo?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          branding_config: Json | null
+          created_at: string | null
+          id: string
+          name: string
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          branding_config?: Json | null
+          created_at?: string | null
+          id?: string
+          name: string
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          branding_config?: Json | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          type?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -515,21 +612,35 @@ export type Database = {
           created_at: string | null
           id: string
           nome: string | null
+          origin: Database["public"]["Enums"]["user_origin"] | null
+          partner_id: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           id: string
           nome?: string | null
+          origin?: Database["public"]["Enums"]["user_origin"] | null
+          partner_id?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
           nome?: string | null
+          origin?: Database["public"]["Enums"]["user_origin"] | null
+          partner_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
