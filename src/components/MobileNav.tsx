@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, MapPin, Cloud, Sprout, MoreHorizontal, Sprout as Logo, TrendingUp, DollarSign, FileText, Settings, ChevronRight } from 'lucide-react';
+import { Home, MapPin, Cloud, Sprout, MoreHorizontal, Sprout as Logo, TrendingUp, DollarSign, FileText, Settings, ChevronRight, MessageSquare } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -16,6 +16,7 @@ const moreItems = [
   { label: 'Preços', to: '/precos', icon: TrendingUp, description: 'Cotações de commodities' },
   { label: 'Financeiro', to: '/financeiro', icon: DollarSign, description: 'Gestão de custos e receitas' },
   { label: 'Relatórios', to: '/relatorios', icon: FileText, description: 'Análises e exportações' },
+  { label: 'Fala Agrônomo', to: '/fala-agronomo', icon: MessageSquare, description: 'Suporte técnico' },
   { label: 'Configurações', to: '/configuracoes', icon: Settings, description: 'Preferências do app' },
 ];
 
