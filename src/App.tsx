@@ -29,6 +29,7 @@ import Mais from "./pages/Mais";
 import FalaAgronomo from "./pages/FalaAgronomo";
 import AgronomistPanel from "./pages/partner/AgronomistPanel";
 import ConversationDetail from "./pages/partner/ConversationDetail";
+import Parceiros from "./pages/admin/Parceiros";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -248,6 +249,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <ConversationDetail />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/parceiros"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Parceiros />
                   </AppLayout>
                 </ProtectedRoute>
               }
