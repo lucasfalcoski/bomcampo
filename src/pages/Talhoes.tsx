@@ -7,10 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { FieldNotes } from '@/components/FieldNotes';
 import { ActivityLogComponent } from '@/components/ActivityLogComponent';
 import { WeatherAlerts } from '@/components/WeatherAlerts';
@@ -19,6 +20,7 @@ import { useAgroRecommendations } from '@/hooks/useAgroRecommendations';
 import { gerarSugestoesAtividades, ActivitySuggestion } from '@/lib/agro/activitySuggestions';
 import { LatLonHintDialog, shouldShowLatLonHint } from '@/components/LatLonHintDialog';
 import { AddActivityDialog } from '@/components/AddActivityDialog';
+import { canAddPlot, getRemainingPlots, PLAN_LIMITS } from '@/lib/planLimits';
 
 export default function Talhoes() {
   const { user } = useAuth();
@@ -295,10 +297,24 @@ export default function Talhoes() {
         </TabsList>
 
         <TabsContent value="talhoes" className="space-y-4">
-          <div className="flex justify-end">
+          {/* Plan limit warning */}
+          {!canAddPlot(plots.length) && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Você atingiu o limite de {PLAN_LIMITS.produtor_free.maxPlots} áreas do plano gratuito. 
+                Entre em contato para fazer upgrade.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-muted-foreground">
+              {plots.length} de {PLAN_LIMITS.produtor_free.maxPlots} áreas utilizadas
+            </div>
             <Button 
               onClick={() => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }}
-              disabled={!selectedFarm}
+              disabled={!selectedFarm || !canAddPlot(plots.length)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Novo Talhão
