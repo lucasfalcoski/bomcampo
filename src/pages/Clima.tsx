@@ -4,10 +4,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Cloud, Droplets, Wind, Thermometer, AlertTriangle, CheckCircle, Loader2, Mail } from 'lucide-react';
+import { Cloud, Droplets, Wind, Thermometer, AlertTriangle, CheckCircle, Loader2, Mail, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { resolverLocalizacao } from '@/lib/location/resolve';
+import { WeatherHistory } from '@/components/WeatherHistory';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface WeatherData {
   current: {
@@ -33,6 +35,7 @@ export default function Clima() {
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const [selectedPlot, setSelectedPlot] = useState<string>('');
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -81,6 +84,7 @@ export default function Clima() {
     setPlots(data || []);
     setSelectedPlot('');
     setWeather(null);
+    setLocation(null);
   };
 
   const loadWeather = async () => {
@@ -88,12 +92,14 @@ export default function Clima() {
     if (!plot) return;
 
     setLoading(true);
+    setLocation(null);
+    
     try {
       // Tentar resolver localização (talhão, fazenda ou município)
       const farm = farms.find(f => f.id === selectedFarm);
-      const location = await resolverLocalizacao(plot, farm);
+      const resolvedLocation = await resolverLocalizacao(plot, farm);
       
-      if (!location) {
+      if (!resolvedLocation) {
         toast({ 
           title: 'Localização não encontrada',
           description: 'Adicione coordenadas ou município para este talhão.',
@@ -103,8 +109,10 @@ export default function Clima() {
         return;
       }
 
+      setLocation(resolvedLocation);
+
       const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America/Sao_Paulo&forecast_days=7`
+        `https://api.open-meteo.com/v1/forecast?latitude=${resolvedLocation.lat}&longitude=${resolvedLocation.lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&timezone=America/Sao_Paulo&forecast_days=7`
       );
 
       if (!response.ok) throw new Error('Erro ao buscar dados climáticos');
@@ -381,10 +389,23 @@ export default function Clima() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Histórico Climático */}
+          {location && (
+            <WeatherHistory latitude={location.lat} longitude={location.lon} />
+          )}
         </>
       )}
 
-      {!loading && !weather && (
+      {!loading && !weather && farms.length === 0 && (
+        <EmptyState
+          icon={MapPin}
+          title="Nenhuma fazenda cadastrada"
+          description="Cadastre uma fazenda para visualizar as condições climáticas."
+        />
+      )}
+
+      {!loading && !weather && farms.length > 0 && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             Selecione uma fazenda e um talhão para visualizar as condições climáticas
