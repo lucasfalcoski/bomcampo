@@ -1,39 +1,53 @@
-import { useEffect, useRef } from 'react';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, BookOpen, Play, FileText } from 'lucide-react';
 import { useFalaAgronomo } from '@/hooks/useFalaAgronomo';
-import { ChatBubble } from '@/components/fala-agronomo/ChatBubble';
-import { ChatInput } from '@/components/fala-agronomo/ChatInput';
-import { ChatDisclaimer } from '@/components/fala-agronomo/ChatDisclaimer';
+import { useAgroContent, AgroContent, AgroVideo } from '@/hooks/useAgroContent';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ContentCard } from '@/components/fala-agronomo/ContentCard';
+import { VideoCard } from '@/components/fala-agronomo/VideoCard';
+import { ContentDetailDialog } from '@/components/fala-agronomo/ContentDetailDialog';
+import { VideoPlayerDialog } from '@/components/fala-agronomo/VideoPlayerDialog';
+import { AgroSearchFilters } from '@/components/fala-agronomo/AgroSearchFilters';
+import { ChatSection } from '@/components/fala-agronomo/ChatSection';
 
 export default function FalaAgronomo() {
   const {
-    loading,
+    loading: chatLoading,
     sending,
     partner,
     conversation,
     messages,
     isB2B,
-    initError,
     sendMessage
   } = useFalaAgronomo();
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const {
+    loading: contentLoading,
+    searchQuery,
+    setSearchQuery,
+    themeFilter,
+    setThemeFilter,
+    cultureFilter,
+    setCultureFilter,
+    themes,
+    cultures,
+    filteredContents,
+    filteredVideos
+  } = useAgroContent();
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+  const [selectedContent, setSelectedContent] = useState<AgroContent | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<AgroVideo | null>(null);
 
+  const loading = chatLoading || contentLoading;
+
+  // Dynamic title and description based on B2B status
   const title = isB2B && partner
-    ? `Time Técnico da ${partner.name}`
+    ? `Canal Técnico da ${partner.name}`
     : 'Fala Agrônomo';
 
   const description = isB2B
-    ? 'Canal direto com o time técnico da marca parceira.'
-    : 'Orientações gerais para apoiar suas decisões no campo.';
+    ? 'Conteúdo técnico atualizado pelo time de agrônomos da marca.'
+    : 'Conteúdos técnicos para apoiar suas decisões no campo.';
 
   if (loading) {
     return (
@@ -43,73 +57,127 @@ export default function FalaAgronomo() {
     );
   }
 
-  // Show error if initialization failed
-  if (initError || !conversation) {
-    return (
-      <div className="container max-w-2xl mx-auto py-8 px-4">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <MessageSquare className="h-12 w-12 text-destructive mb-4" />
-            <h2 className="text-lg font-medium">Erro ao carregar conversa</h2>
-            <p className="text-sm text-muted-foreground mt-2">
-              {initError || 'Não foi possível iniciar a conversa.'}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Verifique o console para mais detalhes.
+  const hasContents = filteredContents.length > 0;
+  const hasVideos = filteredVideos.length > 0;
+  const hasNoResults = !hasContents && !hasVideos && (searchQuery || themeFilter || cultureFilter);
+
+  return (
+    <div className="container max-w-4xl mx-auto py-4 px-4 md:py-6">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="bg-primary/10 p-2.5 rounded-lg">
+            <BookOpen className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">{title}</h1>
+            <p className="text-muted-foreground">{description}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <AgroSearchFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            themes={themes}
+            themeFilter={themeFilter}
+            onThemeChange={setThemeFilter}
+            cultures={cultures}
+            cultureFilter={cultureFilter}
+            onCultureChange={setCultureFilter}
+          />
+        </CardContent>
+      </Card>
+
+      {/* No results message */}
+      {hasNoResults && (
+        <Card className="mb-6">
+          <CardContent className="py-12 text-center">
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground">
+              Nenhum conteúdo encontrado para os filtros selecionados.
             </p>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="container max-w-2xl mx-auto py-4 px-4 md:py-6">
-      <Card className="flex flex-col h-[calc(100vh-180px)] md:h-[calc(100vh-200px)]">
-        <CardHeader className="shrink-0 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <MessageSquare className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">{title}</CardTitle>
-              <CardDescription className="text-sm">{description}</CardDescription>
-            </div>
+      {/* Contents Section */}
+      {hasContents && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Conteúdos Recomendados</h2>
           </div>
-        </CardHeader>
-
-        <CardContent 
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto p-4 space-y-3"
-        >
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-              <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-sm">Nenhuma mensagem ainda.</p>
-              <p className="text-xs mt-1">Envie sua primeira mensagem para iniciar a conversa.</p>
-            </div>
-          ) : (
-            messages.map((msg) => (
-              <ChatBubble
-                key={msg.id}
-                content={msg.content || ''}
-                senderType={msg.sender_type}
-                createdAt={msg.created_at || new Date().toISOString()}
-                isCurrentUser={msg.sender_type === 'user'}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {filteredContents.map((content) => (
+              <ContentCard
+                key={content.id}
+                content={content}
+                onClick={() => setSelectedContent(content)}
               />
-            ))
-          )}
-        </CardContent>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <ChatDisclaimer isB2B={isB2B} />
-        
-        <ChatInput
-          onSend={sendMessage}
-          sending={sending}
-          showAttach={isB2B}
-          attachDisabled={true}
-        />
-      </Card>
+      {/* Videos Section */}
+      {hasVideos && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Play className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Vídeos Técnicos</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {filteredVideos.map((video) => (
+              <VideoCard
+                key={video.id}
+                video={video}
+                onClick={() => setSelectedVideo(video)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state when no content exists at all */}
+      {!hasContents && !hasVideos && !hasNoResults && (
+        <Card className="mb-6">
+          <CardContent className="py-12 text-center">
+            <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <p className="text-lg font-medium mb-2">Conteúdo em breve</p>
+            <p className="text-muted-foreground text-sm">
+              Estamos preparando conteúdos técnicos para você.
+              <br />
+              Por enquanto, use o chat abaixo para tirar suas dúvidas.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Chat Section (collapsible) */}
+      <ChatSection
+        messages={messages}
+        sending={sending}
+        onSend={sendMessage}
+        isB2B={isB2B}
+        conversationReady={!!conversation}
+      />
+
+      {/* Dialogs */}
+      <ContentDetailDialog
+        content={selectedContent}
+        open={!!selectedContent}
+        onOpenChange={(open) => !open && setSelectedContent(null)}
+      />
+
+      <VideoPlayerDialog
+        video={selectedVideo}
+        open={!!selectedVideo}
+        onOpenChange={(open) => !open && setSelectedVideo(null)}
+      />
     </div>
   );
 }

@@ -7,11 +7,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface ChatInputProps {
   onSend: (message: string) => Promise<boolean>;
   sending: boolean;
+  disabled?: boolean;
   showAttach?: boolean;
   attachDisabled?: boolean;
 }
 
-export function ChatInput({ onSend, sending, showAttach = false, attachDisabled = true }: ChatInputProps) {
+export function ChatInput({ onSend, sending, disabled = false, showAttach = false, attachDisabled = true }: ChatInputProps) {
   const [message, setMessage] = useState('');
 
   const handleSend = async () => {
@@ -57,11 +58,12 @@ export function ChatInput({ onSend, sending, showAttach = false, attachDisabled 
         placeholder="Digite sua mensagem..."
         className="min-h-[44px] max-h-32 resize-none"
         rows={1}
+        disabled={disabled}
       />
       
       <Button
         onClick={handleSend}
-        disabled={!message.trim() || sending}
+        disabled={disabled || !message.trim() || sending}
         size="icon"
         className="shrink-0"
       >
