@@ -813,7 +813,12 @@ export type Database = {
       jsonb_merge: { Args: { a: Json; b: Json }; Returns: Json }
     }
     Enums: {
-      app_role: "admin" | "produtor"
+      app_role:
+        | "admin"
+        | "produtor"
+        | "partner_agronomist"
+        | "partner_admin"
+        | "system_admin"
       fala_agronomo_context: "B2C" | "B2B"
       message_sender_type: "user" | "agronomist" | "system"
       planting_status: "planejado" | "em_andamento" | "colhido"
@@ -956,7 +961,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "produtor"],
+      app_role: [
+        "admin",
+        "produtor",
+        "partner_agronomist",
+        "partner_admin",
+        "system_admin",
+      ],
       fala_agronomo_context: ["B2C", "B2B"],
       message_sender_type: ["user", "agronomist", "system"],
       planting_status: ["planejado", "em_andamento", "colhido"],
