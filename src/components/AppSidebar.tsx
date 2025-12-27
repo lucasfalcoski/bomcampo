@@ -32,7 +32,7 @@ const menuItems = [
 
 const adminItems = [
   { title: 'Parceiros', url: '/admin/parceiros', icon: Users },
-  { title: 'Logs de Auditoria', url: '/admin/audit-logs', icon: ClipboardList },
+  { title: 'Auditoria', url: '/admin/auditoria', icon: ClipboardList },
 ];
 
 export function AppSidebar() {
