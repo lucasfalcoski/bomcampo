@@ -142,6 +142,106 @@ export type Database = {
         }
         Relationships: []
       }
+      agro_content: {
+        Row: {
+          body: string
+          created_at: string
+          culture: string | null
+          id: string
+          is_active: boolean
+          partner_id: string | null
+          summary: string
+          theme: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          culture?: string | null
+          id?: string
+          is_active?: boolean
+          partner_id?: string | null
+          summary: string
+          theme: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          culture?: string | null
+          id?: string
+          is_active?: boolean
+          partner_id?: string | null
+          summary?: string
+          theme?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agro_content_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agro_video: {
+        Row: {
+          created_at: string
+          culture: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string
+          is_active: boolean
+          partner_id: string | null
+          theme: string
+          title: string
+          updated_at: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          culture?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_active?: boolean
+          partner_id?: string | null
+          theme: string
+          title: string
+          updated_at?: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          culture?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_active?: boolean
+          partner_id?: string | null
+          theme?: string
+          title?: string
+          updated_at?: string
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agro_video_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commodity_prices: {
         Row: {
           created_at: string
