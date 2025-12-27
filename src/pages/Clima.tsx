@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { resolverLocalizacao } from '@/lib/location/resolve';
 import { WeatherHistory } from '@/components/WeatherHistory';
+import { AlertsTimeline } from '@/components/AlertsTimeline';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface WeatherData {
@@ -394,6 +395,9 @@ export default function Clima() {
           {location && (
             <WeatherHistory latitude={location.lat} longitude={location.lon} />
           )}
+
+          {/* Linha do Tempo de Alertas */}
+          <AlertsTimeline farmId={selectedFarm} plotId={selectedPlot} />
         </>
       )}
 
