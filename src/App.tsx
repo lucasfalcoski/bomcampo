@@ -25,6 +25,7 @@ import PlanejadoExecutado from "./pages/relatorios/operacao/PlanejadoExecutado";
 import HeatmapAtividades from "./pages/relatorios/operacao/HeatmapAtividades";
 import Configuracoes from "./pages/Configuracoes";
 import Precos from "./pages/Precos";
+import Mais from "./pages/Mais";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -204,6 +205,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Precos />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mais"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Mais />
                   </AppLayout>
                 </ProtectedRoute>
               }
