@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, ClipboardList } from 'lucide-react';
 import { AddActivityDialog } from './AddActivityDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -79,9 +79,15 @@ export function ActivityLogComponent({ plotId, plantingId, activities, onUpdate 
       </CardHeader>
       <CardContent>
         {sortedActivities.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhuma atividade registrada
-          </p>
+          <div className="text-center py-8">
+            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+              <ClipboardList className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium mb-1">Nenhuma atividade registrada</p>
+            <p className="text-xs text-muted-foreground">
+              Adicione atividades para acompanhar o manejo do talhão.
+            </p>
+          </div>
         ) : (
           <div className="space-y-4">
             {sortedActivities.map((activity) => (

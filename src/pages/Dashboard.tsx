@@ -5,11 +5,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { MapPin, TrendingUp, DollarSign, Cloud, Calendar } from 'lucide-react';
+import { MapPin, TrendingUp, DollarSign, Cloud, Calendar, Home } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingSpinner } from '@/components/ui/loading-state';
+import { useNavigate } from 'react-router-dom';
 
 const formatCurrency = (value: number) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' } as any);
@@ -17,6 +20,7 @@ const formatCurrency = (value: number) => {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     hasCompletedOnboarding,
     hasFarms,
@@ -36,6 +40,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [weather, setWeather] = useState<any>(null);
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     loadFarms();
@@ -56,6 +61,7 @@ export default function Dashboard() {
   };
 
   const loadData = async () => {
+    setLoadingData(true);
     await Promise.all([
       loadPlots(),
       loadPlantings(),
@@ -63,6 +69,7 @@ export default function Dashboard() {
       loadActivities(),
       loadWeather(),
     ]);
+    setLoadingData(false);
   };
 
   const loadPlots = async () => {
@@ -208,6 +215,27 @@ export default function Dashboard() {
     );
   }
 
+  // Show empty state if no farms after loading
+  if (!onboardingLoading && farms.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Visão geral da sua propriedade</p>
+        </div>
+        <EmptyState
+          icon={Home}
+          title="Nenhuma fazenda cadastrada"
+          description="Para visualizar o dashboard, cadastre sua primeira fazenda."
+          action={{
+            label: "Ir para Fazendas",
+            onClick: () => navigate('/fazendas')
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -244,7 +272,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPIs */}
+      {loadingData && selectedFarm && (
+        <LoadingSpinner message="Carregando dados..." />
+      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -329,9 +359,12 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           {activities.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhuma atividade pendente
-            </p>
+            <div className="text-center py-6">
+              <Calendar className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Nenhuma atividade pendente. Cadastre atividades nos talhões.
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {activities.map(activity => (

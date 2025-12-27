@@ -8,6 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Edit, Trash2, Loader2, MapPin } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingGrid } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function Fazendas() {
   const { user } = useAuth();
@@ -16,6 +19,8 @@ export default function Fazendas() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFarm, setEditingFarm] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+  const [error, setError] = useState(false);
 
   const [farmForm, setFarmForm] = useState({
     nome: '',
@@ -30,12 +35,18 @@ export default function Fazendas() {
   }, [user]);
 
   const loadFarms = async () => {
-    const { data, error } = await supabase
+    setLoadingData(true);
+    setError(false);
+    
+    const { data, error: fetchError } = await supabase
       .from('farms')
       .select('*')
       .order('nome');
 
-    if (error) {
+    setLoadingData(false);
+
+    if (fetchError) {
+      setError(true);
       toast({ title: 'Erro ao carregar fazendas', variant: 'destructive' });
       return;
     }
@@ -123,22 +134,20 @@ export default function Fazendas() {
         </Button>
       </div>
 
-      {farms.length === 0 ? (
-        <Card className="p-8">
-          <div className="text-center space-y-4">
-            <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
-            <div>
-              <h3 className="text-lg font-semibold">Nenhuma fazenda cadastrada</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                Comece cadastrando sua primeira fazenda para gerenciar talhões, plantios e finanças.
-              </p>
-            </div>
-            <Button onClick={() => { setEditingFarm(null); resetForm(); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Cadastrar Primeira Fazenda
-            </Button>
-          </div>
-        </Card>
+      {loadingData ? (
+        <LoadingGrid count={3} />
+      ) : error ? (
+        <ErrorState onRetry={loadFarms} />
+      ) : farms.length === 0 ? (
+        <EmptyState
+          icon={MapPin}
+          title="Nenhuma fazenda cadastrada"
+          description="Cadastre sua primeira fazenda para começar a gerenciar talhões, plantios e finanças."
+          action={{
+            label: "Cadastrar Primeira Fazenda",
+            onClick: () => { setEditingFarm(null); resetForm(); setDialogOpen(true); }
+          }}
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {farms.map(farm => (
