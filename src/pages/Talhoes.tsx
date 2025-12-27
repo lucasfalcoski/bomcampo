@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, AlertTriangle, Map, Sprout, Calendar } from 'lucide-react';
 import { FieldNotes } from '@/components/FieldNotes';
 import { ActivityLogComponent } from '@/components/ActivityLogComponent';
 import { WeatherAlerts } from '@/components/WeatherAlerts';
@@ -21,6 +21,9 @@ import { gerarSugestoesAtividades, ActivitySuggestion } from '@/lib/agro/activit
 import { LatLonHintDialog, shouldShowLatLonHint } from '@/components/LatLonHintDialog';
 import { AddActivityDialog } from '@/components/AddActivityDialog';
 import { canAddPlot, getRemainingPlots, PLAN_LIMITS } from '@/lib/planLimits';
+import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingGrid } from '@/components/ui/loading-state';
+import { ErrorState } from '@/components/ui/error-state';
 
 export default function Talhoes() {
   const { user } = useAuth();
@@ -37,6 +40,9 @@ export default function Talhoes() {
   const [editingPlot, setEditingPlot] = useState<any>(null);
   const [editingPlanting, setEditingPlanting] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingPlots, setLoadingPlots] = useState(false);
+  const [loadingPlantings, setLoadingPlantings] = useState(false);
+  const [errorPlots, setErrorPlots] = useState(false);
   const [showLatLonHint, setShowLatLonHint] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [suggestedActivity, setSuggestedActivity] = useState<ActivitySuggestion | null>(null);
@@ -96,7 +102,14 @@ export default function Talhoes() {
   };
 
   const loadPlots = async () => {
-    const { data } = await supabase.from('plots').select('*').eq('farm_id', selectedFarm).order('nome');
+    setLoadingPlots(true);
+    setErrorPlots(false);
+    const { data, error } = await supabase.from('plots').select('*').eq('farm_id', selectedFarm).order('nome');
+    setLoadingPlots(false);
+    if (error) {
+      setErrorPlots(true);
+      return;
+    }
     setPlots(data || []);
   };
 
@@ -106,11 +119,13 @@ export default function Talhoes() {
   };
 
   const loadPlantings = async () => {
+    setLoadingPlantings(true);
     const { data } = await supabase
       .from('plantings')
       .select('*, crop:crops(*)')
       .eq('plot_id', selectedPlot!)
       .order('data_plantio', { ascending: false });
+    setLoadingPlantings(false);
     setPlantings(data || []);
   };
 
@@ -321,66 +336,82 @@ export default function Talhoes() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {plots.map(plot => (
-              <Card
-                key={plot.id}
-                className={`cursor-pointer transition-all ${selectedPlot === plot.id ? 'ring-2 ring-primary' : ''}`}
-                onClick={() => setSelectedPlot(plot.id)}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle>{plot.nome}</CardTitle>
-                    <div className="flex gap-1">
-                       <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingPlot(plot);
-                          setPlotForm({
-                            farm_id: selectedFarm,
-                            nome: plot.nome,
-                            area_ha: plot.area_ha?.toString() || '',
-                            solo_tipo: plot.solo_tipo || '',
-                            latitude: plot.latitude?.toString() || '',
-                            longitude: plot.longitude?.toString() || '',
-                            municipality_name: plot.municipality_name || '',
-                          });
-                          setPlotDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeletePlot(plot.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+          {loadingPlots ? (
+            <LoadingGrid count={3} />
+          ) : errorPlots ? (
+            <ErrorState onRetry={loadPlots} />
+          ) : plots.length === 0 ? (
+            <EmptyState
+              icon={Map}
+              title="Nenhum talhão cadastrado"
+              description="Cadastre seu primeiro talhão para registrar plantios e receber alertas climáticos."
+              action={canAddPlot(0) ? {
+                label: "Cadastrar Primeiro Talhão",
+                onClick: () => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }
+              } : undefined}
+            />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {plots.map(plot => (
+                <Card
+                  key={plot.id}
+                  className={`cursor-pointer transition-all ${selectedPlot === plot.id ? 'ring-2 ring-primary' : ''}`}
+                  onClick={() => setSelectedPlot(plot.id)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle>{plot.nome}</CardTitle>
+                      <div className="flex gap-1">
+                         <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingPlot(plot);
+                            setPlotForm({
+                              farm_id: selectedFarm,
+                              nome: plot.nome,
+                              area_ha: plot.area_ha?.toString() || '',
+                              solo_tipo: plot.solo_tipo || '',
+                              latitude: plot.latitude?.toString() || '',
+                              longitude: plot.longitude?.toString() || '',
+                              municipality_name: plot.municipality_name || '',
+                            });
+                            setPlotDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePlot(plot.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <CardDescription>
-                    {plot.area_ha ? `${plot.area_ha} ha` : 'Área não definida'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm space-y-1">
-                    {plot.solo_tipo && <p>Solo: {plot.solo_tipo}</p>}
-                    {plot.latitude && plot.longitude && (
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {plot.latitude.toFixed(4)}, {plot.longitude.toFixed(4)}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardDescription>
+                      {plot.area_ha ? `${plot.area_ha} ha` : 'Área não definida'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm space-y-1">
+                      {plot.solo_tipo && <p>Solo: {plot.solo_tipo}</p>}
+                      {plot.latitude && plot.longitude && (
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {plot.latitude.toFixed(4)}, {plot.longitude.toFixed(4)}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="plantios" className="space-y-4">
@@ -413,83 +444,100 @@ export default function Talhoes() {
                 </Button>
               </div>
 
-              <div className="space-y-3">
-                {plantings.map(planting => (
-                  <Card key={planting.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle>{planting.crop.nome}</CardTitle>
-                          <CardDescription>
-                            {planting.crop.variedade && `${planting.crop.variedade} • `}
-                            Plantado em {new Date(planting.data_plantio).toLocaleDateString('pt-BR')}
-                          </CardDescription>
+              {loadingPlantings ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : plantings.length === 0 ? (
+                <EmptyState
+                  icon={Sprout}
+                  title="Nenhum plantio registrado"
+                  description="Registre seu primeiro plantio para acompanhar a cultura e receber recomendações."
+                  action={{
+                    label: "Novo Plantio",
+                    onClick: () => { setEditingPlanting(null); resetPlantingForm(); setPlantingDialogOpen(true); }
+                  }}
+                  className="border-dashed"
+                />
+              ) : (
+                <div className="space-y-3">
+                  {plantings.map(planting => (
+                    <Card key={planting.id}>
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle>{planting.crop.nome}</CardTitle>
+                            <CardDescription>
+                              {planting.crop.variedade && `${planting.crop.variedade} • `}
+                              Plantado em {new Date(planting.data_plantio).toLocaleDateString('pt-BR')}
+                            </CardDescription>
+                          </div>
+                          <div className="flex gap-2">
+                            <Badge
+                              variant={
+                                planting.status === 'colhido'
+                                  ? 'secondary'
+                                  : planting.status === 'em_andamento'
+                                  ? 'default'
+                                  : 'outline'
+                              }
+                            >
+                              {planting.status === 'planejado' ? 'Planejado' : planting.status === 'em_andamento' ? 'Em Andamento' : 'Colhido'}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingPlanting(planting);
+                                setPlantingForm({
+                                  crop_id: planting.crop_id,
+                                  data_plantio: planting.data_plantio,
+                                  data_prev_colheita: planting.data_prev_colheita || '',
+                                  densidade: planting.densidade?.toString() || '',
+                                  expectativa_sacas_ha: planting.expectativa_sacas_ha?.toString() || '',
+                                  status: planting.status,
+                                });
+                                setPlantingDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeletePlanting(planting.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Badge
-                            variant={
-                              planting.status === 'colhido'
-                                ? 'secondary'
-                                : planting.status === 'em_andamento'
-                                ? 'default'
-                                : 'outline'
-                            }
-                          >
-                            {planting.status === 'planejado' ? 'Planejado' : planting.status === 'em_andamento' ? 'Em Andamento' : 'Colhido'}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingPlanting(planting);
-                              setPlantingForm({
-                                crop_id: planting.crop_id,
-                                data_plantio: planting.data_plantio,
-                                data_prev_colheita: planting.data_prev_colheita || '',
-                                densidade: planting.densidade?.toString() || '',
-                                expectativa_sacas_ha: planting.expectativa_sacas_ha?.toString() || '',
-                                status: planting.status,
-                              });
-                              setPlantingDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeletePlanting(planting.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          {planting.densidade && (
+                            <div>
+                              <p className="text-muted-foreground">Densidade</p>
+                              <p className="font-medium">{planting.densidade} pl/ha</p>
+                            </div>
+                          )}
+                          {planting.expectativa_sacas_ha && (
+                            <div>
+                              <p className="text-muted-foreground">Expectativa</p>
+                              <p className="font-medium">{planting.expectativa_sacas_ha} sc/ha</p>
+                            </div>
+                          )}
+                          {planting.data_prev_colheita && (
+                            <div>
+                              <p className="text-muted-foreground">Prev. Colheita</p>
+                              <p className="font-medium">{new Date(planting.data_prev_colheita).toLocaleDateString('pt-BR')}</p>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        {planting.densidade && (
-                          <div>
-                            <p className="text-muted-foreground">Densidade</p>
-                            <p className="font-medium">{planting.densidade} pl/ha</p>
-                          </div>
-                        )}
-                        {planting.expectativa_sacas_ha && (
-                          <div>
-                            <p className="text-muted-foreground">Expectativa</p>
-                            <p className="font-medium">{planting.expectativa_sacas_ha} sc/ha</p>
-                          </div>
-                        )}
-                        {planting.data_prev_colheita && (
-                          <div>
-                            <p className="text-muted-foreground">Prev. Colheita</p>
-                            <p className="font-medium">{new Date(planting.data_prev_colheita).toLocaleDateString('pt-BR')}</p>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </TabsContent>
