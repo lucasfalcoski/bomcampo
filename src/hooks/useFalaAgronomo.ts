@@ -130,22 +130,39 @@ export function useFalaAgronomo() {
   }, [conversation, loadMessages]);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!conversation || !content.trim()) return false;
+    // Validate before sending
+    if (!content.trim()) {
+      console.warn('sendMessage: empty content');
+      return false;
+    }
 
+    if (!conversation) {
+      console.error('sendMessage: no active conversation');
+      toast({
+        title: 'Erro',
+        description: 'Não há conversa ativa. Recarregue a página.',
+        variant: 'destructive'
+      });
+      return false;
+    }
+
+    console.log('sendMessage: sending to conversation', conversation.id);
     setSending(true);
     
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('fala_agronomo_message')
       .insert({
         conversation_id: conversation.id,
         sender_type: 'user',
         content: content.trim()
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
-      console.error('Error sending message:', error);
+      console.error('sendMessage: insert error', error);
       toast({
-        title: 'Erro ao enviar mensagem',
+        title: 'Não foi possível enviar a mensagem',
         description: 'Tente novamente.',
         variant: 'destructive'
       });
@@ -153,6 +170,7 @@ export function useFalaAgronomo() {
       return false;
     }
 
+    console.log('sendMessage: success', data);
     await refreshMessages();
     setSending(false);
     return true;
@@ -162,29 +180,38 @@ export function useFalaAgronomo() {
   useEffect(() => {
     async function init() {
       if (!user) {
+        console.log('useFalaAgronomo: no user, skipping init');
         setLoading(false);
         return;
       }
 
+      console.log('useFalaAgronomo: initializing for user', user.id);
       setLoading(true);
 
       const userProfile = await loadProfile();
       if (!userProfile) {
+        console.error('useFalaAgronomo: failed to load profile');
         setLoading(false);
         return;
       }
+      console.log('useFalaAgronomo: profile loaded', { id: userProfile.id, partner_id: userProfile.partner_id });
       setProfile(userProfile);
 
       if (userProfile.partner_id) {
         const partnerData = await loadPartner(userProfile.partner_id);
+        console.log('useFalaAgronomo: partner loaded', partnerData);
         setPartner(partnerData);
       }
 
       const conv = await loadOrCreateConversation(userProfile);
       if (conv) {
+        console.log('useFalaAgronomo: conversation ready', conv.id);
         setConversation(conv);
         const msgs = await loadMessages(conv.id);
+        console.log('useFalaAgronomo: loaded', msgs.length, 'messages');
         setMessages(msgs);
+      } else {
+        console.error('useFalaAgronomo: failed to get/create conversation');
       }
 
       setLoading(false);
