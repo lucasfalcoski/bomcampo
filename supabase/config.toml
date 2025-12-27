@@ -1,13 +1,1 @@
-project_id = "bnqyjdjbhuxfercfyenh"
-
-[functions.generate-pdf]
-verify_jwt = true
-
-[functions.send-email]
-verify_jwt = true
-
-[functions.check-weather-alerts]
-verify_jwt = false
-
-[functions.send-activity-reminders]
-verify_jwt = false
+project_id = "ecrxodmpqrdavqcpvdnl"
