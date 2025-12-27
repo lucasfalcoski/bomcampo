@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Plus, Users, Building2, ArrowLeft } from 'lucide-react';
+import { Loader2, Plus, Users, Building2, ArrowLeft, Copy, Check, UserPlus, UserMinus, ArrowUpDown } from 'lucide-react';
 import { usePartnersAdmin } from '@/hooks/usePartnersAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -37,6 +47,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 const PARTNER_TYPES = [
   { value: 'industria', label: 'Indústria' },
@@ -47,14 +59,17 @@ const PARTNER_TYPES = [
 const ROLE_LABELS: Record<string, string> = {
   partner_admin: 'Administrador',
   partner_agronomist: 'Agrônomo',
+  produtor: 'Produtor',
 };
 
 export default function Parceiros() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const {
     loading,
     isSystemAdmin,
     partners,
+    partnerMetrics,
     selectedPartner,
     partnerUsers,
     loadingUsers,
@@ -62,6 +77,9 @@ export default function Parceiros() {
     selectPartner,
     setSelectedPartner,
     addUserToPartner,
+    linkProducerToPartner,
+    unlinkProducerFromPartner,
+    updateUserRole,
     removeUserFromPartner,
   } = usePartnersAdmin();
 
@@ -76,6 +94,21 @@ export default function Parceiros() {
   const [newUserRole, setNewUserRole] = useState<'partner_admin' | 'partner_agronomist'>('partner_agronomist');
   const [addingUser, setAddingUser] = useState(false);
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+
+  // Form state for link/unlink producer
+  const [producerEmail, setProducerEmail] = useState('');
+  const [linkingProducer, setLinkingProducer] = useState(false);
+  const [showLinkProducerDialog, setShowLinkProducerDialog] = useState(false);
+  const [unlinkProducerEmail, setUnlinkProducerEmail] = useState('');
+  const [unlinkingProducer, setUnlinkingProducer] = useState(false);
+  const [showUnlinkProducerDialog, setShowUnlinkProducerDialog] = useState(false);
+
+  // Confirmation dialogs
+  const [userToRemove, setUserToRemove] = useState<{ id: string; email: string } | null>(null);
+  const [removingUser, setRemovingUser] = useState(false);
+
+  // Copy ID state
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Redirect if not system_admin
   useEffect(() => {
@@ -95,6 +128,16 @@ export default function Parceiros() {
   if (!isSystemAdmin) {
     return null;
   }
+
+  const handleCopyId = async (id: string) => {
+    await navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    toast({
+      title: 'ID copiado',
+      description: 'O ID do parceiro foi copiado para a área de transferência.',
+    });
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const handleCreatePartner = async () => {
     if (!newPartnerName.trim() || !newPartnerType) return;
@@ -124,8 +167,52 @@ export default function Parceiros() {
     }
   };
 
+  const handleLinkProducer = async () => {
+    if (!producerEmail.trim()) return;
+
+    setLinkingProducer(true);
+    const success = await linkProducerToPartner(producerEmail.trim());
+    setLinkingProducer(false);
+
+    if (success) {
+      setProducerEmail('');
+      setShowLinkProducerDialog(false);
+    }
+  };
+
+  const handleUnlinkProducer = async () => {
+    if (!unlinkProducerEmail.trim()) return;
+
+    setUnlinkingProducer(true);
+    const success = await unlinkProducerFromPartner(unlinkProducerEmail.trim());
+    setUnlinkingProducer(false);
+
+    if (success) {
+      setUnlinkProducerEmail('');
+      setShowUnlinkProducerDialog(false);
+    }
+  };
+
+  const handleRemoveUser = async () => {
+    if (!userToRemove) return;
+
+    setRemovingUser(true);
+    await removeUserFromPartner(userToRemove.id);
+    setRemovingUser(false);
+    setUserToRemove(null);
+  };
+
+  const handleUpdateRole = async (userId: string, currentRole: 'partner_admin' | 'partner_agronomist') => {
+    const newRole = currentRole === 'partner_admin' ? 'partner_agronomist' : 'partner_admin';
+    await updateUserRole(userId, currentRole, newRole);
+  };
+
+  const truncateId = (id: string) => `${id.slice(0, 8)}...`;
+
   // Partner management view
   if (selectedPartner) {
+    const metrics = partnerMetrics[selectedPartner.id];
+
     return (
       <div className="container mx-auto py-6 px-4 max-w-4xl">
         <Button
@@ -137,7 +224,7 @@ export default function Parceiros() {
           Voltar
         </Button>
 
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -145,8 +232,54 @@ export default function Parceiros() {
                   <Building2 className="h-5 w-5" />
                   {selectedPartner.name}
                 </CardTitle>
+                <CardDescription className="flex items-center gap-2 mt-1">
+                  <span className="font-mono text-xs">{truncateId(selectedPartner.id)}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => handleCopyId(selectedPartner.id)}
+                  >
+                    {copiedId === selectedPartner.id ? (
+                      <Check className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>
+                </CardDescription>
+              </div>
+              {metrics && (
+                <div className="flex gap-4 text-sm">
+                  <div className="text-center">
+                    <div className="font-bold text-lg">{metrics.total_users}</div>
+                    <div className="text-muted-foreground text-xs">Total</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg">{metrics.partner_admin_count}</div>
+                    <div className="text-muted-foreground text-xs">Admins</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg">{metrics.partner_agronomist_count}</div>
+                    <div className="text-muted-foreground text-xs">Agrônomos</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg">{metrics.producer_count}</div>
+                    <div className="text-muted-foreground text-xs">Produtores</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Users Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Usuários do Parceiro</CardTitle>
                 <CardDescription>
-                  Gerencie os usuários deste parceiro
+                  Administradores e agrônomos vinculados
                 </CardDescription>
               </div>
               <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
@@ -158,9 +291,10 @@ export default function Parceiros() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Adicionar Usuário</DialogTitle>
+                    <DialogTitle>Adicionar Usuário ao Parceiro</DialogTitle>
                     <DialogDescription>
-                      Adicione um usuário existente ao parceiro.
+                      Adicione um usuário existente como administrador ou agrônomo do parceiro.
+                      O usuário precisa estar cadastrado no sistema.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
@@ -208,51 +342,200 @@ export default function Parceiros() {
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : partnerUsers.length === 0 ? (
+            ) : partnerUsers.filter(u => u.roles.includes('partner_admin') || u.roles.includes('partner_agronomist')).length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>Nenhum usuário vinculado a este parceiro.</p>
+                <p>Nenhum usuário vinculado como admin/agrônomo.</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>E-mail</TableHead>
-                    <TableHead>Funções</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead className="w-[180px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {partnerUsers.map((user) => (
-                    <TableRow key={user.user_id}>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          {user.roles
-                            .filter(r => r === 'partner_admin' || r === 'partner_agronomist')
-                            .map((role) => (
-                              <Badge key={role} variant="secondary">
-                                {ROLE_LABELS[role] || role}
-                              </Badge>
-                            ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => removeUserFromPartner(user.user_id)}
-                        >
-                          Remover
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {partnerUsers
+                    .filter(u => u.roles.includes('partner_admin') || u.roles.includes('partner_agronomist'))
+                    .map((user) => {
+                      const partnerRole = user.roles.find(r => r === 'partner_admin' || r === 'partner_agronomist') as 'partner_admin' | 'partner_agronomist' | undefined;
+                      
+                      return (
+                        <TableRow key={user.user_id}>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {ROLE_LABELS[partnerRole || ''] || partnerRole}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {partnerRole && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleUpdateRole(user.user_id, partnerRole)}
+                                  title={partnerRole === 'partner_admin' ? 'Rebaixar para Agrônomo' : 'Promover para Admin'}
+                                >
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setUserToRemove({ id: user.user_id, email: user.email })}
+                              >
+                                Remover
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             )}
           </CardContent>
         </Card>
+
+        <Separator className="my-6" />
+
+        {/* Link/Unlink Producer Section */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Link Producer */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Vincular Produtor
+              </CardTitle>
+              <CardDescription>
+                Vincule um produtor existente para que ele veja o conteúdo do parceiro.
+                A função dele permanecerá como Produtor.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Dialog open={showLinkProducerDialog} onOpenChange={setShowLinkProducerDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Vincular Produtor por E-mail
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Vincular Produtor ao Parceiro</DialogTitle>
+                    <DialogDescription>
+                      O produtor passará a ver o conteúdo exclusivo deste parceiro.
+                      A função dele permanece como Produtor.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="producer-email">E-mail do produtor</Label>
+                      <Input
+                        id="producer-email"
+                        type="email"
+                        placeholder="produtor@exemplo.com"
+                        value={producerEmail}
+                        onChange={(e) => setProducerEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      onClick={handleLinkProducer}
+                      disabled={linkingProducer || !producerEmail.trim()}
+                    >
+                      {linkingProducer && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Vincular
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+
+          {/* Unlink Producer */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <UserMinus className="h-5 w-5" />
+                Desvincular Produtor
+              </CardTitle>
+              <CardDescription>
+                Remova o vínculo de um produtor com este parceiro.
+                Ele voltará a ver apenas conteúdo B2C.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Dialog open={showUnlinkProducerDialog} onOpenChange={setShowUnlinkProducerDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    <UserMinus className="h-4 w-4 mr-2" />
+                    Desvincular Produtor por E-mail
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Desvincular Produtor</DialogTitle>
+                    <DialogDescription>
+                      O produtor deixará de ver o conteúdo exclusivo do parceiro.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="unlink-email">E-mail do produtor</Label>
+                      <Input
+                        id="unlink-email"
+                        type="email"
+                        placeholder="produtor@exemplo.com"
+                        value={unlinkProducerEmail}
+                        onChange={(e) => setUnlinkProducerEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="destructive"
+                      onClick={handleUnlinkProducer}
+                      disabled={unlinkingProducer || !unlinkProducerEmail.trim()}
+                    >
+                      {unlinkingProducer && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Desvincular
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Remove User Confirmation Dialog */}
+        <AlertDialog open={!!userToRemove} onOpenChange={() => setUserToRemove(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar remoção</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja remover <strong>{userToRemove?.email}</strong> do parceiro?
+                O usuário perderá acesso aos recursos do parceiro e sua função será alterada para Produtor.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={removingUser}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRemoveUser}
+                disabled={removingUser}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {removingUser && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Remover
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -329,22 +612,58 @@ export default function Parceiros() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {partners.map((partner) => (
-            <Card key={partner.id}>
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <h3 className="font-medium">{partner.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {PARTNER_TYPES.find(t => t.value === partner.type)?.label || partner.type || 'Não especificado'}
-                  </p>
-                </div>
-                <Button variant="outline" onClick={() => selectPartner(partner)}>
-                  <Users className="h-4 w-4 mr-2" />
-                  Gerenciar
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {partners.map((partner) => {
+            const metrics = partnerMetrics[partner.id];
+            
+            return (
+              <Card key={partner.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{partner.name}</h3>
+                        <Badge variant="outline" className="text-xs">
+                          {PARTNER_TYPES.find(t => t.value === partner.type)?.label || partner.type || 'Não especificado'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {truncateId(partner.id)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleCopyId(partner.id)}
+                        >
+                          {copiedId === partner.id ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                      {metrics && (
+                        <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                          <span>{metrics.total_users} usuários</span>
+                          <span>•</span>
+                          <span>{metrics.partner_admin_count} admins</span>
+                          <span>•</span>
+                          <span>{metrics.partner_agronomist_count} agrônomos</span>
+                          <span>•</span>
+                          <span>{metrics.producer_count} produtores</span>
+                        </div>
+                      )}
+                    </div>
+                    <Button variant="outline" onClick={() => selectPartner(partner)}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Gerenciar
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
