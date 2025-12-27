@@ -16,15 +16,55 @@ interface PartnerUser {
   roles: string[];
 }
 
+interface PartnerMetrics {
+  total_users: number;
+  partner_admin_count: number;
+  partner_agronomist_count: number;
+  producer_count: number;
+}
+
 export function usePartnersAdmin() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [partnerMetrics, setPartnerMetrics] = useState<Record<string, PartnerMetrics>>({});
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [partnerUsers, setPartnerUsers] = useState<PartnerUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Audit log helper
+  const logAction = useCallback(async (
+    action: string,
+    targetType: string,
+    targetId?: string,
+    metadata?: Record<string, unknown>
+  ) => {
+    if (!user) return;
+    
+    try {
+      // Use type assertion for the new table
+      await (supabase.from('admin_audit_log') as unknown as {
+        insert: (data: {
+          admin_user_id: string;
+          action: string;
+          target_type: string;
+          target_id: string | null;
+          metadata: Record<string, unknown>;
+        }) => Promise<{ error: unknown }>;
+      }).insert({
+        admin_user_id: user.id,
+        action,
+        target_type: targetType,
+        target_id: targetId || null,
+        metadata: metadata || {},
+      });
+      console.log(`admin: ${action}`, { targetType, targetId, metadata });
+    } catch (err) {
+      console.error('Error logging action:', err);
+    }
+  }, [user]);
 
   // Check if user is system_admin
   useEffect(() => {
@@ -59,6 +99,67 @@ export function usePartnersAdmin() {
     checkAccess();
   }, [user]);
 
+  // Load partner metrics (counts)
+  const loadPartnerMetrics = useCallback(async (partnerIds: string[]) => {
+    if (partnerIds.length === 0) return;
+
+    const metricsMap: Record<string, PartnerMetrics> = {};
+
+    for (const partnerId of partnerIds) {
+      try {
+        // Get users with this partner_id
+        const { data: users } = await supabase
+          .rpc('get_partner_users', { _partner_id: partnerId });
+
+        const userIds = users?.map((u: { user_id: string }) => u.user_id) || [];
+        
+        let partnerAdminCount = 0;
+        let partnerAgronomistCount = 0;
+        let producerCount = 0;
+
+        if (userIds.length > 0) {
+          // Get roles for these users
+          const { data: roles } = await supabase
+            .from('user_roles')
+            .select('user_id, role')
+            .in('user_id', userIds);
+
+          const rolesByUser: Record<string, string[]> = {};
+          roles?.forEach((r) => {
+            if (!rolesByUser[r.user_id]) rolesByUser[r.user_id] = [];
+            rolesByUser[r.user_id].push(r.role);
+          });
+
+          userIds.forEach((uid: string) => {
+            const userRoles = rolesByUser[uid] || [];
+            if (userRoles.includes('partner_admin')) partnerAdminCount++;
+            if (userRoles.includes('partner_agronomist')) partnerAgronomistCount++;
+            if (userRoles.includes('produtor') && !userRoles.includes('partner_admin') && !userRoles.includes('partner_agronomist')) {
+              producerCount++;
+            }
+          });
+        }
+
+        metricsMap[partnerId] = {
+          total_users: userIds.length,
+          partner_admin_count: partnerAdminCount,
+          partner_agronomist_count: partnerAgronomistCount,
+          producer_count: producerCount,
+        };
+      } catch (err) {
+        console.error('Error loading metrics for partner:', partnerId, err);
+        metricsMap[partnerId] = {
+          total_users: 0,
+          partner_admin_count: 0,
+          partner_agronomist_count: 0,
+          producer_count: 0,
+        };
+      }
+    }
+
+    setPartnerMetrics(metricsMap);
+  }, []);
+
   // Load partners
   const loadPartners = useCallback(async () => {
     if (!isSystemAdmin) return;
@@ -71,6 +172,11 @@ export function usePartnersAdmin() {
 
       if (error) throw error;
       setPartners(data || []);
+      
+      // Load metrics for all partners
+      if (data && data.length > 0) {
+        await loadPartnerMetrics(data.map(p => p.id));
+      }
     } catch (err) {
       console.error('Error loading partners:', err);
       toast({
@@ -79,7 +185,7 @@ export function usePartnersAdmin() {
         variant: 'destructive',
       });
     }
-  }, [isSystemAdmin, toast]);
+  }, [isSystemAdmin, toast, loadPartnerMetrics]);
 
   useEffect(() => {
     if (isSystemAdmin) {
@@ -90,11 +196,15 @@ export function usePartnersAdmin() {
   // Create partner
   const createPartner = async (name: string, type: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('partners')
-        .insert({ name, type });
+        .insert({ name, type })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      await logAction('create_partner', 'partner', data.id, { name, type });
 
       toast({
         title: 'Sucesso',
@@ -103,11 +213,12 @@ export function usePartnersAdmin() {
 
       await loadPartners();
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating partner:', err);
+      const message = err instanceof Error ? err.message : 'Não foi possível criar o parceiro.';
       toast({
         title: 'Erro',
-        description: err.message || 'Não foi possível criar o parceiro.',
+        description: message,
         variant: 'destructive',
       });
       return false;
@@ -118,13 +229,11 @@ export function usePartnersAdmin() {
   const loadPartnerUsers = async (partnerId: string) => {
     setLoadingUsers(true);
     try {
-      // Get users with this partner_id using RPC
       const { data: users, error: usersError } = await supabase
         .rpc('get_partner_users', { _partner_id: partnerId });
 
       if (usersError) throw usersError;
 
-      // Get roles for each user
       const usersWithRoles: PartnerUser[] = [];
       
       for (const u of users || []) {
@@ -160,12 +269,11 @@ export function usePartnersAdmin() {
     await loadPartnerUsers(partner.id);
   };
 
-  // Add user to partner
+  // Add user to partner (with partner role)
   const addUserToPartner = async (email: string, role: 'partner_admin' | 'partner_agronomist') => {
     if (!selectedPartner) return false;
 
     try {
-      // Find user by email
       const { data: userId, error: findError } = await supabase
         .rpc('find_user_by_email', { _email: email });
 
@@ -173,14 +281,13 @@ export function usePartnersAdmin() {
 
       if (!userId) {
         toast({
-          title: 'Erro',
-          description: 'Usuário não encontrado. O usuário precisa estar cadastrado no sistema.',
+          title: 'Usuário não encontrado',
+          description: 'O usuário precisa se cadastrar primeiro. Peça para ele criar uma conta e depois vincule-o aqui.',
           variant: 'destructive',
         });
         return false;
       }
 
-      // Update profile with partner_id
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ partner_id: selectedPartner.id })
@@ -188,7 +295,6 @@ export function usePartnersAdmin() {
 
       if (profileError) throw profileError;
 
-      // Check if role already exists
       const { data: existingRole } = await supabase
         .from('user_roles')
         .select('id')
@@ -197,13 +303,18 @@ export function usePartnersAdmin() {
         .maybeSingle();
 
       if (!existingRole) {
-        // Add role
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({ user_id: userId, role });
 
         if (roleError) throw roleError;
       }
+
+      await logAction('create_partner_user', 'user', userId, { 
+        partner_id: selectedPartner.id, 
+        email, 
+        role 
+      });
 
       toast({
         title: 'Sucesso',
@@ -212,11 +323,157 @@ export function usePartnersAdmin() {
 
       await loadPartnerUsers(selectedPartner.id);
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error adding user to partner:', err);
+      const message = err instanceof Error ? err.message : 'Não foi possível adicionar o usuário.';
       toast({
         title: 'Erro',
-        description: err.message || 'Não foi possível adicionar o usuário.',
+        description: message,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  // Link producer to partner (keep produtor role, just add partner_id)
+  const linkProducerToPartner = async (email: string) => {
+    if (!selectedPartner) return false;
+
+    try {
+      const { data: userId, error: findError } = await supabase
+        .rpc('find_user_by_email', { _email: email });
+
+      if (findError) throw findError;
+
+      if (!userId) {
+        toast({
+          title: 'Usuário não encontrado',
+          description: 'O produtor precisa se cadastrar primeiro. Peça para ele criar uma conta.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ partner_id: selectedPartner.id })
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      await logAction('link_producer_to_partner', 'user', userId, { 
+        partner_id: selectedPartner.id, 
+        email 
+      });
+
+      toast({
+        title: 'Sucesso',
+        description: 'Produtor vinculado ao parceiro com sucesso.',
+      });
+
+      await loadPartnerUsers(selectedPartner.id);
+      return true;
+    } catch (err: unknown) {
+      console.error('Error linking producer to partner:', err);
+      const message = err instanceof Error ? err.message : 'Não foi possível vincular o produtor.';
+      toast({
+        title: 'Erro',
+        description: message,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  // Unlink producer from partner
+  const unlinkProducerFromPartner = async (email: string) => {
+    try {
+      const { data: userId, error: findError } = await supabase
+        .rpc('find_user_by_email', { _email: email });
+
+      if (findError) throw findError;
+
+      if (!userId) {
+        toast({
+          title: 'Usuário não encontrado',
+          description: 'Não foi possível encontrar o usuário com esse e-mail.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ partner_id: null })
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      await logAction('unlink_producer_from_partner', 'user', userId, { 
+        email 
+      });
+
+      toast({
+        title: 'Sucesso',
+        description: 'Produtor desvinculado.',
+      });
+
+      if (selectedPartner) {
+        await loadPartnerUsers(selectedPartner.id);
+      }
+      return true;
+    } catch (err: unknown) {
+      console.error('Error unlinking producer:', err);
+      const message = err instanceof Error ? err.message : 'Não foi possível desvincular o produtor.';
+      toast({
+        title: 'Erro',
+        description: message,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  // Update user role (promote/demote between partner_admin and partner_agronomist)
+  const updateUserRole = async (userId: string, currentRole: 'partner_admin' | 'partner_agronomist', newRole: 'partner_admin' | 'partner_agronomist') => {
+    if (!selectedPartner) return false;
+
+    try {
+      // Remove old role
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('role', currentRole);
+
+      if (deleteError) throw deleteError;
+
+      // Add new role
+      const { error: insertError } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: newRole });
+
+      if (insertError) throw insertError;
+
+      await logAction('update_partner_user_role', 'user', userId, { 
+        partner_id: selectedPartner.id,
+        old_role: currentRole,
+        new_role: newRole 
+      });
+
+      toast({
+        title: 'Sucesso',
+        description: 'Função do usuário atualizada.',
+      });
+
+      await loadPartnerUsers(selectedPartner.id);
+      return true;
+    } catch (err: unknown) {
+      console.error('Error updating user role:', err);
+      const message = err instanceof Error ? err.message : 'Não foi possível atualizar a função.';
+      toast({
+        title: 'Erro',
+        description: message,
         variant: 'destructive',
       });
       return false;
@@ -228,7 +485,6 @@ export function usePartnersAdmin() {
     if (!selectedPartner) return false;
 
     try {
-      // Remove partner_id from profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ partner_id: null })
@@ -236,14 +492,21 @@ export function usePartnersAdmin() {
 
       if (profileError) throw profileError;
 
-      // Remove partner roles
-      const { error: roleError } = await supabase
+      await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId)
-        .in('role', ['partner_admin', 'partner_agronomist']);
+        .eq('role', 'partner_admin');
+      
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('role', 'partner_agronomist');
 
-      if (roleError) throw roleError;
+      await logAction('unlink_producer_from_partner', 'user', userId, { 
+        partner_id: selectedPartner.id 
+      });
 
       toast({
         title: 'Sucesso',
@@ -252,11 +515,12 @@ export function usePartnersAdmin() {
 
       await loadPartnerUsers(selectedPartner.id);
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error removing user from partner:', err);
+      const message = err instanceof Error ? err.message : 'Não foi possível remover o usuário.';
       toast({
         title: 'Erro',
-        description: err.message || 'Não foi possível remover o usuário.',
+        description: message,
         variant: 'destructive',
       });
       return false;
@@ -267,6 +531,7 @@ export function usePartnersAdmin() {
     loading,
     isSystemAdmin,
     partners,
+    partnerMetrics,
     selectedPartner,
     partnerUsers,
     loadingUsers,
@@ -274,6 +539,9 @@ export function usePartnersAdmin() {
     selectPartner,
     setSelectedPartner,
     addUserToPartner,
+    linkProducerToPartner,
+    unlinkProducerFromPartner,
+    updateUserRole,
     removeUserFromPartner,
     refreshPartners: loadPartners,
   };
