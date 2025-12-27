@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Droplets, Thermometer, AlertTriangle, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { Droplets, Thermometer, AlertTriangle, History, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-state';
-import { format, subDays } from 'date-fns';
+import { format, subDays, isToday, isYesterday, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface HistoryDay {
@@ -15,13 +15,18 @@ interface HistoryDay {
   alerts: string[];
 }
 
+interface CacheEntry {
+  data: HistoryDay[];
+  timestamp: number;
+}
+
 interface WeatherHistoryProps {
   latitude: number;
   longitude: number;
 }
 
 // Cache simples (1h por coordenada + período)
-const historyCache = new Map<string, { data: HistoryDay[]; timestamp: number }>();
+const historyCache = new Map<string, CacheEntry>();
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hora
 
 export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
@@ -30,20 +35,30 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
   const [error, setError] = useState(false);
   const [days, setDays] = useState(7);
   const [expanded, setExpanded] = useState(true);
+  const [cacheTimestamp, setCacheTimestamp] = useState<number | null>(null);
+  const [usingStaleCache, setUsingStaleCache] = useState(false);
+
+  const cacheKey = useMemo(() => 
+    `${latitude.toFixed(4)},${longitude.toFixed(4)},${days}`, 
+    [latitude, longitude, days]
+  );
 
   const loadHistory = useCallback(async () => {
     if (!latitude || !longitude) return;
 
-    const cacheKey = `${latitude.toFixed(4)},${longitude.toFixed(4)},${days}`;
     const cached = historyCache.get(cacheKey);
     
+    // Usar cache se válido
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       setHistory(cached.data);
+      setCacheTimestamp(cached.timestamp);
+      setUsingStaleCache(false);
       return;
     }
 
     setLoading(true);
     setError(false);
+    setUsingStaleCache(false);
 
     try {
       const endDate = format(new Date(), 'yyyy-MM-dd');
@@ -63,6 +78,7 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
       
       if (!data.daily?.time) {
         setHistory([]);
+        setCacheTimestamp(null);
         return;
       }
 
@@ -95,15 +111,26 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
         };
       }).reverse(); // Mais recente primeiro
 
+      const now = Date.now();
       setHistory(historyData);
-      historyCache.set(cacheKey, { data: historyData, timestamp: Date.now() });
+      setCacheTimestamp(now);
+      historyCache.set(cacheKey, { data: historyData, timestamp: now });
     } catch (err) {
       console.error('Erro ao carregar histórico climático:', err);
-      setError(true);
+      
+      // Fallback: usar cache stale se existir
+      if (cached) {
+        setHistory(cached.data);
+        setCacheTimestamp(cached.timestamp);
+        setUsingStaleCache(true);
+        setError(false);
+      } else {
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
-  }, [latitude, longitude, days]);
+  }, [latitude, longitude, days, cacheKey]);
 
   useEffect(() => {
     loadHistory();
@@ -112,6 +139,58 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
   const togglePeriod = () => {
     setDays(prev => prev === 7 ? 30 : 7);
   };
+
+  // Formatar "Atualizado há X min"
+  const updatedAgoText = useMemo(() => {
+    if (!cacheTimestamp) return null;
+    const mins = differenceInMinutes(new Date(), new Date(cacheTimestamp));
+    if (mins < 1) return 'Atualizado agora';
+    if (mins === 1) return 'Atualizado há 1 min';
+    if (mins < 60) return `Atualizado há ${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours === 1) return 'Atualizado há 1 hora';
+    return `Atualizado há ${hours} horas`;
+  }, [cacheTimestamp]);
+
+  // Formatar label do dia (Hoje, Ontem, ou data)
+  const formatDayLabel = (dateStr: string) => {
+    const date = new Date(dateStr + 'T12:00:00');
+    if (isToday(date)) return 'Hoje';
+    if (isYesterday(date)) return 'Ontem';
+    return format(date, 'dd/MM', { locale: ptBR });
+  };
+
+  // Agrupar por categorias: Hoje, Ontem, Esta Semana, Anterior
+  const groupedHistory = useMemo(() => {
+    const groups: { label: string; days: HistoryDay[] }[] = [];
+    
+    let todayDays: HistoryDay[] = [];
+    let yesterdayDays: HistoryDay[] = [];
+    let otherDays: HistoryDay[] = [];
+
+    history.forEach(day => {
+      const date = new Date(day.date + 'T12:00:00');
+      if (isToday(date)) {
+        todayDays.push(day);
+      } else if (isYesterday(date)) {
+        yesterdayDays.push(day);
+      } else {
+        otherDays.push(day);
+      }
+    });
+
+    if (todayDays.length > 0) {
+      groups.push({ label: 'Hoje', days: todayDays });
+    }
+    if (yesterdayDays.length > 0) {
+      groups.push({ label: 'Ontem', days: yesterdayDays });
+    }
+    if (otherDays.length > 0) {
+      groups.push({ label: 'Dias anteriores', days: otherDays });
+    }
+
+    return groups;
+  }, [history]);
 
   if (!latitude || !longitude) {
     return null;
@@ -125,7 +204,12 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
             <History className="h-5 w-5 text-muted-foreground" />
             <div>
               <CardTitle className="text-lg">Histórico Climático</CardTitle>
-              <CardDescription>Últimos {days} dias</CardDescription>
+              <CardDescription className="flex items-center gap-2">
+                Últimos {days} dias
+                {updatedAgoText && (
+                  <span className="text-xs">• {updatedAgoText}</span>
+                )}
+              </CardDescription>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -155,6 +239,24 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
 
       {expanded && (
         <CardContent>
+          {/* Aviso de cache stale */}
+          {usingStaleCache && (
+            <div className="mb-3 p-2 rounded-md bg-muted/50 border border-border flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Exibindo últimos dados salvos
+              </span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={loadHistory}
+                className="h-7 px-2"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Tentar novamente
+              </Button>
+            </div>
+          )}
+
           {loading ? (
             <LoadingSpinner message="Carregando histórico..." className="py-4" />
           ) : error ? (
@@ -176,53 +278,62 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
               </p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {history.map((day) => (
-                <div 
-                  key={day.date} 
-                  className="flex items-center justify-between py-2 px-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-16 text-sm font-medium">
-                      {format(new Date(day.date + 'T12:00:00'), 'dd/MM', { locale: ptBR })}
-                    </div>
-                    <span className="text-xs text-muted-foreground hidden sm:inline">
-                      {format(new Date(day.date + 'T12:00:00'), 'EEEE', { locale: ptBR })}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1 min-w-[80px]">
-                      <Thermometer className="h-3.5 w-3.5 text-orange-500" />
-                      <span className="text-orange-600">{day.tempMax.toFixed(0)}°</span>
-                      <span className="text-muted-foreground">/</span>
-                      <span className="text-blue-600">{day.tempMin.toFixed(0)}°</span>
-                    </div>
-
-                    <div className="flex items-center gap-1 min-w-[60px]">
-                      <Droplets className="h-3.5 w-3.5 text-blue-500" />
-                      <span className={day.precipitation > 0 ? 'text-blue-600 font-medium' : 'text-muted-foreground'}>
-                        {day.precipitation.toFixed(1)}mm
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1 min-w-[100px] justify-end">
-                      {day.alerts.length > 0 ? (
-                        <div className="flex gap-1 flex-wrap justify-end">
-                          {day.alerts.slice(0, 2).map((alert, i) => (
-                            <Badge 
-                              key={i} 
-                              variant={alert.includes('Geada') ? 'destructive' : 'secondary'}
-                              className="text-xs px-1.5 py-0"
-                            >
-                              {alert}
-                            </Badge>
-                          ))}
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {groupedHistory.map((group) => (
+                <div key={group.label}>
+                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+                    {group.label}
+                  </p>
+                  <div className="space-y-1.5">
+                    {group.days.map((day) => (
+                      <div 
+                        key={day.date} 
+                        className="flex items-center justify-between py-2 px-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 text-sm font-medium">
+                            {formatDayLabel(day.date)}
+                          </div>
+                          <span className="text-xs text-muted-foreground hidden sm:inline">
+                            {format(new Date(day.date + 'T12:00:00'), 'EEEE', { locale: ptBR })}
+                          </span>
                         </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </div>
+
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1 min-w-[90px]">
+                            <Thermometer className="h-3.5 w-3.5 text-orange-500" />
+                            <span className="text-orange-600">{day.tempMax.toFixed(0)}°C</span>
+                            <span className="text-muted-foreground">/</span>
+                            <span className="text-blue-600">{day.tempMin.toFixed(0)}°C</span>
+                          </div>
+
+                          <div className="flex items-center gap-1 min-w-[70px]">
+                            <Droplets className="h-3.5 w-3.5 text-blue-500" />
+                            <span className={day.precipitation > 0 ? 'text-blue-600 font-medium' : 'text-muted-foreground'}>
+                              {day.precipitation.toFixed(1)} mm
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 min-w-[100px] justify-end">
+                            {day.alerts.length > 0 ? (
+                              <div className="flex gap-1 flex-wrap justify-end">
+                                {day.alerts.slice(0, 2).map((alert, i) => (
+                                  <Badge 
+                                    key={i} 
+                                    variant={alert.includes('Geada') ? 'destructive' : 'secondary'}
+                                    className="text-xs px-1.5 py-0"
+                                  >
+                                    {alert}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -235,7 +346,7 @@ export function WeatherHistory({ latitude, longitude }: WeatherHistoryProps) {
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Chuva total</p>
                 <p className="text-lg font-semibold text-blue-600">
-                  {history.reduce((sum, d) => sum + d.precipitation, 0).toFixed(1)}mm
+                  {history.reduce((sum, d) => sum + d.precipitation, 0).toFixed(1)} mm
                 </p>
               </div>
               <div>
