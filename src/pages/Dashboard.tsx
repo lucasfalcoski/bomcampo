@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { MapPin, TrendingUp, DollarSign, Cloud, Calendar } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { OnboardingWizard } from '@/components/OnboardingWizard';
 
 const formatCurrency = (value: number) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' } as any);
@@ -15,6 +17,17 @@ const formatCurrency = (value: number) => {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const {
+    hasCompletedOnboarding,
+    hasFarms,
+    hasPlots,
+    pushEnabled,
+    loading: onboardingLoading,
+    requestPushPermission,
+    completeOnboarding,
+    checkOnboardingStatus,
+  } = useOnboarding();
+
   const [farms, setFarms] = useState<any[]>([]);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const [periodo, setPeriodo] = useState<'mes_atual' | 'ano_atual'>('mes_atual');
@@ -174,6 +187,26 @@ export default function Dashboard() {
     colheita: 'Colheita',
     outro: 'Outro',
   };
+
+  // Handle onboarding completion and refresh
+  const handleOnboardingComplete = () => {
+    completeOnboarding();
+    loadFarms();
+    checkOnboardingStatus();
+  };
+
+  // Show onboarding wizard for first-time users
+  if (!onboardingLoading && !hasCompletedOnboarding) {
+    return (
+      <OnboardingWizard
+        hasFarms={hasFarms}
+        hasPlots={hasPlots}
+        pushEnabled={pushEnabled}
+        onRequestPush={requestPushPermission}
+        onComplete={handleOnboardingComplete}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
