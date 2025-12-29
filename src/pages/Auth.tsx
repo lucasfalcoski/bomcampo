@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Sprout } from 'lucide-react';
+import { loginSchema, signupSchema, getFirstError } from '@/lib/validation/schemas';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,17 +15,44 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; nome?: string }>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const validateForm = (): boolean => {
+    const newErrors: typeof errors = {};
+
+    if (isLogin) {
+      const emailError = getFirstError(loginSchema.shape.email, email);
+      const passwordError = getFirstError(loginSchema.shape.password, password);
+      if (emailError) newErrors.email = emailError;
+      if (passwordError) newErrors.password = passwordError;
+    } else {
+      const nomeError = getFirstError(signupSchema.shape.nome, nome);
+      const emailError = getFirstError(signupSchema.shape.email, email);
+      const passwordError = getFirstError(signupSchema.shape.password, password);
+      if (nomeError) newErrors.nome = nomeError;
+      if (emailError) newErrors.email = emailError;
+      if (passwordError) newErrors.password = passwordError;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
 
@@ -37,10 +65,10 @@ export default function Auth() {
         navigate('/');
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
-            data: { nome },
+            data: { nome: nome.trim() },
             emailRedirectTo: `${window.location.origin}/`,
           },
         });
@@ -61,6 +89,12 @@ export default function Auth() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const clearFieldError = (field: keyof typeof errors) => {
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
@@ -87,9 +121,15 @@ export default function Auth() {
                   id="nome"
                   placeholder="João da Silva"
                   value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setNome(e.target.value);
+                    clearFieldError('nome');
+                  }}
+                  className={errors.nome ? 'border-destructive' : ''}
                 />
+                {errors.nome && (
+                  <p className="text-sm text-destructive">{errors.nome}</p>
+                )}
               </div>
             )}
             
@@ -100,9 +140,15 @@ export default function Auth() {
                 type="email"
                 placeholder="seu@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearFieldError('email');
+                }}
+                className={errors.email ? 'border-destructive' : ''}
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -112,10 +158,15 @@ export default function Auth() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearFieldError('password');
+                }}
+                className={errors.password ? 'border-destructive' : ''}
               />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
@@ -128,7 +179,10 @@ export default function Auth() {
                   Não tem conta?{' '}
                   <button
                     type="button"
-                    onClick={() => setIsLogin(false)}
+                    onClick={() => {
+                      setIsLogin(false);
+                      setErrors({});
+                    }}
                     className="text-primary hover:underline"
                   >
                     Cadastre-se
@@ -139,7 +193,10 @@ export default function Auth() {
                   Já tem conta?{' '}
                   <button
                     type="button"
-                    onClick={() => setIsLogin(true)}
+                    onClick={() => {
+                      setIsLogin(true);
+                      setErrors({});
+                    }}
                     className="text-primary hover:underline"
                   >
                     Faça login

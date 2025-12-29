@@ -11,6 +11,7 @@ import { Plus, Edit, Trash2, Loader2, MapPin } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingGrid } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
+import { farmSchema, getFirstError } from '@/lib/validation/schemas';
 
 export default function Fazendas() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ export default function Fazendas() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [farmForm, setFarmForm] = useState({
     nome: '',
@@ -54,25 +56,35 @@ export default function Fazendas() {
     setFarms(data || []);
   };
 
-  const handleSaveFarm = async () => {
-    if (!farmForm.nome.trim()) {
-      toast({ title: 'Nome da fazenda é obrigatório', variant: 'destructive' });
-      return;
-    }
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
 
-    if (farmForm.area_ha && parseFloat(farmForm.area_ha) <= 0) {
-      toast({ title: 'Área deve ser maior que zero', variant: 'destructive' });
+    const nomeError = getFirstError(farmSchema.shape.nome, farmForm.nome);
+    if (nomeError) errors.nome = nomeError;
+
+    const areaError = getFirstError(farmSchema.shape.area_ha, farmForm.area_ha);
+    if (areaError) errors.area_ha = areaError;
+
+    const estadoError = getFirstError(farmSchema.shape.estado, farmForm.estado);
+    if (estadoError) errors.estado = estadoError;
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveFarm = async () => {
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
     const data = {
       user_id: user?.id,
-      nome: farmForm.nome,
+      nome: farmForm.nome.trim(),
       area_ha: farmForm.area_ha ? parseFloat(farmForm.area_ha) : null,
-      cidade: farmForm.cidade || null,
-      estado: farmForm.estado || null,
-      pais: farmForm.pais || 'Brasil',
+      cidade: farmForm.cidade.trim() || null,
+      estado: farmForm.estado.trim().toUpperCase() || null,
+      pais: farmForm.pais.trim() || 'Brasil',
     };
 
     const { error } = editingFarm
@@ -118,6 +130,13 @@ export default function Fazendas() {
       estado: '',
       pais: 'Brasil',
     });
+    setFormErrors({});
+  };
+
+  const clearFieldError = (field: string) => {
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
   return (
@@ -183,6 +202,7 @@ export default function Fazendas() {
                           estado: farm.estado || '',
                           pais: farm.pais || 'Brasil',
                         });
+                        setFormErrors({});
                         setDialogOpen(true);
                       }}
                     >
@@ -224,9 +244,16 @@ export default function Fazendas() {
               <Input
                 id="nome"
                 value={farmForm.nome}
-                onChange={e => setFarmForm({ ...farmForm, nome: e.target.value })}
+                onChange={e => {
+                  setFarmForm({ ...farmForm, nome: e.target.value });
+                  clearFieldError('nome');
+                }}
                 placeholder="Ex: Fazenda São João"
+                className={formErrors.nome ? 'border-destructive' : ''}
               />
+              {formErrors.nome && (
+                <p className="text-sm text-destructive">{formErrors.nome}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -237,9 +264,16 @@ export default function Fazendas() {
                 step="0.01"
                 min="0"
                 value={farmForm.area_ha}
-                onChange={e => setFarmForm({ ...farmForm, area_ha: e.target.value })}
+                onChange={e => {
+                  setFarmForm({ ...farmForm, area_ha: e.target.value });
+                  clearFieldError('area_ha');
+                }}
                 placeholder="Ex: 150.5"
+                className={formErrors.area_ha ? 'border-destructive' : ''}
               />
+              {formErrors.area_ha && (
+                <p className="text-sm text-destructive">{formErrors.area_ha}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -258,10 +292,17 @@ export default function Fazendas() {
                 <Input
                   id="estado"
                   value={farmForm.estado}
-                  onChange={e => setFarmForm({ ...farmForm, estado: e.target.value.toUpperCase() })}
+                  onChange={e => {
+                    setFarmForm({ ...farmForm, estado: e.target.value.toUpperCase() });
+                    clearFieldError('estado');
+                  }}
                   placeholder="Ex: SP"
                   maxLength={2}
+                  className={formErrors.estado ? 'border-destructive' : ''}
                 />
+                {formErrors.estado && (
+                  <p className="text-sm text-destructive">{formErrors.estado}</p>
+                )}
               </div>
             </div>
 
