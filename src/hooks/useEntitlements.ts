@@ -1,5 +1,6 @@
 /**
  * React hook for entitlements and quota management
+ * Now uses Edge Function to fetch entitlements (bypasses RLS)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,14 +9,14 @@ import {
   EffectiveFlags,
   AIAccessResult,
   QuotaInfo,
-  getEffectiveFlags,
   canUseAI,
   getRemainingAIQuota,
   isPremium,
   isEnterprise,
   incrementAIUsage,
+  fetchEntitlements,
+  clearEntitlementsCache,
 } from '@/lib/entitlements';
-import { supabase } from '@/integrations/supabase/client';
 
 interface UseEntitlementsOptions {
   workspaceId?: string | null;
@@ -55,37 +56,7 @@ export function useEntitlements(options: UseEntitlementsOptions = {}): UseEntitl
   const [workspaceId, setWorkspaceId] = useState<string | null>(options.workspaceId || null);
   const [workspacePlan, setWorkspacePlan] = useState<string | null>(null);
 
-  // Load user's workspace if not provided
-  const loadUserWorkspace = useCallback(async () => {
-    if (options.workspaceId) {
-      setWorkspaceId(options.workspaceId);
-      return options.workspaceId;
-    }
-
-    if (!user?.id) return null;
-
-    // Try to get user's workspace from workspace_members
-    const { data, error: wsError } = await supabase
-      .from('workspace_members')
-      .select('workspace_id, workspaces(id, plan)')
-      .eq('user_id', user.id)
-      .limit(1)
-      .single();
-
-    if (wsError || !data) {
-      // User might not be in any workspace yet (B2C legacy)
-      return null;
-    }
-
-    const wsId = data.workspace_id;
-    const wsPlan = (data.workspaces as { id: string; plan: string } | null)?.plan || 'free';
-    
-    setWorkspaceId(wsId);
-    setWorkspacePlan(wsPlan);
-    return wsId;
-  }, [user?.id, options.workspaceId]);
-
-  // Load all entitlement data
+  // Load all entitlement data via Edge Function
   const loadEntitlements = useCallback(async () => {
     if (!user?.id) {
       setLoading(false);
@@ -96,32 +67,78 @@ export function useEntitlements(options: UseEntitlementsOptions = {}): UseEntitl
     setError(null);
 
     try {
-      const wsId = await loadUserWorkspace();
+      // Fetch entitlements from Edge Function (bypasses RLS)
+      const response = await fetchEntitlements(options.workspaceId);
+      
+      if (!response) {
+        setError('Não foi possível carregar permissões');
+        setLoading(false);
+        return;
+      }
 
-      // Load effective flags
-      const effectiveFlags = await getEffectiveFlags(wsId, user.id);
-      setFlags(effectiveFlags);
+      // Update state from API response
+      setFlags(response.flags);
+      setWorkspaceId(response.workspace_id);
+      setWorkspacePlan(response.workspace.plan);
 
-      // Load AI access status
-      const access = await canUseAI(wsId, user.id);
+      // Build AI access result
+      const access: AIAccessResult = {
+        allowed: response.ai.allowed,
+        reason: response.ai.reason as AIAccessResult['reason'],
+        remaining: response.ai.remaining,
+        dailyLimit: response.ai.limit,
+        bypass: response.ai.bypass,
+        debug_reason: response.meta?.debug?.debug_reason,
+        debug: response.meta?.debug ? {
+          limit: response.ai.limit,
+          used: response.ai.used,
+          remaining: response.ai.remaining,
+          plan_used: response.workspace.plan === 'premium' || response.workspace.plan === 'enterprise' ? 'premium' : 'free',
+          limit_source: (response.meta?.limit_source as 'campaign' | 'workspace' | 'global' | 'default') || 'default',
+          bypass: response.ai.bypass || false,
+          is_superadmin: response.meta.debug.is_superadmin || false,
+          ai_admin_bypass_flag: response.meta.debug.ai_admin_bypass_flag || false,
+          workspace_id: response.workspace_id,
+          ai_enabled_raw: response.flags.ai_enabled,
+          ai_enabled_normalized: response.flags.ai_enabled === true,
+          source_map: response.meta.source_map,
+          raw_values: response.meta.debug.raw_values,
+        } : undefined,
+      };
       setAIAccess(access);
 
-      // Load quota if workspace exists
-      if (wsId) {
-        const quotaInfo = await getRemainingAIQuota(wsId, user.id);
-        setQuota(quotaInfo);
+      // Build quota info
+      if (response.workspace_id) {
+        const now = new Date();
+        const brtOffset = -3 * 60;
+        const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+        const brtTime = new Date(utcTime + brtOffset * 60000);
+        
+        const resetAt = new Date(Date.UTC(
+          brtTime.getUTCFullYear(),
+          brtTime.getUTCMonth(),
+          brtTime.getUTCDate() + 1,
+          3, 0, 0, 0
+        ));
+
+        setQuota({
+          used: response.ai.used,
+          limit: response.ai.limit,
+          remaining: response.ai.remaining,
+          resetAt,
+        });
       }
     } catch (err) {
       console.error('[useEntitlements] Error loading entitlements:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load entitlements');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar permissões');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, loadUserWorkspace]);
+  }, [user?.id, options.workspaceId]);
 
   // Check AI access
   const checkAIAccess = useCallback(async (): Promise<AIAccessResult> => {
-    if (!user?.id || !workspaceId) {
+    if (!user?.id) {
       return { allowed: false, reason: 'no_workspace' };
     }
 
@@ -140,17 +157,17 @@ export function useEntitlements(options: UseEntitlementsOptions = {}): UseEntitl
 
     const success = await incrementAIUsage(workspaceId, source, tokensIn, tokensOut);
     
-    // Refresh quota after tracking
-    if (success && user?.id) {
-      const quotaInfo = await getRemainingAIQuota(workspaceId, user.id);
-      setQuota(quotaInfo);
+    // Refresh entitlements after tracking
+    if (success) {
+      await loadEntitlements();
     }
 
     return success;
-  }, [workspaceId, user?.id]);
+  }, [workspaceId, loadEntitlements]);
 
   // Refresh all data
   const refresh = useCallback(async () => {
+    clearEntitlementsCache();
     await loadEntitlements();
   }, [loadEntitlements]);
 
