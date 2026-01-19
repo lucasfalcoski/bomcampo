@@ -15,17 +15,22 @@ import {
   MessageSquare,
   Sparkles,
   UserCheck,
-  CheckCircle2
+  CheckCircle2,
+  Bug,
+  Leaf,
+  Settings2,
+  CloudSun,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIAgronomo } from '@/hooks/useIAgronomo';
 import { useAgronomistEscalation } from '@/hooks/useAgronomistEscalation';
 import { useChatContext } from '@/hooks/useChatContext';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ChatContextSelector, ChatContextBadge } from '@/components/ChatContextSelector';
 import {
@@ -77,6 +82,8 @@ function ActionButton({ action }: ActionButtonProps) {
 }
 
 export default function IAgronomoChat() {
+  const navigate = useNavigate();
+  
   // Context selection (farm/plot)
   const {
     farms,
@@ -121,16 +128,16 @@ export default function IAgronomoChat() {
   const [escalateOpen, setEscalateOpen] = useState(false);
   const [escalateQuestion, setEscalateQuestion] = useState('');
   const [escalationSent, setEscalationSent] = useState(false);
+  const [disclaimerDismissed, setDisclaimerDismissed] = useState(false);
   
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Scroll to bottom on new messages
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   // Auto-resize textarea
@@ -217,38 +224,40 @@ export default function IAgronomoChat() {
   const canEscalate = !loadingEscalation && hasLinkedAgronomist && !!selectedFarmId;
 
   return (
-    <div className="container max-w-3xl mx-auto py-4 px-4 md:py-6 h-[calc(100vh-8rem)] flex flex-col">
-      {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2.5 rounded-lg">
-              <Bot className="h-6 w-6 text-primary" />
+    <div className="flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100vh-4rem)] max-w-3xl mx-auto">
+      {/* Compact Header - Mobile first */}
+      <header className="px-4 pt-3 pb-2 md:pt-4 md:pb-3 flex-shrink-0">
+        {/* Title row */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="bg-primary/10 p-1.5 md:p-2 rounded-lg flex-shrink-0">
+              <Bot className="h-5 w-5 md:h-6 md:w-6 text-primary" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                Fala AI Agrônomo
-                <Badge variant="secondary" className="text-xs">
-                  <Sparkles className="h-3 w-3 mr-1" />
+            <div className="min-w-0">
+              <h1 className="text-base md:text-xl font-bold flex items-center gap-1.5">
+                <span className="truncate">Fala AI Agrônomo</span>
+                <Badge variant="secondary" className="text-[10px] md:text-xs px-1.5 py-0">
+                  <Sparkles className="h-2.5 w-2.5 mr-0.5" />
                   Beta
                 </Badge>
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground hidden md:block">
                 Assistente com IA para dúvidas agronômicas
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            {/* Escalate to agronomist button - only if farm selected & has agronomist */}
+          {/* Action buttons */}
+          <div className="flex items-center gap-1">
             {canEscalate && (
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={handleOpenEscalate}
+                className="h-8 px-2 md:px-3"
               >
-                <UserCheck className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Perguntar ao</span> Agrônomo
+                <UserCheck className="h-4 w-4 md:mr-1" />
+                <span className="hidden md:inline">Agrônomo</span>
               </Button>
             )}
             
@@ -257,17 +266,16 @@ export default function IAgronomoChat() {
                 variant="ghost" 
                 size="sm" 
                 onClick={clearHistory}
-                className="text-muted-foreground hover:text-destructive"
+                className="h-8 px-2 text-muted-foreground hover:text-destructive"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Limpar</span>
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
         </div>
 
-        {/* Context selector (farm/plot) */}
-        <div className="mt-3">
+        {/* Context selector row */}
+        <div className="mt-2 flex items-center justify-between gap-2">
           <ChatContextSelector
             farms={farms}
             plots={plots}
@@ -280,209 +288,251 @@ export default function IAgronomoChat() {
             selectedFarm={selectedFarm}
             selectedPlot={selectedPlot}
           />
+          
+          {/* Quota - compact on mobile */}
+          {remainingQuota !== undefined && canUseAI && (
+            <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground flex-shrink-0">
+              <MessageSquare className="h-3 w-3" />
+              <span>{remainingQuota}</span>
+            </div>
+          )}
         </div>
+      </header>
 
-        {/* Quota indicator */}
-        {remainingQuota !== undefined && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <MessageSquare className="h-3 w-3" />
-            <span>
-              {remainingQuota} consultas restantes hoje
-            </span>
-          </div>
-        )}
-      </div>
+      {/* Messages area - flex-1 to fill available space */}
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-2 space-y-3 min-h-0"
+      >
+        {messages.length === 0 ? (
+          /* Empty state - compact */
+          <div className="flex flex-col items-center justify-center h-full text-center py-4">
+            <Bot className="h-10 w-10 md:h-12 md:w-12 text-muted-foreground/30 mb-3" />
+            <h3 className="font-medium text-sm md:text-base">Como posso ajudar?</h3>
+            
+            {/* Quick chips */}
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              {[
+                { label: 'Pragas', icon: Bug },
+                { label: 'Doenças', icon: Leaf },
+                { label: 'Manejo', icon: Settings2 },
+                { label: 'Clima', icon: CloudSun },
+              ].map((chip) => (
+                <Button
+                  key={chip.label}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setInput(`Dúvida sobre ${chip.label.toLowerCase()}: `)}
+                  disabled={!canUseAI}
+                >
+                  <chip.icon className="h-3 w-3 mr-1" />
+                  {chip.label}
+                </Button>
+              ))}
+            </div>
 
-      {/* Chat area */}
-      <Card className="flex-1 flex flex-col min-h-0">
-        <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6">
-              <Bot className="h-16 w-16 text-muted-foreground/30 mb-4" />
-              <h3 className="font-medium mb-2">Como posso ajudar?</h3>
-              <p className="text-sm text-muted-foreground max-w-sm">
-                Tire dúvidas sobre pragas, doenças, manejo e boas práticas.
-                Você também pode enviar uma foto para análise.
-              </p>
-              
-              <div className="mt-6 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                <div className="flex items-start gap-2 text-amber-800 dark:text-amber-200">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-left">
-                    <strong>Importante:</strong> Não forneço receitas de defensivos, 
-                    doses ou misturas de tanque. Para prescrições, 
-                    consulte o agrônomo responsável técnico.
-                  </p>
+            {/* Collapsible disclaimer */}
+            {!disclaimerDismissed && (
+              <div className="mt-4 w-full max-w-sm">
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <p className="text-[11px] md:text-xs text-left">
+                        Não forneço receitas de defensivos, doses ou misturas. 
+                        Consulte o agrônomo responsável.
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs text-amber-700 dark:text-amber-300"
+                      onClick={() => setDisclaimerDismissed(true)}
+                    >
+                      Entendi
+                    </Button>
+                  </div>
                 </div>
               </div>
-
-              {/* Example questions */}
-              <div className="mt-6 grid gap-2 w-full max-w-md">
-                <p className="text-xs text-muted-foreground mb-1">Experimente perguntar:</p>
-                {[
-                  'Como identificar ferrugem asiática na soja?',
-                  'Quais são os sintomas de deficiência de nitrogênio?',
-                  'Qual a janela ideal de plantio para milho no PR?',
-                ].map((question, i) => (
-                  <Button
-                    key={i}
-                    variant="outline"
-                    size="sm"
-                    className="justify-start text-left h-auto py-2 px-3"
-                    onClick={() => setInput(question)}
-                  >
-                    <MessageSquare className="h-3 w-3 mr-2 flex-shrink-0" />
-                    <span className="text-xs">{question}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {messages.map((msg) => (
+            )}
+          </div>
+        ) : (
+          /* Messages list */
+          <>
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={cn(
+                  "flex gap-2",
+                  msg.role === 'user' ? "justify-end" : "justify-start"
+                )}
+              >
+                {msg.role === 'assistant' && (
+                  <div className="bg-primary/10 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                )}
+                
                 <div
-                  key={msg.id}
                   className={cn(
-                    "flex gap-3",
-                    msg.role === 'user' ? "justify-end" : "justify-start"
+                    "max-w-[85%] rounded-lg px-3 py-2",
+                    msg.role === 'user'
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted"
                   )}
                 >
-                  {msg.role === 'assistant' && (
-                    <div className="bg-primary/10 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Bot className="h-4 w-4 text-primary" />
+                  {msg.flags?.blocked_reason && (
+                    <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 mb-1.5 text-[11px]">
+                      <AlertTriangle className="h-3 w-3" />
+                      Conteúdo restrito
                     </div>
                   )}
                   
-                  <div
-                    className={cn(
-                      "max-w-[80%] rounded-lg px-4 py-3",
-                      msg.role === 'user'
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    )}
-                  >
-                    {/* Blocked warning */}
-                    {msg.flags?.blocked_reason && (
-                      <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2 text-xs">
-                        <AlertTriangle className="h-3 w-3" />
-                        Conteúdo restrito
-                      </div>
-                    )}
-                    
-                    <div className="whitespace-pre-wrap text-sm">
-                      {msg.content}
+                  <div className="whitespace-pre-wrap text-sm">
+                    {msg.content}
+                  </div>
+
+                  {msg.actions && msg.actions.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
+                      {msg.actions.map((action, idx) => (
+                        <ActionButton key={idx} action={action} />
+                      ))}
                     </div>
+                  )}
 
-                    {/* Actions */}
-                    {msg.actions && msg.actions.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
-                        {msg.actions.map((action, idx) => (
-                          <ActionButton key={idx} action={action} />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Source indicator */}
-                    {msg.flags?.sources_used && msg.flags.sources_used.length > 0 && (
-                      <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                        <FileText className="h-3 w-3" />
-                        Fonte: {msg.flags.sources_used.join(', ')}
-                      </div>
-                    )}
-                  </div>
+                  {msg.flags?.sources_used && msg.flags.sources_used.length > 0 && (
+                    <div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <FileText className="h-2.5 w-2.5" />
+                      {msg.flags.sources_used.join(', ')}
+                    </div>
+                  )}
                 </div>
-              ))}
-              
-              {sending && (
-                <div className="flex gap-3">
-                  <div className="bg-primary/10 h-8 w-8 rounded-full flex items-center justify-center">
-                    <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                  </div>
-                  <div className="bg-muted rounded-lg px-4 py-3">
-                    <span className="text-sm text-muted-foreground">Pensando...</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </ScrollArea>
-
-        {/* Input area */}
-        <div className="border-t p-4">
-          {/* Photo preview */}
-          {photoPreview && (
-            <div className="mb-3 relative inline-block">
-              <img
-                src={photoPreview}
-                alt="Preview"
-                className="h-20 w-20 object-cover rounded-lg"
-              />
-              <Button
-                variant="destructive"
-                size="icon"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                onClick={removePhoto}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
-          
-          <div className="flex gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+              </div>
+            ))}
             
+            {sending && (
+              <div className="flex gap-2">
+                <div className="bg-primary/10 h-7 w-7 rounded-full flex items-center justify-center">
+                  <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+                </div>
+                <div className="bg-muted rounded-lg px-3 py-2">
+                  <span className="text-sm text-muted-foreground">Pensando...</span>
+                </div>
+              </div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
+
+      {/* Input area - sticky bottom */}
+      <div className="flex-shrink-0 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        {/* Quota limit state */}
+        {!canUseAI && (
+          <div className="mb-3 p-3 bg-muted rounded-lg">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <span className="font-medium">Limite atingido</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => navigate('/configuracoes')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Ver planos
+                </Button>
+                {canEscalate && (
+                  <Button 
+                    size="sm" 
+                    className="h-7 text-xs"
+                    onClick={handleOpenEscalate}
+                  >
+                    <UserCheck className="h-3 w-3 mr-1" />
+                    Agrônomo
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Photo preview */}
+        {photoPreview && (
+          <div className="mb-2 relative inline-block">
+            <img
+              src={photoPreview}
+              alt="Preview"
+              className="h-16 w-16 object-cover rounded-lg"
+            />
             <Button
-              variant="outline"
+              variant="destructive"
               size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending || uploadingPhoto || !canUseAI}
-              title="Anexar foto"
+              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full"
+              onClick={removePhoto}
             >
-              {uploadingPhoto ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ImagePlus className="h-4 w-4" />
-              )}
-            </Button>
-            
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                canUseAI 
-                  ? "Digite sua dúvida..." 
-                  : "Limite de consultas atingido"
-              }
-              className="min-h-[44px] max-h-[150px] resize-none"
-              disabled={sending || !canUseAI}
-              rows={1}
-            />
-            
-            <Button
-              onClick={handleSubmit}
-              disabled={(!input.trim() && !photoFile) || sending || !canUseAI}
-            >
-              {sending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+              <X className="h-2.5 w-2.5" />
             </Button>
           </div>
+        )}
+        
+        <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
           
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            IA pode cometer erros. Sempre consulte um profissional para decisões técnicas.
-          </p>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 flex-shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending || uploadingPhoto || !canUseAI}
+          >
+            {uploadingPhoto ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
+          </Button>
+          
+          <Textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={canUseAI ? "Digite sua dúvida..." : ""}
+            className="min-h-[40px] max-h-[120px] resize-none flex-1"
+            disabled={sending || !canUseAI}
+            rows={1}
+          />
+          
+          <Button
+            size="icon"
+            className="h-10 w-10 flex-shrink-0"
+            onClick={handleSubmit}
+            disabled={(!input.trim() && !photoFile) || sending || !canUseAI}
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
         </div>
-      </Card>
+        
+        <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+          IA pode cometer erros • Consulte um profissional
+        </p>
+      </div>
 
       {/* Escalation Dialog */}
       <Dialog open={escalateOpen} onOpenChange={setEscalateOpen}>
@@ -493,7 +543,7 @@ export default function IAgronomoChat() {
               Perguntar ao Agrônomo
             </DialogTitle>
             <DialogDescription>
-              Envie sua dúvida para um agrônomo humano. Você receberá a resposta pelo painel.
+              Envie sua dúvida para um agrônomo humano.
             </DialogDescription>
           </DialogHeader>
           
@@ -503,7 +553,7 @@ export default function IAgronomoChat() {
               <div>
                 <p className="font-medium">Pergunta enviada!</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Você será notificado quando o agrônomo responder.
+                  Você será notificado quando responderem.
                 </p>
               </div>
               <Button onClick={() => setEscalateOpen(false)} className="mt-4">
@@ -512,7 +562,6 @@ export default function IAgronomoChat() {
             </div>
           ) : (
             <>
-              {/* Context info badge */}
               {selectedFarm && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Contexto</label>
@@ -537,7 +586,7 @@ export default function IAgronomoChat() {
 
               {messages.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  O contexto da conversa com a IA será incluído automaticamente.
+                  O contexto da conversa será incluído automaticamente.
                 </p>
               )}
 
