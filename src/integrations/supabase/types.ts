@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_drafts: {
+        Row: {
+          action_type: Database["public"]["Enums"]["action_type"]
+          created_at: string
+          created_by_user_id: string
+          draft_json: Json
+          farm_id: string | null
+          id: string
+          missing_fields: string[] | null
+          reviewer_comment: string | null
+          reviewer_user_id: string | null
+          source: string
+          status: Database["public"]["Enums"]["action_draft_status"]
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          action_type: Database["public"]["Enums"]["action_type"]
+          created_at?: string
+          created_by_user_id: string
+          draft_json?: Json
+          farm_id?: string | null
+          id?: string
+          missing_fields?: string[] | null
+          reviewer_comment?: string | null
+          reviewer_user_id?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["action_draft_status"]
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          action_type?: Database["public"]["Enums"]["action_type"]
+          created_at?: string
+          created_by_user_id?: string
+          draft_json?: Json
+          farm_id?: string | null
+          id?: string
+          missing_fields?: string[] | null
+          reviewer_comment?: string | null
+          reviewer_user_id?: string | null
+          source?: string
+          status?: Database["public"]["Enums"]["action_draft_status"]
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_drafts_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "action_drafts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activities: {
         Row: {
           anexo_url: string | null
@@ -1407,6 +1470,21 @@ export type Database = {
       jsonb_merge: { Args: { a: Json; b: Json }; Returns: Json }
     }
     Enums: {
+      action_draft_status:
+        | "collecting"
+        | "ready"
+        | "awaiting_review"
+        | "approved"
+        | "rejected"
+        | "confirmed"
+        | "cancelled"
+      action_type:
+        | "create_planting"
+        | "create_activity"
+        | "create_occurrence"
+        | "schedule_task"
+        | "update_planting_stage"
+        | "log_weather_event"
       agro_question_status: "open" | "in_progress" | "answered" | "closed"
       ai_message_role: "user" | "assistant" | "system"
       app_role:
@@ -1563,6 +1641,23 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      action_draft_status: [
+        "collecting",
+        "ready",
+        "awaiting_review",
+        "approved",
+        "rejected",
+        "confirmed",
+        "cancelled",
+      ],
+      action_type: [
+        "create_planting",
+        "create_activity",
+        "create_occurrence",
+        "schedule_task",
+        "update_planting_stage",
+        "log_weather_event",
+      ],
       agro_question_status: ["open", "in_progress", "answered", "closed"],
       ai_message_role: ["user", "assistant", "system"],
       app_role: [
