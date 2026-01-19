@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { ActivityRegistrationFlow } from '@/components/fala-agronomo/ActivityRegistrationFlow';
 import { ChatContextSelector, ChatContextBadge } from '@/components/ChatContextSelector';
 import {
   Dialog,
@@ -406,7 +407,23 @@ export default function IAgronomoChat() {
                     {msg.content}
                   </div>
 
-                  {msg.actions && msg.actions.length > 0 && (
+                  {/* Activity Registration Flow */}
+                  {msg.actionFlowData && msg.actionFlowData.type === 'activity_registration' && (
+                    <div className="mt-3">
+                      <ActivityRegistrationFlow
+                        flowData={msg.actionFlowData}
+                        onComplete={(result) => {
+                          // Add success message to chat
+                          sendMessage(result.message);
+                        }}
+                        onCancel={() => {
+                          sendMessage('Registro de atividade cancelado.');
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {msg.actions && msg.actions.length > 0 && !msg.actionFlowData && (
                     <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
                       {msg.actions.map((action, idx) => (
                         <ActionButton 
