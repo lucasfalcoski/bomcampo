@@ -1,1 +1,19 @@
 project_id = "ecrxodmpqrdavqcpvdnl"
+
+[functions.check-weather-alerts]
+verify_jwt = false
+
+[functions.generate-pdf]
+verify_jwt = true
+
+[functions.send-activity-reminders]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = true
+
+[functions.entitlements]
+verify_jwt = false
+
+[functions.ai-usage-increment]
+verify_jwt = true
