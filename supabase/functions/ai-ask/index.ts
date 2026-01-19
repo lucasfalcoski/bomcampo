@@ -163,6 +163,9 @@ const INTENT_PATTERNS = {
     /criar\s+talh[ãa]?o\s*\d+/i,
     /cadastrar\s+plantio\s+caf[ée]/i,
     /criar\s+fazenda/i,
+    /como\s+(cadastr(ar|o)|cri(ar|o)|adicion(ar|o))\s+(um\s+)?(novo?\s*)?(talh[ãa]o|fazenda|plantio)/i,
+    /onde\s+(cadastr(ar|o)|cri(ar|o))\s+(talh[ãa]o|fazenda|plantio)/i,
+    /quero\s+(cadastrar|criar|adicionar)\s+(um\s+)?(novo?\s*)?(talh[ãa]o|fazenda|plantio)/i,
   ],
   financeiro: [
     /registrar?\s+(despesa|custo|gasto|receita)/i,
@@ -185,6 +188,8 @@ const INTENT_PATTERNS = {
     /clima/i, /previs[ãa]o/i, /chuva\s+(pra|para|de)\s+h(oje|j)/i, /chov(e|er|eu|a|endo)/i,
     /vai\s+chover/i, /temperatura/i, /umidade/i, /vento/i, /como\s+(est[aá]|vai\s+estar)\s+o\s+tempo/i,
     /calor/i, /frio/i, /geada/i, /seca/i, /alertas?\s+(do\s+)?tempo/i, /previsao\s+chuva/i,
+    /tempo\s+hoje/i, /clima\s+(em|de|para|na|no)\s+/i, /vai\s+fazer\s+(sol|frio|calor)/i,
+    /previsão\s+(do\s+)?tempo/i, /como\s+está\s+o\s+clima/i,
   ],
 };
 
@@ -1185,14 +1190,35 @@ serve(async (req) => {
       };
     }
 
-    // F) CADASTRO
+    // F) CADASTRO - Resposta específica por tipo
     else if (intent === 'cadastro') {
+      // Detect what user wants to create
+      const wantsTalhao = /talh[ãa]o/i.test(user_message);
+      const wantsFazenda = /fazenda/i.test(user_message);
+      const wantsPlantio = /plantio|safra|cultura/i.test(user_message);
+      
+      let assistantText = '';
+      const actions: AIAction[] = [];
+      
+      if (wantsTalhao) {
+        assistantText = `📍 **Cadastrar Talhão**\n\nVá em **Talhões & Plantio → Novo Talhão** para criar um novo talhão.\n\nClique no botão abaixo para acessar diretamente.`;
+        actions.push({ type: 'open_screen', label: '📍 Abrir Talhões & Plantio', payload: { route: '/talhoes' } });
+      } else if (wantsFazenda) {
+        assistantText = `🌾 **Cadastrar Fazenda**\n\nVá em **Fazendas → Nova Fazenda** para criar uma nova fazenda.\n\nClique no botão abaixo para acessar diretamente.`;
+        actions.push({ type: 'open_screen', label: '🌾 Abrir Fazendas', payload: { route: '/fazendas' } });
+      } else if (wantsPlantio) {
+        assistantText = `🌱 **Cadastrar Plantio**\n\nVá em **Talhões & Plantio → Selecione um Talhão → Novo Plantio** para registrar um novo plantio.\n\nClique no botão abaixo para acessar diretamente.`;
+        actions.push({ type: 'open_screen', label: '📍 Abrir Talhões & Plantio', payload: { route: '/talhoes' } });
+      } else {
+        // Generic cadastro
+        assistantText = `📝 **Cadastros**\n\nPara cadastrar ou editar:\n\n- **Fazendas**: Vá em Fazendas → Nova Fazenda\n- **Talhões**: Vá em Talhões & Plantio → Novo Talhão\n- **Plantios**: Vá em Talhões & Plantio → Selecione → Novo Plantio\n\nClique abaixo para acessar a área desejada.`;
+        actions.push({ type: 'open_screen', label: '🌾 Fazendas', payload: { route: '/fazendas' } });
+        actions.push({ type: 'open_screen', label: '📍 Talhões & Plantio', payload: { route: '/talhoes' } });
+      }
+
       response = {
-        assistant_text: `📝 **Cadastro**\n\nPara cadastrar ou editar:\n\n- **Fazendas**: Vá em Fazendas → Nova Fazenda\n- **Talhões**: Vá em Talhões → Novo Talhão\n- **Plantios**: Vá em Talhões → Selecione → Novo Plantio\n\nClique abaixo para acessar a área desejada.`,
-        actions: [
-          { type: 'open_screen', label: '🌾 Fazendas', payload: { route: '/fazendas' } },
-          { type: 'open_screen', label: '📍 Talhões', payload: { route: '/talhoes' } },
-        ],
+        assistant_text: assistantText,
+        actions,
         flags: { decision_route: 'cadastro' },
         safety: { blocked: false, suggest_escalate: false },
       };
@@ -1274,16 +1300,31 @@ serve(async (req) => {
       };
     }
 
-    // H) WEATHER
+    // H) WEATHER - Fallback inteligente baseado em fazenda selecionada
     else if (intent === 'weather') {
-      response = {
-        assistant_text: `🌤️ **Consulte o módulo Clima!**\n\nO módulo Clima oferece:\n📊 Previsão detalhada\n🌧️ Alertas de chuva\n📈 Histórico climático\n🚜 Janelas de pulverização\n\nClique abaixo para acessar.`,
-        actions: [
-          { type: 'open_screen', label: '☁️ Acessar Clima', payload: { route: '/clima' } },
-        ],
-        flags: { decision_route: 'weather' },
-        safety: { blocked: false, suggest_escalate: false },
-      };
+      // Check if user has a farm selected
+      const hasFarm = !!farm_id;
+      
+      if (hasFarm) {
+        response = {
+          assistant_text: `🌤️ **Consulte o módulo Clima!**\n\nO módulo Clima oferece:\n📊 Previsão detalhada para sua fazenda\n🌧️ Alertas de chuva\n📈 Histórico climático\n🚜 Janelas de pulverização\n\nClique abaixo para acessar.`,
+          actions: [
+            { type: 'open_screen', label: '☁️ Ver Clima', payload: { route: '/clima' } },
+          ],
+          flags: { decision_route: 'weather' },
+          safety: { blocked: false, suggest_escalate: false },
+        };
+      } else {
+        // No farm selected - guide user to select/create one
+        response = {
+          assistant_text: `🌤️ **Clima por Fazenda**\n\nEu mostro o clima pelo Bom Campo (por fazenda). Selecione uma fazenda para ver a previsão e alertas.\n\n**Como funciona:**\n1. Selecione ou crie uma fazenda\n2. O clima será baseado na localização da fazenda\n\nClique abaixo para selecionar ou criar uma fazenda.`,
+          actions: [
+            { type: 'open_screen', label: '🌾 Selecionar/Criar Fazenda', payload: { route: '/fazendas' } },
+          ],
+          flags: { decision_route: 'weather_no_farm' },
+          safety: { blocked: false, suggest_escalate: false },
+        };
+      }
     }
 
     // I) GENERAL - Fallback com IA
