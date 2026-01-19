@@ -22,12 +22,14 @@ import {
   CloudSun,
   ChevronDown,
   ChevronUp,
-  ExternalLink
+  ExternalLink,
+  Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIAgronomo } from '@/hooks/useIAgronomo';
 import { useAgronomistEscalation } from '@/hooks/useAgronomistEscalation';
 import { useChatContext } from '@/hooks/useChatContext';
+import { useSuperadmin } from '@/hooks/useSuperadmin';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +37,11 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { ActionFlowCard } from '@/components/fala-agronomo/ActionFlowCard';
 import { ChatContextSelector, ChatContextBadge } from '@/components/ChatContextSelector';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -205,6 +212,8 @@ export default function IAgronomoChat() {
     remainingQuota,
     canUseAI,
     aiAccessReason,
+    aiDebug,
+    aiDebugReason,
     workspaceId,
     sendMessage,
     uploadPhoto,
@@ -213,6 +222,9 @@ export default function IAgronomoChat() {
     farmId: selectedFarmId,
     plotId: selectedPlotId,
   });
+
+  // Superadmin check for debug panel
+  const { isSuperadmin } = useSuperadmin();
 
   // Escalation - depends on selected farm
   const {
@@ -229,6 +241,7 @@ export default function IAgronomoChat() {
   const [escalateQuestion, setEscalateQuestion] = useState('');
   const [escalationSent, setEscalationSent] = useState(false);
   const [disclaimerDismissed, setDisclaimerDismissed] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -553,7 +566,7 @@ export default function IAgronomoChat() {
       <div className="flex-shrink-0 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {/* Quota limit / disabled state */}
         {!canUseAI && (
-          <div className="mb-3 p-3 bg-muted rounded-lg">
+          <div className="mb-3 p-3 bg-muted rounded-lg space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 text-sm">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -591,6 +604,75 @@ export default function IAgronomoChat() {
                 )}
               </div>
             </div>
+
+            {/* Superadmin Debug Panel */}
+            {isSuperadmin && (
+              <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs text-muted-foreground w-full justify-start"
+                  >
+                    <Info className="h-3 w-3 mr-1" />
+                    Diagnóstico (admin)
+                    {debugOpen ? (
+                      <ChevronUp className="h-3 w-3 ml-auto" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3 ml-auto" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <div className="p-2 bg-background border rounded text-xs font-mono space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">workspace_id:</span>
+                      <span className="truncate max-w-[180px]">{workspaceId || '(none)'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">debug_reason:</span>
+                      <span className="text-destructive">{aiDebugReason || '-'}</span>
+                    </div>
+                    {aiDebug && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">limit_source:</span>
+                          <Badge variant="outline" className="text-[10px] h-4">
+                            {aiDebug.limit_source}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">ai_enabled_raw:</span>
+                          <span>{String(aiDebug.ai_enabled_raw)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">ai_enabled_normalized:</span>
+                          <span className={aiDebug.ai_enabled_normalized ? 'text-green-600' : 'text-destructive'}>
+                            {String(aiDebug.ai_enabled_normalized)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">bypass:</span>
+                          <span>{String(aiDebug.bypass)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">is_superadmin:</span>
+                          <span>{String(aiDebug.is_superadmin)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">limit:</span>
+                          <span>{aiDebug.limit}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">used:</span>
+                          <span>{aiDebug.used}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </div>
         )}
 

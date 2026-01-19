@@ -32,6 +32,7 @@ export interface AIAccessResult {
   dailyLimit?: number;
   bypass?: boolean;
   debug?: AIDebugInfo;
+  debug_reason?: string;
 }
 
 export interface AIDebugInfo {
@@ -43,6 +44,9 @@ export interface AIDebugInfo {
   bypass: boolean;
   is_superadmin: boolean;
   ai_admin_bypass_flag: boolean;
+  workspace_id: string | null;
+  ai_enabled_raw?: unknown;
+  ai_enabled_normalized?: boolean;
 }
 
 export interface QuotaInfo {
@@ -107,22 +111,57 @@ function parseNumericFlag(value: unknown, fallback: number): number {
 }
 
 /**
- * Parse flag value from JSONB to typed value
+ * Normalize flag value from various JSONB formats to a clean primitive
+ * Handles: boolean, number, string, {enabled:X}, {value:X}, {is_enabled:X}, "true"/"false"
  */
-function parseFlagValue(valueJson: unknown): boolean | number | string {
-  // Handle primitive values directly
-  if (typeof valueJson === 'boolean') return valueJson;
-  if (typeof valueJson === 'number') return valueJson;
-  if (typeof valueJson === 'string') return valueJson;
+export function normalizeFlagValue(valueJson: unknown): boolean | number | string | undefined {
+  // Null/undefined
+  if (valueJson === null || valueJson === undefined) return undefined;
   
-  // Handle object format { enabled: true } or { value: X }
-  if (valueJson && typeof valueJson === 'object') {
-    const obj = valueJson as Record<string, unknown>;
-    if ('enabled' in obj) return obj.enabled as boolean;
-    if ('value' in obj) return obj.value as number | string;
+  // Direct boolean
+  if (typeof valueJson === 'boolean') return valueJson;
+  
+  // Direct number
+  if (typeof valueJson === 'number') return valueJson;
+  
+  // String - check for boolean-like strings
+  if (typeof valueJson === 'string') {
+    const lower = valueJson.toLowerCase().trim();
+    if (lower === 'true') return true;
+    if (lower === 'false') return false;
+    // Could be a numeric string
+    const num = Number(valueJson);
+    if (!isNaN(num)) return num;
+    return valueJson;
   }
   
-  return false;
+  // Object format - check common keys
+  if (valueJson && typeof valueJson === 'object') {
+    const obj = valueJson as Record<string, unknown>;
+    
+    // Priority: enabled > is_enabled > value
+    if ('enabled' in obj) {
+      return normalizeFlagValue(obj.enabled);
+    }
+    if ('is_enabled' in obj) {
+      return normalizeFlagValue(obj.is_enabled);
+    }
+    if ('value' in obj) {
+      return normalizeFlagValue(obj.value);
+    }
+  }
+  
+  // Unknown format - return undefined
+  return undefined;
+}
+
+/**
+ * Parse flag value from JSONB to typed value (wrapper for normalizeFlagValue with fallback)
+ */
+function parseFlagValue(valueJson: unknown): boolean | number | string {
+  const normalized = normalizeFlagValue(valueJson);
+  if (normalized === undefined) return false;
+  return normalized;
 }
 
 /**
@@ -448,6 +487,7 @@ export async function getRemainingAIQuota(
       bypass,
       is_superadmin: isSuperadmin,
       ai_admin_bypass_flag: hasAdminBypass,
+      workspace_id: workspaceId,
     },
   };
 }
@@ -469,17 +509,42 @@ export async function canUseAI(
 
   const { flags, debug: flagDebug } = await getEffectiveFlagsWithDebug(workspaceId);
 
+  // Check for superadmin first (for debug purposes)
+  const isSuperadmin = await checkIsSuperadmin(userId);
+  const hasAdminBypass = flags.ai_admin_bypass === true;
+
   // Check if AI is enabled
   if (!flags.ai_enabled) {
+    // Determine reason why it's disabled
+    let debug_reason = 'ai_enabled is false or missing';
+    if (flagDebug.limit_source === 'campaign') {
+      debug_reason = 'campaign override: ai_enabled=false';
+    } else if (flagDebug.limit_source === 'workspace') {
+      debug_reason = 'workspace flag: ai_enabled=false';
+    } else if (flagDebug.limit_source === 'global') {
+      debug_reason = 'global flag: ai_enabled=false';
+    }
+
     return {
       allowed: false,
       reason: 'disabled',
+      debug_reason,
+      debug: isSuperadmin ? {
+        limit: flagDebug.limit,
+        used: 0,
+        remaining: 0,
+        plan_used: flagDebug.plan_used,
+        limit_source: flagDebug.limit_source,
+        bypass: false,
+        is_superadmin: isSuperadmin,
+        ai_admin_bypass_flag: hasAdminBypass,
+        workspace_id: workspaceId,
+        ai_enabled_raw: flags.ai_enabled,
+        ai_enabled_normalized: false,
+      } : undefined,
     };
   }
 
-  // Check for superadmin + admin bypass
-  const isSuperadmin = await checkIsSuperadmin(userId);
-  const hasAdminBypass = flags.ai_admin_bypass === true;
   const bypass = isSuperadmin && hasAdminBypass;
 
   // Get usage info
@@ -496,6 +561,9 @@ export async function canUseAI(
     bypass,
     is_superadmin: isSuperadmin,
     ai_admin_bypass_flag: hasAdminBypass,
+    workspace_id: workspaceId,
+    ai_enabled_raw: flags.ai_enabled,
+    ai_enabled_normalized: flags.ai_enabled === true,
   };
 
   // If bypass is active, always allow
