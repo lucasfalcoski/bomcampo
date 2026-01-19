@@ -34,6 +34,7 @@ const menuItems: MenuItem[] = [
   { title: 'Preços', url: '/precos', icon: TrendingUp },
   { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
   { title: 'Relatórios', url: '/relatorios', icon: FileText },
+  { title: 'POPs', url: '/pops', icon: ClipboardList },
   { title: 'Fala AI Agrônomo', url: '/ai', icon: Bot, secondaryIcon: Sparkles },
   { title: 'Painel', url: '/org', icon: Building2, visibility: 'b2b_admin' },
   { title: 'Caixa do Agrônomo', url: '/agronomist/inbox', icon: Inbox, visibility: 'agronomist' },

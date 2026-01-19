@@ -1,11 +1,31 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SuperadminRoute } from '@/components/SuperadminRoute';
 import { useAdminDashboard } from '@/hooks/useAdminData';
-import { Loader2, Building2, Users, Cpu, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, Building2, Users, Cpu, AlertTriangle, RefreshCw, FileText, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { seedMinimalPops } from '@/hooks/usePops';
 
 export default function SuperadminDashboard() {
   const { loading, stats, refresh } = useAdminDashboard();
+  const [seedingPops, setSeedingPops] = useState(false);
+
+  const handleSeedPops = async () => {
+    setSeedingPops(true);
+    try {
+      const result = await seedMinimalPops();
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error('Erro ao abastecer POPs');
+    } finally {
+      setSeedingPops(false);
+    }
+  };
 
   return (
     <SuperadminRoute>
@@ -77,7 +97,7 @@ export default function SuperadminDashboard() {
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle>Acesso Rápido</CardTitle>
@@ -128,6 +148,34 @@ export default function SuperadminDashboard() {
                   <Users className="mr-2 h-4 w-4" />
                   Log de Auditoria
                 </a>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ferramentas</CardTitle>
+              <CardDescription>Ações administrativas</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              <Button variant="outline" className="justify-start" asChild>
+                <a href="/pops">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Ver POPs
+                </a>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="justify-start" 
+                onClick={handleSeedPops}
+                disabled={seedingPops}
+              >
+                {seedingPops ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Database className="mr-2 h-4 w-4" />
+                )}
+                Abastecer POPs Mínimos
               </Button>
             </CardContent>
           </Card>
