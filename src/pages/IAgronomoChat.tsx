@@ -126,6 +126,7 @@ export default function IAgronomoChat() {
     remainingQuota,
     canUseAI,
     aiAccessReason,
+    workspaceId,
     sendMessage,
     uploadPhoto,
     clearHistory,
@@ -418,7 +419,7 @@ export default function IAgronomoChat() {
                     <div className="mt-3">
                       <ActionFlowCard
                         flowData={msg.actionFlowData}
-                        workspaceId={selectedFarm?.workspace_id || undefined}
+                        workspaceId={workspaceId || undefined}
                         farmId={selectedFarmId || undefined}
                         onComplete={(result) => {
                           // Add success message to chat
