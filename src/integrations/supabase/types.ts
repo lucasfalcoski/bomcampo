@@ -172,6 +172,38 @@ export type Database = {
         }
         Relationships: []
       }
+      agro_answers: {
+        Row: {
+          agro_question_id: string
+          answer: string
+          answered_by_user_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          agro_question_id: string
+          answer: string
+          answered_by_user_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          agro_question_id?: string
+          answer?: string
+          answered_by_user_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agro_answers_agro_question_id_fkey"
+            columns: ["agro_question_id"]
+            isOneToOne: false
+            referencedRelation: "agro_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agro_content: {
         Row: {
           body: string
@@ -218,6 +250,57 @@ export type Database = {
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agro_questions: {
+        Row: {
+          asked_by_user_id: string
+          context_json: Json | null
+          created_at: string
+          farm_id: string | null
+          id: string
+          question: string
+          status: Database["public"]["Enums"]["agro_question_status"]
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          asked_by_user_id: string
+          context_json?: Json | null
+          created_at?: string
+          farm_id?: string | null
+          id?: string
+          question: string
+          status?: Database["public"]["Enums"]["agro_question_status"]
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          asked_by_user_id?: string
+          context_json?: Json | null
+          created_at?: string
+          farm_id?: string | null
+          id?: string
+          question?: string
+          status?: Database["public"]["Enums"]["agro_question_status"]
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agro_questions_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agro_questions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -271,6 +354,153 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          meta_json: Json | null
+          role: Database["public"]["Enums"]["ai_message_role"]
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          meta_json?: Json | null
+          role: Database["public"]["Enums"]["ai_message_role"]
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          meta_json?: Json | null
+          role?: Database["public"]["Enums"]["ai_message_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_log: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          requests: number
+          source: string
+          tokens_in: number
+          tokens_out: number
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          day?: string
+          id?: string
+          requests?: number
+          source: string
+          tokens_in?: number
+          tokens_out?: number
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          requests?: number
+          source?: string
+          tokens_in?: number
+          tokens_out?: number
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_log_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          end_at: string | null
+          id: string
+          is_enabled: boolean
+          name: string
+          payload_json: Json | null
+          rule_json: Json | null
+          start_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          name: string
+          payload_json?: Json | null
+          rule_json?: Json | null
+          start_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_at?: string | null
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          payload_json?: Json | null
+          rule_json?: Json | null
+          start_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       commodity_prices: {
         Row: {
@@ -426,6 +656,38 @@ export type Database = {
           },
         ]
       }
+      farm_agronomists: {
+        Row: {
+          agronomist_user_id: string
+          channel_pref: Database["public"]["Enums"]["channel_preference"]
+          created_at: string
+          farm_id: string
+          is_primary: boolean
+        }
+        Insert: {
+          agronomist_user_id: string
+          channel_pref?: Database["public"]["Enums"]["channel_preference"]
+          created_at?: string
+          farm_id: string
+          is_primary?: boolean
+        }
+        Update: {
+          agronomist_user_id?: string
+          channel_pref?: Database["public"]["Enums"]["channel_preference"]
+          created_at?: string
+          farm_id?: string
+          is_primary?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farm_agronomists_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farm_crop_rules: {
         Row: {
           created_at: string | null
@@ -479,6 +741,7 @@ export type Database = {
           pais: string | null
           updated_at: string | null
           user_id: string
+          workspace_id: string | null
         }
         Insert: {
           area_ha?: number | null
@@ -490,6 +753,7 @@ export type Database = {
           pais?: string | null
           updated_at?: string | null
           user_id: string
+          workspace_id?: string | null
         }
         Update: {
           area_ha?: number | null
@@ -501,6 +765,89 @@ export type Database = {
           pais?: string | null
           updated_at?: string | null
           user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farms_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_flags_global: {
+        Row: {
+          key: string
+          updated_at: string
+          value_json: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value_json?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value_json?: Json
+        }
+        Relationships: []
+      }
+      feature_flags_workspace: {
+        Row: {
+          key: string
+          updated_at: string
+          value_json: Json
+          workspace_id: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value_json?: Json
+          workspace_id: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value_json?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flags_workspace_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations_status: {
+        Row: {
+          is_enabled: boolean
+          last_error: string | null
+          last_ok_at: string | null
+          latency_ms: number | null
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          is_enabled?: boolean
+          last_error?: string | null
+          last_ok_at?: string | null
+          latency_ms?: number | null
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          is_enabled?: boolean
+          last_error?: string | null
+          last_ok_at?: string | null
+          latency_ms?: number | null
+          provider?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -850,6 +1197,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_system_roles: {
+        Row: {
+          created_at: string
+          role: Database["public"]["Enums"]["system_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role: Database["public"]["Enums"]["system_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["system_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       weather_prefs: {
         Row: {
           alerta_chuva_limite_mm: number | null
@@ -919,12 +1284,72 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_members: {
+        Row: {
+          created_at: string
+          role: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          plan: Database["public"]["Enums"]["workspace_plan"]
+          status: Database["public"]["Enums"]["workspace_status"]
+          type: Database["public"]["Enums"]["workspace_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          plan?: Database["public"]["Enums"]["workspace_plan"]
+          status?: Database["public"]["Enums"]["workspace_status"]
+          type?: Database["public"]["Enums"]["workspace_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          plan?: Database["public"]["Enums"]["workspace_plan"]
+          status?: Database["public"]["Enums"]["workspace_status"]
+          type?: Database["public"]["Enums"]["workspace_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       find_user_by_email: { Args: { _email: string }; Returns: string }
+      get_farm_workspace_id: { Args: { _farm_id: string }; Returns: string }
       get_partner_users: {
         Args: { _partner_id: string }
         Returns: {
@@ -950,18 +1375,51 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_system_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["system_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_workspace_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["workspace_role"]
+          _user_id: string
+          _workspace_id: string
+        }
+        Returns: boolean
+      }
+      is_farm_agronomist: {
+        Args: { _farm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_superadmin: { Args: { _user_id: string }; Returns: boolean }
+      is_system_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_workspace_admin: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
+      is_workspace_member: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
       jsonb_merge: { Args: { a: Json; b: Json }; Returns: Json }
     }
     Enums: {
+      agro_question_status: "open" | "in_progress" | "answered" | "closed"
+      ai_message_role: "user" | "assistant" | "system"
       app_role:
         | "admin"
         | "produtor"
         | "partner_agronomist"
         | "partner_admin"
         | "system_admin"
+      channel_preference: "panel" | "whatsapp" | "email"
       fala_agronomo_context: "B2C" | "B2B"
       message_sender_type: "user" | "agronomist" | "system"
       planting_status: "planejado" | "em_andamento" | "colhido"
+      system_role: "superadmin" | "support" | "ops"
       temp_unit: "C" | "F"
       transaction_category:
         | "insumo"
@@ -974,6 +1432,10 @@ export type Database = {
         | "adubacao"
       transaction_type: "receita" | "custo"
       user_origin: "B2C" | "B2B"
+      workspace_plan: "free" | "premium" | "enterprise"
+      workspace_role: "owner" | "manager" | "operator" | "agronomist" | "viewer"
+      workspace_status: "active" | "inactive" | "suspended"
+      workspace_type: "b2c" | "b2b"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1101,6 +1563,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agro_question_status: ["open", "in_progress", "answered", "closed"],
+      ai_message_role: ["user", "assistant", "system"],
       app_role: [
         "admin",
         "produtor",
@@ -1108,9 +1572,11 @@ export const Constants = {
         "partner_admin",
         "system_admin",
       ],
+      channel_preference: ["panel", "whatsapp", "email"],
       fala_agronomo_context: ["B2C", "B2B"],
       message_sender_type: ["user", "agronomist", "system"],
       planting_status: ["planejado", "em_andamento", "colhido"],
+      system_role: ["superadmin", "support", "ops"],
       temp_unit: ["C", "F"],
       transaction_category: [
         "insumo",
@@ -1124,6 +1590,10 @@ export const Constants = {
       ],
       transaction_type: ["receita", "custo"],
       user_origin: ["B2C", "B2B"],
+      workspace_plan: ["free", "premium", "enterprise"],
+      workspace_role: ["owner", "manager", "operator", "agronomist", "viewer"],
+      workspace_status: ["active", "inactive", "suspended"],
+      workspace_type: ["b2c", "b2b"],
     },
   },
 } as const
