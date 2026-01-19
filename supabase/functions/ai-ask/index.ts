@@ -30,51 +30,140 @@ const BLOCKED_PATTERNS = [
 ];
 
 // ========== INTENT PATTERNS ==========
+// Expanded to cover 300+ real-life variations with typos, abbreviations, and informal language
 const INTENT_PATTERNS = {
   register_activity: [
-    /fiz(emos)?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|irriga[çc][ãa]o|poda|preparo)/i,
+    // Core patterns - "fiz/fizemos/realizei"
+    /fiz(emos)?\s+(uma?\s*)?(limp[ea]?[sz]?[ao]?|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|irriga[çc][ãa]o|poda|preparo|desbrota|replantio)/i,
     /realizei?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina)/i,
-    /foi\s+feit[ao]\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita)/i,
+    // "foi feito/feita"
+    /foi\s+feit[ao]\s+(uma?\s*)?(limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|carreiro|regulagem|revis[ãa]o)/i,
+    // "registrar/anota" patterns
     /registr(ar?|ei|amos)\s+(uma?\s*)?(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o)/i,
-    /anota(r)?\s+(a[ií]?|que)?\s*(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o)/i,
+    /anota(r)?\s+(a[ií]?|que)?\s*(atividade|limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|hoje|hj)/i,
     /lan[çc]ar\s+(atividade|trabalho)/i,
     /hoje\s+(fiz|fizemos|realizamos)/i,
-    /aplicamos\s+(adubo|fertilizante)/i,
-    /colhemos|plantamos|irrigamos|podamos/i,
+    /aplicamos\s+(adubo|fertilizante|calc[áa]rio)/i,
+    /colhemos|plantamos|irrigamos|podamos|adubei|capinei|irriguei/i,
+    // Abbreviated patterns: "T2:", "t3:", "talhão1"
+    /t\d+:\s*(limpeza|ro[çc]a|poda|aduba|feita?|conclu[íi]da)/i,
+    /(talhao|talh[ãa]o)\s*\d+\s*(limpeza|ro[çc]a|poda|conclu[íi]d[ao]|feit[ao]|agora|hj)/i,
+    // Maintenance/repair patterns
+    /consert(ei|amos)\s+(cano|bomba|porteira|cerca)/i,
+    /fiz\s+manuten[çc][ãa]o\s+(na|no|da|do)/i,
+    /troca\s+(de\s+)?(bico|[óo]leo|rolamento)/i,
+    /lavagem\s+(do|da)\s+(pulverizador|epi|m[áa]quina)/i,
+    // Irrigation/gotejo patterns
+    /(desentupimos|sangria|revis[ãa]o|regulagem)\s+(gotejador|aspersor|gotejo|linha)/i,
+    /vistoria\s+(das?\s+)?(mangueira|gotejo|irriga)/i,
+    // Harvest/terrain patterns
+    /limpeza\s+(do\s+)?terreiro/i,
+    /coleta\s+(de\s+)?(amostra|solo|folha)/i,
+    // General activities with "registra/anota"
+    /registra\s*[.:,]?\s*(ro[çc]a|poda|limpeza|capina|aduba|irriga|colheita)/i,
+    /anota\s*[.:,]?\s*que\s+(hoje\s+)?(fiz|fizemos|realizamos)/i,
+    // Informal/abbreviated
+    /(roça|rocada|ro[çc]agem)\s+(feit[ao]|conclu[íi]d[ao])/i,
+    /(poda|desbrota|amarr[açã][ãa]o)\s+(feit[ao]|conclu[íi]d[ao]|finalizada)/i,
+    /fechamos\s+(buraco|cerca|dreno)/i,
+    /retir(amos|ada)\s+(entulho|planta)/i,
+    /colocamos\s+(cobertura|armadilha)/i,
+    /instalamos\s+(armadilha|cerca|gotejo)/i,
+    /organizamos\s+(estoque|galp[ãa]o)/i,
+    /controle\s+(de\s+)?formiga\s+feit/i,
+    /lubrifica[çc][ãa]o\s+(do\s+)?trator/i,
+    /carregamos\s+adubo/i,
+    /aterramos\s+(um\s+)?trecho/i,
+    // Conjugations
+    /(arrumamos|consertamos|limpamos|lavamos|trocamos|fizemos|realizamos|terminamos|conclu[íi]mos)/i,
   ],
   create_task: [
     /me\s+lembr(a|e)/i,
     /cria(r)?\s+(uma?\s*)?(tarefa|checklist|lembrete)/i,
-    /agendar/i,
+    /agendar?\s+(manutenção|visita|inspe[çc][ãa]o|treinamento|limpeza)/i,
     /monitorar/i,
     /preciso\s+(lembrar|agendar|fazer)/i,
     /n[ãa]o\s+esquecer/i,
     /colocar?\s+(na|no)\s+(agenda|calend[áa]rio)/i,
     /programar/i,
-    /tarefa\s+(para|de)/i,
+    /tarefa\s+(para|de|semanal|:)/i,
+    /checklist\s+(de|para|p[óo]s|pr[ée])/i,
+    /lembrete\s*[.:,]?\s*(para|pra|de)?/i,
+    /agenda(r)?\s+(visita|inspe[çc][ãa]o|treinamento|limpeza|manutenção)/i,
+    /criar\s+(tarefa|lembrete|checklist)/i,
+    /cria\s+tarefa\s+(pra|para)/i,
+    /tarefa\s*:\s*(checar|revisar|monitorar|verificar|limpar)/i,
+    // Informal "coloca pra eu"
+    /coloca\s+pra\s+(eu|mim)\s+(registrar|lembrar|verificar)/i,
   ],
   open_screen: [
-    /abr(e|a|ir)\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|talh[õo]es|fazendas|dashboard)/i,
-    /mostrar?\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro)/i,
-    /ver\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|talh[õo]es)/i,
+    // Direct screen patterns
+    /abr(e|a|ir)\s+(a\s+)?(tela\s+de\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|talh[õo]es|fazendas|dashboard|atividades|ocorr[êe]ncias|plantios|tarefas)/i,
+    /mostrar?\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|atividades|tarefas|alertas)/i,
+    /ver\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|talh[õo]es|hist[óo]rico|custos|receita|consumo)/i,
     /ir\s+para\s+(clima|relat[óo]rios?|pre[çc]os|financeiro)/i,
-    /quero\s+(ver|acessar)\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os)/i,
-    /acessar\s+(o\s+)?(m[óo]dulo|tela)\s+(de\s+)?(clima|financeiro)/i,
+    /quero\s+(ver|acessar)\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|atividades|tarefas|alertas|painel|calend[áa]rio)/i,
+    /acessar\s+(o\s+)?(m[óo]dulo|tela|[áa]rea)\s+(de\s+)?(clima|financeiro|plantios|atividades)/i,
+    // Specific report patterns
+    /relat[óo]rio\s+(mensal|por\s+talh[ãa]o|de\s+despesas|semanal)/i,
+    /lista\s+(de\s+)?(ocorr[êe]ncias|tarefas|atividades)/i,
+    // Admin patterns
+    /gerenciar\s+usu[áa]rios/i,
+    /v[íi]nculo\s+(do\s+)?agr[ôo]nomo/i,
+    /abr(e|ir)\s+(admin|integra[çc][õo]es|auditoria)/i,
+    // Abbreviated
+    /abre\s+(clima|talh[õo]es|plantios|financeiro|relat[óo]rios?)/i,
+    /dashboard\s+geral/i,
+    /painel\s+(do\s+)?b2b/i,
   ],
   high_risk_today: [
-    /posso\s+(pulverizar|aplicar|adubar|irrigar|plantar|colher|ro[çc]ar|entrar\s+com\s+m[áa]quina)\s*(hoje)?/i,
-    /d[áa]\s+para\s+(pulverizar|aplicar|adubar|irrigar|plantar)\s*(hoje)?/i,
+    // Core "posso/dá para" patterns
+    /posso\s+(pulverizar|aplicar|adubar|irrigar|plantar|colher|ro[çc]ar|entrar|passar|mexer|secar)\s*(hoje|agora|hj|cedo)?/i,
+    /d[áa]\s+(para|pra)\s+(pulverizar|aplicar|adubar|irrigar|plantar|colher|ro[çc]ar|entrar|plantar|secar)\s*(hoje|agora|hj)?/i,
+    // Weather condition patterns
     /hoje\s+[ée]\s+bom\s+(dia|momento)\s+(para|de)\s+(pulverizar|aplicar|adubar)/i,
     /condi[çc][õo]es?\s+(para|de)\s+(pulveriza[çc][ãa]o|aplica[çc][ãa]o)\s*(hoje)?/i,
     /janela\s+de\s+(pulveriza[çc][ãa]o|aplica[çc][ãa]o)/i,
     /hora\s+(boa|ideal)\s+(para|de)\s+(pulverizar|aplicar)/i,
     /(pulverizar|aplicar)\s+agora/i,
-    /melhor\s+(hora|momento)\s+(para|de)\s+(aplicar|pulverizar)/i,
+    /melhor\s+(hora|momento)\s+(para|de|do\s+dia)\s+(aplicar|pulverizar)/i,
+    // Condition-based questions
+    /(t[áa]\s+)?nublado.*posso\s+pulverizar/i,
+    /vento\s+(t[áa]\s+)?forte.*rola\s+aplicar/i,
+    /vento\s+fraco.*d[áa]\s+(pra|para)\s+entrar/i,
+    /chuv(a|er).*posso\s+(aplicar|colher|pulverizar)/i,
+    /(orvalho|umidade\s+alta).*posso\s+aplicar/i,
+    /calor|quente.*posso\s+aplicar/i,
+    /frio.*d[áa]\s+(pra|para)\s+entrar/i,
+    /encharcado.*d[áa]\s+(pra|para)\s+ro[çc]ar/i,
+    /secar.*d[áa]\s+(pra|para)\s+plantar/i,
+    /choveu.*d[áa]\s+(pra|para)\s+entrar/i,
+    // Informal variations
+    /rola\s+aplicar/i,
+    /consigo\s+ro[çc]ar/i,
+    /posso\s+passar\s+veneno/i,
+    /d[áa]\s+pra\s+entrar\s+(de\s+)?trator/i,
+    /d[áa]\s+pra\s+fazer\s+preparo/i,
+    /d[áa]\s+pra\s+passar\s+herbicida/i,
+    /o\s+que\s+checar\s+antes/i,
+    /quero\s+aplicar\s+hoje/i,
+    // Rajada/previsão patterns
+    /rajada\s+de\s+vento.*d[áa]/i,
+    /previs[ãa]o\s+de\s+chuva.*posso/i,
+    /chuva\s+parar.*posso\s+aplicar/i,
+    /temperatura\s+cair.*posso/i,
+    // Segurança patterns
+    /[ée]\s+seguro\s+entrar/i,
   ],
   observation_diagnosis: [
-    /folha(s)?\s+(amarela|seca|murcha|manchada|com\s+mancha)/i,
-    /mancha(s)?\s+(na|nas|em)\s+(folha|planta|fruto)/i,
+    // Leaf symptoms
+    /folha(s)?\s+(amarela|seca|murcha|manchada|com\s+mancha|enrolando|queimando|bronzeada|com\s+pont|com\s+perfura)/i,
+    /folha\s+(com\s+)?(pontinhos?|p[óo]\s+preto|pequenas?\s+perfura)/i,
+    /mancha(s)?\s+(na|nas|em|circular)\s+(folha|planta|fruto)/i,
     /murcha(ndo|s)?/i,
+    /broto\s+(novo\s+)?t[áa]\s+secando/i,
+    /planta\s+(com\s+)?aspecto\s+queimado/i,
+    // Pest patterns
     /praga/i,
     /inseto/i,
     /[áa]caro/i,
@@ -95,18 +184,46 @@ const INTENT_PATTERNS = {
     /necrose/i,
     /clorose/i,
     /queima/i,
+    /broca/i,
+    // Identification patterns
     /identific(ar|a[çc][ãa]o|ou)/i,
     /sintoma/i,
     /o\s+que\s+[ée]\s+isso/i,
     /que\s+praga\s+[ée]/i,
     /pode\s+ser\s+(praga|doen[çc]a)/i,
+    /como\s+confirm(o|ar)/i,
+    /como\s+investigar/i,
+    /isso\s+preocupa/i,
+    // Informal patterns
+    /bicho\s+pequeno\s+na\s+folha/i,
+    /tem\s+uns\s+bicho/i,
+    /teia\s+fina/i,
+    /frutos?\s+caindo/i,
+    /inseto\s+voando/i,
+    /formigueiro\s+apareceu/i,
+    /caule\s+com\s+les[ãa]o/i,
+    /raiz\s+exposta/i,
+    /plantas?\s+mais\s+baixas/i,
+    /mato\s+subiu\s+r[áa]pido/i,
+    /fruto\s+com\s+mancha/i,
+    /eros[ãa]o\s+come[çc]ando/i,
+    /[áa]gua\s+empoçando/i,
+    /press[ãa]o\s+(do\s+)?gotejo\s+caiu/i,
+    /(parece|confirmar)\s+defici[êe]ncia/i,
   ],
   cadastro: [
-    /cadastr(ar|o)\s+(talh[ãa]o|fazenda|plantio|cultura)/i,
+    /cadastr(ar|o)\s+(novo?\s*)?(talh[ãa]o|fazenda|plantio|cultura)/i,
     /criar\s+(novo?\s+)?(talh[ãa]o|fazenda|plantio)/i,
     /adicionar\s+(talh[ãa]o|fazenda|plantio|cultura)/i,
-    /registrar\s+(novo?\s+)?(plantio|safra|cultura)/i,
+    /registrar?\s+(novo?\s+)?(plantio|safra|cultura)/i,
     /novo\s+(talh[ãa]o|plantio|fazenda)/i,
+    /atualiza(r)?\s+[áa]rea\s+(do\s+)?talh[ãa]o/i,
+    /muda(r)?\s+variedade/i,
+    /vincular\s+agr[ôo]nomo/i,
+    // Specific patterns
+    /criar\s+talh[ãa]?o\s*\d+/i,
+    /cadastrar\s+plantio\s+caf[ée]/i,
+    /criar\s+fazenda/i,
   ],
   financeiro: [
     /registrar?\s+(despesa|custo|gasto|receita)/i,
@@ -117,11 +234,19 @@ const INTENT_PATTERNS = {
     /relat[óo]rio\s+financeiro/i,
     /despesas?\s+(do|da|de)/i,
     /custos?\s+(do|da|de|operacional)/i,
+    // Specific finance patterns
+    /registra(r)?\s+despesa\s*:\s*(diesel|pe[çc]as|m[ãa]o\s+de\s+obra)/i,
+    /despesa\s+(diesel|combust[íi]vel|pe[çc]as|m[ãa]o\s+de\s+obra)/i,
+    /custo\s+(do\s+)?trator/i,
+    /receita\s*:\s*venda/i,
+    /venda\s+de\s+caf[ée]/i,
+    /total\s+de\s+despesas/i,
+    /financeiro\s+do\s+m[êe]s/i,
   ],
   weather: [
     /clima/i,
     /previs[ãa]o/i,
-    /chuva/i,
+    /chuva\s+(pra|para|de)\s+h(oje|j)/i,
     /chov(e|er|eu|a|endo)/i,
     /vai\s+chover/i,
     /temperatura/i,
@@ -132,6 +257,8 @@ const INTENT_PATTERNS = {
     /frio/i,
     /geada/i,
     /seca/i,
+    /alertas?\s+(do\s+)?tempo/i,
+    /previsao\s+chuva/i,
   ],
 };
 
@@ -286,17 +413,38 @@ function classifyIntent(message: string): Intent {
 
 function extractActivityType(message: string): string | null {
   const patterns = [
-    { pattern: /limpeza/i, tipo: 'limpeza' },
-    { pattern: /ro[çc]ada/i, tipo: 'rocada' },
-    { pattern: /aduba[çc][ãa]o|adubar|adubamos/i, tipo: 'adubacao' },
+    // Limpeza variations
+    { pattern: /limp[ea]?[sz]?[ao]?/i, tipo: 'limpeza' },
+    // Roçada variations (rocada, roça, roçagem, roçada)
+    { pattern: /ro[çc]a(da|gem)?/i, tipo: 'rocada' },
+    // Adubação variations
+    { pattern: /aduba[çc][ãa]o|adubar|adubamos|adubei|calc[áa]rio/i, tipo: 'adubacao' },
+    // Pulverização
     { pattern: /pulveriza[çc][ãa]o|pulverizar/i, tipo: 'pulverizacao' },
+    // Colheita
     { pattern: /colheita|colher|colhemos/i, tipo: 'colheita' },
-    { pattern: /manuten[çc][ãa]o/i, tipo: 'manutencao' },
-    { pattern: /capina/i, tipo: 'capina' },
-    { pattern: /irriga[çc][ãa]o|irrigar/i, tipo: 'irrigacao' },
-    { pattern: /plantio|plantar/i, tipo: 'plantio' },
+    // Manutenção (conserto, troca, revisão, lubrificação, lavagem)
+    { pattern: /manuten[çc][ãa]o|consert(ei|amos)|troca\s+(de\s+)?(bico|[óo]leo|rolamento)|revis[ãa]o|lubrifica[çc][ãa]o|lavagem/i, tipo: 'manutencao' },
+    // Capina
+    { pattern: /capina|capinei/i, tipo: 'capina' },
+    // Irrigação (irrigação, gotejo, aspersor, sangria)
+    { pattern: /irriga[çc][ãa]o|irrigar|irriguei|gotejo|aspersor|sangria/i, tipo: 'irrigacao' },
+    // Plantio (plantio, replantio)
+    { pattern: /plantio|plantar|replantio/i, tipo: 'plantio' },
+    // Preparo de solo
     { pattern: /preparo\s+(de\s+)?solo/i, tipo: 'preparo_solo' },
-    { pattern: /poda|podar/i, tipo: 'poda' },
+    // Poda (poda, desbrota, amarração)
+    { pattern: /poda|podar|desbrota|amarr[açã][ãa]o/i, tipo: 'poda' },
+    // Carreiro
+    { pattern: /carreiro/i, tipo: 'outros' },
+    // Coleta
+    { pattern: /coleta\s+(de\s+)?(amostra|solo|folha)/i, tipo: 'outros' },
+    // Controle de formiga
+    { pattern: /controle\s+(de\s+)?formiga/i, tipo: 'outros' },
+    // Cobertura morta
+    { pattern: /cobertura\s+morta/i, tipo: 'outros' },
+    // Armadilhas
+    { pattern: /armadilha/i, tipo: 'outros' },
   ];
   
   for (const { pattern, tipo } of patterns) {
@@ -307,13 +455,27 @@ function extractActivityType(message: string): string | null {
 
 function extractScreenRoute(message: string): { route: string; label: string } | null {
   const patterns = [
-    { pattern: /clima|tempo|previs[ãa]o/i, route: '/clima', label: 'Clima' },
-    { pattern: /relat[óo]rio/i, route: '/relatorios', label: 'Relatórios' },
+    { pattern: /clima|tempo|previs[ãa]o|alertas?\s+(do\s+)?tempo/i, route: '/clima', label: 'Clima' },
+    { pattern: /relat[óo]rio|relat[óo]rios/i, route: '/relatorios', label: 'Relatórios' },
     { pattern: /pre[çc]os?/i, route: '/precos', label: 'Preços' },
-    { pattern: /financeiro|finan[çc]as?/i, route: '/financeiro', label: 'Financeiro' },
+    { pattern: /financeiro|finan[çc]as?|despesas?|receita/i, route: '/financeiro', label: 'Financeiro' },
     { pattern: /talh[õo]es?/i, route: '/talhoes', label: 'Talhões' },
     { pattern: /fazendas?/i, route: '/fazendas', label: 'Fazendas' },
-    { pattern: /dashboard|in[íi]cio/i, route: '/', label: 'Dashboard' },
+    { pattern: /dashboard|in[íi]cio|painel\s+geral/i, route: '/', label: 'Dashboard' },
+    { pattern: /atividades?/i, route: '/talhoes', label: 'Atividades' },
+    { pattern: /plantios?/i, route: '/talhoes', label: 'Plantios' },
+    { pattern: /tarefas?\s+atrasadas?/i, route: '/', label: 'Dashboard' },
+    { pattern: /ocorr[êe]ncias?/i, route: '/talhoes', label: 'Ocorrências' },
+    { pattern: /calend[áa]rio/i, route: '/', label: 'Calendário' },
+    { pattern: /hist[óo]rico/i, route: '/talhoes', label: 'Histórico' },
+    { pattern: /custos?\s+por\s+talh[ãa]o/i, route: '/relatorios', label: 'Relatórios' },
+    { pattern: /consumo\s+(de\s+)?ia/i, route: '/configuracoes', label: 'Configurações' },
+    { pattern: /integra[çc][õo]es/i, route: '/configuracoes', label: 'Integrações' },
+    { pattern: /admin/i, route: '/admin', label: 'Admin' },
+    { pattern: /auditoria/i, route: '/admin/auditoria', label: 'Auditoria' },
+    { pattern: /v[íi]nculo\s+(do\s+)?agr[ôo]nomo/i, route: '/org/agronomists', label: 'Agrônomos' },
+    { pattern: /gerenciar\s+usu[áa]rios/i, route: '/org/users', label: 'Usuários' },
+    { pattern: /painel\s+(do\s+)?b2b/i, route: '/org', label: 'Painel B2B' },
   ];
   
   for (const { pattern, route, label } of patterns) {
@@ -324,11 +486,16 @@ function extractScreenRoute(message: string): { route: string; label: string } |
 
 function extractOccurrenceCategory(message: string): string {
   const patterns = [
-    { pattern: /praga|inseto|lagarta|percevejo|pulg[ãa]o|trip|mosca|[áa]caro|formiga|nematoide/i, category: 'praga' },
-    { pattern: /doen[çc]a|fungo|ferrugem|mofo|ant?racnose|m[íi]ldio|o[íi]dio|podrid[ãa]o/i, category: 'doenca' },
-    { pattern: /defici[êe]ncia|amarela|clorose|nutricional/i, category: 'deficiencia' },
-    { pattern: /geada|granizo|vento\s+forte|temporal/i, category: 'dano_climatico' },
-    { pattern: /erva\s+daninha|invasora/i, category: 'erva_daninha' },
+    // Pragas - expanded
+    { pattern: /praga|inseto|lagarta|percevejo|pulg[ãa]o|trip|mosca|[áa]caro|formiga|nematoide|broca|bicho/i, category: 'praga' },
+    // Doenças - expanded
+    { pattern: /doen[çc]a|fungo|ferrugem|mofo|ant?racnose|m[íi]ldio|o[íi]dio|podrid[ãa]o|necrose|teia|les[ãa]o/i, category: 'doenca' },
+    // Deficiência - expanded
+    { pattern: /defici[êe]ncia|amarela|clorose|nutricional|queimando\s+na\s+ponta|folha\s+enrolando/i, category: 'deficiencia' },
+    // Dano climático
+    { pattern: /geada|granizo|vento\s+forte|temporal|eros[ãa]o|encharcado|empoçando/i, category: 'dano_climatico' },
+    // Erva daninha
+    { pattern: /erva\s+daninha|invasora|mato\s+subiu/i, category: 'erva_daninha' },
   ];
   
   for (const { pattern, category } of patterns) {
@@ -338,19 +505,21 @@ function extractOccurrenceCategory(message: string): string {
 }
 
 function extractFinanceType(message: string): 'receita' | 'custo' {
-  if (/receita|vendi|recebi|entrada|faturamento/i.test(message)) return 'receita';
+  if (/receita|vendi|recebi|entrada|faturamento|venda\s+de/i.test(message)) return 'receita';
   return 'custo';
 }
 
 function extractFinanceCategory(message: string): string {
   const patterns = [
     { pattern: /insumo|semente|defensivo|fertilizante/i, category: 'insumo' },
-    { pattern: /m[ãa]o\s+de\s+obra|funcion[áa]rio|di[áa]ria/i, category: 'mao_obra' },
-    { pattern: /m[áa]quina|trator|combust[íi]vel|diesel/i, category: 'maquinas' },
+    { pattern: /m[ãa]o\s+de\s+obra|funcion[áa]rio|di[áa]ria|prestador/i, category: 'mao_obra' },
+    { pattern: /m[áa]quina|trator|combust[íi]vel|diesel|pe[çc]as?/i, category: 'maquinas' },
     { pattern: /energia|luz|eletricidade/i, category: 'energia' },
     { pattern: /transporte|frete/i, category: 'transporte' },
-    { pattern: /venda/i, category: 'venda' },
-    { pattern: /adubo|aduba[çc][ãa]o/i, category: 'adubacao' },
+    { pattern: /venda|vendi/i, category: 'venda' },
+    { pattern: /adubo|aduba[çc][ãa]o|calc[áa]rio/i, category: 'adubacao' },
+    { pattern: /luva|m[áa]scara|epi/i, category: 'outros' },
+    { pattern: /sacaria/i, category: 'outros' },
   ];
   
   for (const { pattern, category } of patterns) {
