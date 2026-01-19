@@ -120,7 +120,8 @@ const entitlementsCache = new Map<string, EntitlementsCacheEntry>();
 
 /**
  * Normalize flag value from various JSONB formats to a clean primitive
- * Handles: boolean, number, string, {enabled:X}, {value:X}, {is_enabled:X}, "true"/"false"
+ * Handles: boolean, number, string, {enabled:X}, {value:X}, {is_enabled:X}
+ * String values: "true"/"false"/"1"/"0"/"ativo"/"inativo"/"on"/"off"/"yes"/"no"
  */
 export function normalizeFlagValue(valueJson: unknown): boolean | number | string | undefined {
   // Null/undefined
@@ -135,11 +136,15 @@ export function normalizeFlagValue(valueJson: unknown): boolean | number | strin
   // String - check for boolean-like strings
   if (typeof valueJson === 'string') {
     const lower = valueJson.toLowerCase().trim();
-    if (lower === 'true') return true;
-    if (lower === 'false') return false;
+    
+    // Boolean-like strings
+    if (['true', '1', 'ativo', 'on', 'yes', 'sim', 'enabled'].includes(lower)) return true;
+    if (['false', '0', 'inativo', 'off', 'no', 'nao', 'não', 'disabled'].includes(lower)) return false;
+    
     // Could be a numeric string
     const num = Number(valueJson);
-    if (!isNaN(num)) return num;
+    if (!isNaN(num) && valueJson.trim() !== '') return num;
+    
     return valueJson;
   }
   
@@ -161,6 +166,24 @@ export function normalizeFlagValue(valueJson: unknown): boolean | number | strin
   
   // Unknown format - return undefined
   return undefined;
+}
+
+/**
+ * Normalize specifically to boolean (for ai_enabled, ai_admin_bypass, etc.)
+ */
+export function normalizeBooleanFlag(valueJson: unknown): boolean {
+  const normalized = normalizeFlagValue(valueJson);
+  return normalized === true;
+}
+
+/**
+ * Normalize specifically to number (for ai_daily_quota_*, etc.)
+ */
+export function normalizeNumericFlag(valueJson: unknown, fallback: number = 0): number {
+  const normalized = normalizeFlagValue(valueJson);
+  if (typeof normalized === 'number') return normalized;
+  if (typeof normalized === 'boolean') return normalized ? 1 : 0;
+  return fallback;
 }
 
 /**

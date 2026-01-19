@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getTodayBRT } from "../_shared/date.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +9,27 @@ const corsHeaders = {
 interface ResetRequest {
   user_id: string;
   workspace_id: string;
+}
+
+/**
+ * Get current date in BRT (America/Sao_Paulo) timezone.
+ * Returns YYYY-MM-DD format.
+ */
+function getTodayBRT(): string {
+  const now = new Date();
+  // BRT is UTC-3
+  const brtOffset = -3 * 60;
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+  const brtTime = new Date(utcTime + brtOffset * 60000);
+  return brtTime.toISOString().split('T')[0];
+}
+
+/**
+ * Get current date in UTC timezone.
+ * Returns YYYY-MM-DD format.
+ */
+function getTodayUTC(): string {
+  return new Date().toISOString().split('T')[0];
 }
 
 serve(async (req) => {
@@ -75,15 +95,19 @@ serve(async (req) => {
       });
     }
 
-    const today = getTodayBRT();
+    // Calculate BOTH days to cover timezone edge cases
+    const dayBrt = getTodayBRT();
+    const dayUtc = getTodayUTC();
+    
+    console.log('[ai-reset-today] Days to delete:', { dayBrt, dayUtc });
 
     // First, get count of records to delete (for audit)
     const { data: existingRecords, error: fetchError } = await supabase
       .from('ai_usage_log')
-      .select('id, source, requests')
+      .select('id, source, requests, day')
       .eq('workspace_id', workspace_id)
       .eq('user_id', user_id)
-      .eq('day', today);
+      .in('day', [dayBrt, dayUtc]);
 
     if (fetchError) {
       console.error('[ai-reset-today] Fetch error:', fetchError);
@@ -96,13 +120,13 @@ serve(async (req) => {
     const previousTotal = (existingRecords || []).reduce((sum, r) => sum + (r.requests || 0), 0);
     const recordCount = existingRecords?.length || 0;
 
-    // DELETE all records for today (regardless of source) to avoid mismatch
+    // DELETE all records for BOTH days (regardless of source) to avoid mismatch
     const { error: deleteError, count: deletedCount } = await supabase
       .from('ai_usage_log')
       .delete({ count: 'exact' })
       .eq('workspace_id', workspace_id)
       .eq('user_id', user_id)
-      .eq('day', today);
+      .in('day', [dayBrt, dayUtc]);
 
     if (deleteError) {
       console.error('[ai-reset-today] Delete error:', deleteError);
@@ -120,7 +144,8 @@ serve(async (req) => {
       target_id: user_id,
       metadata: {
         workspace_id,
-        day: today,
+        day_brt: dayBrt,
+        day_utc: dayUtc,
         previous_total: previousTotal,
         deleted_count: deletedCount ?? recordCount,
       },
@@ -135,6 +160,8 @@ serve(async (req) => {
         message: `Consumo de IA zerado para hoje`,
         previous_usage: previousTotal,
         deleted_count: deletedCount ?? recordCount,
+        day_brt: dayBrt,
+        day_utc: dayUtc,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

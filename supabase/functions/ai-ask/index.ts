@@ -290,7 +290,9 @@ interface AIDebugInfo {
   plan_used: 'free' | 'premium';
   limit_source: 'campaign' | 'workspace' | 'global' | 'default';
   bypass: boolean;
+  bypass_active: boolean; // Clearer indicator that quota is being bypassed
   is_superadmin: boolean;
+  ai_admin_bypass_flag: boolean; // Whether the flag itself is true
 }
 
 interface AIResponse {
@@ -652,6 +654,7 @@ interface QuotaResult {
   plan_used: 'free' | 'premium';
   limit_source: 'campaign' | 'workspace' | 'global' | 'default';
   is_superadmin: boolean;
+  ai_admin_bypass_flag: boolean; // Raw flag value
 }
 
 // deno-lint-ignore no-explicit-any
@@ -794,6 +797,7 @@ async function checkQuotaWithDebug(supabase: any, workspaceId: string, userId: s
     plan_used: planUsed,
     limit_source: limitSource,
     is_superadmin: isSuperadmin,
+    ai_admin_bypass_flag: aiAdminBypass,
   };
 }
 
@@ -933,7 +937,9 @@ serve(async (req) => {
           plan_used: quotaInfo.plan_used,
           limit_source: quotaInfo.limit_source,
           bypass: quotaInfo.bypass,
+          bypass_active: quotaInfo.bypass,
           is_superadmin: quotaInfo.is_superadmin,
+          ai_admin_bypass_flag: quotaInfo.ai_admin_bypass_flag,
         } : undefined;
         
         const response: AIResponse = {
@@ -1411,7 +1417,9 @@ Use emojis. Termine com próximos passos.`;
           plan_used: quotaInfo.plan_used,
           limit_source: quotaInfo.limit_source,
           bypass: quotaInfo.bypass,
+          bypass_active: quotaInfo.bypass,
           is_superadmin: quotaInfo.is_superadmin,
+          ai_admin_bypass_flag: quotaInfo.ai_admin_bypass_flag,
         };
       }
     }
