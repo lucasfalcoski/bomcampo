@@ -78,7 +78,7 @@ interface UseIAgronomoOptions {
 export function useIAgronomo(options: UseIAgronomoOptions = {}) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { canUseAIFeature, quota, aiAccess, workspaceId: entitlementWorkspaceId } = useEntitlements({ 
+  const { canUseAIFeature, quota, aiAccess, workspaceId: entitlementWorkspaceId, loading: entitlementsLoading } = useEntitlements({ 
     workspaceId: options.workspaceId 
   });
   
@@ -91,6 +91,8 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
 
   // Get the reason for AI access denial
   const aiAccessReason = aiAccess?.reason;
+  const aiDebug = aiAccess?.debug;
+  const aiDebugReason = aiAccess?.debug_reason;
 
   // Load existing conversation on mount
   useEffect(() => {
@@ -330,6 +332,9 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
     remainingQuota: quota?.remaining,
     canUseAI: canUseAIFeature,
     aiAccessReason,
+    aiDebug,
+    aiDebugReason,
+    entitlementsLoading,
     sendMessage,
     uploadPhoto,
     clearHistory,
