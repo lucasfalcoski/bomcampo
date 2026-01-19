@@ -5,8 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Sprout } from 'lucide-react';
+import { Sprout, Loader2 } from 'lucide-react';
 import { loginSchema, signupSchema, getFirstError } from '@/lib/validation/schemas';
 
 export default function Auth() {
@@ -16,6 +24,9 @@ export default function Auth() {
   const [nome, setNome] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; nome?: string }>({});
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -167,6 +178,15 @@ export default function Auth() {
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-xs text-muted-foreground hover:text-primary"
+                >
+                  Esqueci minha senha
+                </button>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
@@ -207,6 +227,73 @@ export default function Auth() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Recuperar Senha</DialogTitle>
+            <DialogDescription>
+              Digite seu e-mail para receber um link de redefinição de senha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgotEmail">E-mail</Label>
+              <Input
+                id="forgotEmail"
+                type="email"
+                placeholder="seu@email.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowForgotPassword(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!forgotEmail) return;
+                setForgotLoading(true);
+                try {
+                  const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) throw error;
+                  toast({
+                    title: 'E-mail enviado',
+                    description: 'Se existir uma conta com esse e-mail, você receberá um link para redefinir sua senha.',
+                  });
+                  setShowForgotPassword(false);
+                  setForgotEmail('');
+                } catch (err: any) {
+                  toast({
+                    title: 'Erro',
+                    description: 'Não foi possível enviar o e-mail. Tente novamente.',
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setForgotLoading(false);
+                }
+              }}
+              disabled={forgotLoading || !forgotEmail}
+            >
+              {forgotLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar link'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
