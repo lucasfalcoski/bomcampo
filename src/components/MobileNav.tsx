@@ -8,7 +8,7 @@ const navItems = [
   { label: 'Dashboard', to: '/', icon: Home, exact: true },
   { label: 'Fazendas', to: '/fazendas', icon: MapPin },
   { label: 'Clima', to: '/clima', icon: Cloud },
-  { label: 'Talhões', to: '/talhoes', icon: Sprout },
+  { label: 'AI Agrônomo', to: '/ai', icon: Bot, hasSparkle: true },
   { label: 'Mais', to: '/mais', icon: MoreHorizontal, isMore: true },
 ];
 
@@ -21,10 +21,10 @@ interface MoreItem {
 }
 
 const moreItems: MoreItem[] = [
+  { label: 'Talhões', to: '/talhoes', icon: Sprout, description: 'Gestão de talhões' },
   { label: 'Preços', to: '/precos', icon: TrendingUp, description: 'Cotações de commodities' },
   { label: 'Financeiro', to: '/financeiro', icon: DollarSign, description: 'Gestão de custos e receitas' },
   { label: 'Relatórios', to: '/relatorios', icon: FileText, description: 'Análises e exportações' },
-  { label: 'Fala AI Agrônomo', to: '/ai', icon: Bot, description: 'Assistente com IA', secondaryIcon: Sparkles },
   { label: 'Configurações', to: '/configuracoes', icon: Settings, description: 'Preferências do app' },
 ];
 
@@ -85,13 +85,16 @@ export function MobileBottomNav() {
               >
                 {/* Active indicator background */}
                 <div className={cn(
-                  "flex items-center justify-center rounded-full p-1.5 transition-colors",
+                  "flex items-center justify-center rounded-full p-1.5 transition-colors relative",
                   active ? "bg-primary/15" : "bg-transparent"
                 )}>
                   <item.icon className={cn(
                     "h-5 w-5 transition-transform",
                     active && "scale-110"
                   )} />
+                  {item.hasSparkle && (
+                    <Sparkles className="h-2.5 w-2.5 absolute -top-0.5 -right-0.5 text-amber-500" />
+                  )}
                 </div>
                 <span className={cn(
                   "leading-none transition-colors",
