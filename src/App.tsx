@@ -27,6 +27,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Precos from "./pages/Precos";
 import Mais from "./pages/Mais";
 import FalaAgronomo from "./pages/FalaAgronomo";
+import IAgronomoChat from "./pages/IAgronomoChat";
 import AgronomistPanel from "./pages/partner/AgronomistPanel";
 import ConversationDetail from "./pages/partner/ConversationDetail";
 import Parceiros from "./pages/admin/Parceiros";
@@ -242,6 +243,16 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <FalaAgronomo />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <IAgronomoChat />
                   </AppLayout>
                 </ProtectedRoute>
               }

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.ai-usage-increment]
 verify_jwt = true
+
+[functions.ai-ask]
+verify_jwt = true
