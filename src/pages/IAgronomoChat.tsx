@@ -215,6 +215,7 @@ export default function IAgronomoChat() {
     aiDebug,
     aiDebugReason,
     workspaceId,
+    entitlementsLoading,
     sendMessage,
     uploadPhoto,
     clearHistory,
@@ -564,8 +565,16 @@ export default function IAgronomoChat() {
 
       {/* Input area - sticky bottom */}
       <div className="flex-shrink-0 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {/* Quota limit / disabled state */}
-        {!canUseAI && (
+        {/* Loading entitlements */}
+        {entitlementsLoading && (
+          <div className="mb-3 p-3 bg-muted rounded-lg flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Carregando permissões...</span>
+          </div>
+        )}
+
+        {/* Quota limit / disabled state - only show after loading completes */}
+        {!entitlementsLoading && !canUseAI && (
           <div className="mb-3 p-3 bg-muted rounded-lg space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 text-sm">
@@ -575,13 +584,26 @@ export default function IAgronomoChat() {
                     ? 'IA desativada pelo administrador'
                     : aiAccessReason === 'no_workspace'
                     ? 'Nenhum workspace configurado'
+                    : aiAccessReason === 'fetch_error'
+                    ? 'Não foi possível carregar permissões'
                     : aiAccessReason === 'plan_limit'
                     ? 'Plano não inclui IA'
                     : 'Limite diário atingido'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {aiAccessReason !== 'disabled' && aiAccessReason !== 'no_workspace' && (
+                {aiAccessReason === 'fetch_error' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-xs"
+                    onClick={() => window.location.reload()}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Tentar novamente
+                  </Button>
+                )}
+                {aiAccessReason !== 'disabled' && aiAccessReason !== 'no_workspace' && aiAccessReason !== 'fetch_error' && (
                   <Button 
                     variant="outline" 
                     size="sm" 
