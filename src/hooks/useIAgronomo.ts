@@ -299,11 +299,16 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
         throw error;
       }
 
-      const { data: urlData } = supabase.storage
+      // Use signed URL (1 hour expiry) instead of public URL for security
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('uploads')
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 3600); // 1 hour expiry
 
-      return urlData.publicUrl;
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw signedUrlError || new Error('Failed to generate signed URL');
+      }
+
+      return signedUrlData.signedUrl;
 
     } catch (error) {
       console.error('[useIAgronomo] Upload error:', error);
