@@ -278,7 +278,6 @@ function classifyIntent(message: string): Intent {
     const patterns = INTENT_PATTERNS[intent];
     for (const pattern of patterns) {
       if (pattern.test(message)) return intent;
-      }
     }
   }
   
