@@ -83,14 +83,20 @@ export function usePopList(category?: string, search?: string): UsePopListResult
   return { pops, loading, error, refetch: fetchPops };
 }
 
-// Hook para detalhe de um POP com steps
-export function usePopDetail(popId: string | undefined): UsePopDetailResult {
+// Helper to check if string is a valid UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+// Hook para detalhe de um POP com steps - supports both ID and slug
+export function usePopDetail(popIdOrSlug: string | undefined): UsePopDetailResult {
   const [pop, setPop] = useState<Pop | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!popId) {
+    if (!popIdOrSlug) {
       setLoading(false);
       return;
     }
@@ -100,20 +106,41 @@ export function usePopDetail(popId: string | undefined): UsePopDetailResult {
       setError(null);
 
       try {
-        // Fetch POP
-        const { data: popData, error: popError } = await supabase
-          .from('pops')
-          .select('*')
-          .eq('id', popId)
-          .single();
-
-        if (popError) throw popError;
+        let popData = null;
+        
+        // Check if it's a UUID (ID) or a slug
+        if (isUUID(popIdOrSlug)) {
+          // Fetch by ID
+          const { data, error: popError } = await supabase
+            .from('pops')
+            .select('*')
+            .eq('id', popIdOrSlug)
+            .single();
+          
+          if (popError) throw popError;
+          popData = data;
+        } else {
+          // Fetch by slug - try global POPs first
+          const { data, error: slugError } = await supabase
+            .from('pops')
+            .select('*')
+            .eq('slug', popIdOrSlug)
+            .limit(1)
+            .maybeSingle();
+          
+          if (slugError) throw slugError;
+          
+          if (!data) {
+            throw new Error('POP não encontrado');
+          }
+          popData = data;
+        }
 
         // Fetch steps
         const { data: stepsData, error: stepsError } = await supabase
           .from('pop_steps')
           .select('*')
-          .eq('pop_id', popId)
+          .eq('pop_id', popData.id)
           .order('step_order');
 
         if (stepsError) throw stepsError;
@@ -130,7 +157,7 @@ export function usePopDetail(popId: string | undefined): UsePopDetailResult {
     };
 
     fetchPop();
-  }, [popId]);
+  }, [popIdOrSlug]);
 
   return { pop, loading, error };
 }

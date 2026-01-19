@@ -60,11 +60,16 @@ function ActionButton({ action, onEscalate }: ActionButtonProps) {
 
   const handleClick = () => {
     switch (action.type) {
-      // Open POP detail page
+      // Open POP detail page - support both pop_id and pop_slug
       case 'open_pop': {
         const popId = action.payload?.pop_id || action.id;
+        const popSlug = action.payload?.pop_slug as string;
+        
         if (popId) {
           navigate(`/pops/${popId}`);
+        } else if (popSlug) {
+          // Navigate by slug - the PopDetail page will handle lookup
+          navigate(`/pops/${popSlug}`);
         } else {
           toast({
             title: 'Erro',
