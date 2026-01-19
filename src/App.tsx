@@ -30,6 +30,12 @@ import FalaAgronomo from "./pages/FalaAgronomo";
 import IAgronomoChat from "./pages/IAgronomoChat";
 import AgronomistPanel from "./pages/partner/AgronomistPanel";
 import ConversationDetail from "./pages/partner/ConversationDetail";
+import OrgHome from "./pages/org/OrgHome";
+import OrgUsers from "./pages/org/OrgUsers";
+import OrgFarms from "./pages/org/OrgFarms";
+import FarmAgronomists from "./pages/org/FarmAgronomists";
+import OrgUsage from "./pages/org/OrgUsage";
+import AgronomistInbox from "./pages/agronomist/AgronomistInbox";
 import Parceiros from "./pages/admin/Parceiros";
 import Auditoria from "./pages/admin/Auditoria";
 import VisaoGeral from "./pages/admin/VisaoGeral";
@@ -253,6 +259,66 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <IAgronomoChat />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <OrgHome />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/users"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <OrgUsers />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/farms"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <OrgFarms />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/farms/:id/agronomists"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <FarmAgronomists />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/org/usage"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <OrgUsage />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agronomist/inbox"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AgronomistInbox />
                   </AppLayout>
                 </ProtectedRoute>
               }

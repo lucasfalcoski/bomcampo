@@ -1,4 +1,4 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList, LayoutDashboard, Flag, Megaphone, Plug, Building2, Bot } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList, LayoutDashboard, Flag, Megaphone, Plug, Building2, Bot, Inbox } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
@@ -28,6 +28,8 @@ const menuItems = [
   { title: 'Relatórios', url: '/relatorios', icon: FileText },
   { title: 'Fala IAgrônomo', url: '/ai', icon: Bot },
   { title: 'Fala Agrônomo', url: '/fala-agronomo', icon: MessageSquare },
+  { title: 'Meu Workspace', url: '/org', icon: Building2 },
+  { title: 'Caixa do Agrônomo', url: '/agronomist/inbox', icon: Inbox },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
 
