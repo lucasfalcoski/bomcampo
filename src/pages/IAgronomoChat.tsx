@@ -48,6 +48,7 @@ interface ActionButtonProps {
     type: string;
     label?: string;
     id?: string;
+    payload?: Record<string, unknown>;
   };
   onEscalate?: () => void;
 }
@@ -65,6 +66,11 @@ function ActionButton({ action, onEscalate }: ActionButtonProps) {
         break;
       case 'open_pricing':
         navigate('/configuracoes');
+        break;
+      case 'open_screen':
+        if (action.payload?.route) {
+          navigate(action.payload.route as string);
+        }
         break;
       case 'escalate_agronomist':
         onEscalate?.();

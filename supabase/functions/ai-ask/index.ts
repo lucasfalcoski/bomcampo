@@ -54,6 +54,26 @@ const INTENT_PATTERNS = {
     /criar\s+(atividade|registro)/i,
     /nova\s+atividade/i,
   ],
+  weather: [
+    /clima/i,
+    /tempo/i,
+    /previs[ãa]o/i,
+    /chuva/i,
+    /chover/i,
+    /vai\s+chover/i,
+    /temperatura/i,
+    /umidade/i,
+    /vento/i,
+    /precipita[çc][ãa]o/i,
+    /condi[çc][õo]es?\s+(clim[aá]tica|meteorol[oó]gica)/i,
+    /meteorologia/i,
+    /tempo\s+(amanh[ãa]|hoje|semana)/i,
+    /calor/i,
+    /frio/i,
+    /geada/i,
+    /seca/i,
+    /estia(gem)?/i,
+  ],
   operational: [
     /relat[óo]rio/i,
     /exportar/i,
@@ -125,7 +145,7 @@ interface AIRequest {
 }
 
 interface AIAction {
-  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'confirm_action' | 'edit_draft' | 'cancel_draft' | 'send_to_agronomist' | 'open_pricing';
+  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'confirm_action' | 'edit_draft' | 'cancel_draft' | 'send_to_agronomist' | 'open_pricing' | 'open_screen';
   id?: string;
   payload?: Record<string, unknown>;
   label?: string;
@@ -198,11 +218,11 @@ function checkBlockedContent(message: string): string | null {
   return null;
 }
 
-function classifyIntent(message: string): 'register_activity' | 'operational' | 'zoning' | 'ndvi' | 'agronomic' | 'general' {
+function classifyIntent(message: string): 'register_activity' | 'weather' | 'operational' | 'zoning' | 'ndvi' | 'agronomic' | 'general' {
   for (const [intent, patterns] of Object.entries(INTENT_PATTERNS)) {
     for (const pattern of patterns) {
       if (pattern.test(message)) {
-        return intent as 'register_activity' | 'operational' | 'zoning' | 'ndvi' | 'agronomic';
+        return intent as 'register_activity' | 'weather' | 'operational' | 'zoning' | 'ndvi' | 'agronomic';
       }
     }
   }
@@ -1209,6 +1229,58 @@ ESTILO:
 
       return new Response(
         JSON.stringify(responseWithFlow),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle weather intent with direct module reference
+    if (intent === 'weather') {
+      decisionRoute = 'weather_module';
+      
+      const weatherResponse: AIResponse = {
+        assistant_text: `🌤️ **Consulte o módulo Clima do Bom Campo!**
+
+O módulo Clima oferece informações completas para sua lavoura:
+
+📊 **Previsão detalhada** - Temperatura, precipitação e umidade para os próximos dias
+🌧️ **Alertas de chuva** - Notificações personalizadas para sua região
+📈 **Histórico climático** - Análise de períodos anteriores
+🚜 **Janelas de pulverização** - Condições ideais para aplicação
+
+Clique abaixo para acessar as informações climáticas da sua fazenda.`,
+        actions: [
+          { 
+            type: 'open_screen', 
+            payload: { route: '/clima' },
+            label: '☁️ Acessar Módulo Clima',
+          },
+        ],
+        flags: {
+          decision_route: 'weather_module',
+        },
+        safety: { blocked: false, suggest_escalate: false },
+      };
+
+      // Save to conversation
+      if (workspace_id) {
+        await saveConversation(
+          supabase,
+          user.id,
+          workspace_id,
+          conversation_id || null,
+          user_message,
+          weatherResponse.assistant_text,
+          weatherResponse.flags
+        );
+      }
+
+      console.log('[ai-ask] Response sent:', {
+        route: 'weather_module',
+        sources: ['internal'],
+      });
+
+      return new Response(
+        JSON.stringify(weatherResponse),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
