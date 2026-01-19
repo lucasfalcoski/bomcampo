@@ -36,6 +36,13 @@ import Conteudo from "./pages/admin/Conteudo";
 import Videos from "./pages/admin/Videos";
 import FalaAgronomoAdmin from "./pages/admin/FalaAgronomoAdmin";
 import Alertas from "./pages/admin/Alertas";
+import SuperadminDashboard from "./pages/superadmin/Dashboard";
+import SuperadminWorkspaces from "./pages/superadmin/Workspaces";
+import SuperadminUsers from "./pages/superadmin/Users";
+import SuperadminFlags from "./pages/superadmin/Flags";
+import SuperadminCampaigns from "./pages/superadmin/Campaigns";
+import SuperadminIntegrations from "./pages/superadmin/Integrations";
+import SuperadminAudit from "./pages/superadmin/Audit";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -261,6 +268,76 @@ const App = () => (
             />
             <Route
               path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminDashboard />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/workspaces"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminWorkspaces />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminUsers />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/flags"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminFlags />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/campaigns"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminCampaigns />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/integrations"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminIntegrations />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/audit"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminAudit />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/visao-geral"
               element={
                 <ProtectedRoute>
                   <AppLayout>
