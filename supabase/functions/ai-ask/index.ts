@@ -125,7 +125,7 @@ interface SafetyInfo {
 interface StructuredAIOutput {
   assistant_text: string;
   actions: Array<{ type: string; payload?: Record<string, unknown> }>;
-  route: 'internal' | 'general_agro' | 'blocked' | 'quota_block';
+  route: 'internal' | 'general_agro' | 'blocked' | 'quota_block' | 'fallback_text';
   safety: SafetyInfo;
 }
 
@@ -139,6 +139,7 @@ interface AIResponse {
     decision_route?: string;
     sources_used?: string[];
     ai_actions_enabled?: boolean;
+    parse_mode?: ParseMode;
   };
   safety?: SafetyInfo;
 }
@@ -453,7 +454,7 @@ const structuredOutputTool = {
             properties: {
               type: {
                 type: "string",
-                enum: ["open_report", "create_task", "escalate_agronomist", "view_content"],
+                enum: ["open_report", "create_task", "escalate_agronomist", "view_content", "start_action"],
                 description: "Action type to suggest"
               },
               payload: {
@@ -466,9 +467,33 @@ const structuredOutputTool = {
           },
           description: "Suggested actions for the user"
         },
+        action_flow: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Unique ID for the action flow" },
+            title: { type: "string", description: "Title for the action dialog" },
+            fields: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  key: { type: "string" },
+                  label: { type: "string" },
+                  type: { type: "string", enum: ["text", "select", "date", "number"] },
+                  value: {},
+                  options: { type: "array" }
+                },
+                required: ["key", "label", "type"]
+              }
+            },
+            confirm_label: { type: "string" },
+            cancel_label: { type: "string" }
+          },
+          description: "Optional action flow for guided data collection"
+        },
         route: {
           type: "string",
-          enum: ["internal", "general_agro", "blocked", "quota_block"],
+          enum: ["internal", "general_agro", "blocked", "quota_block", "fallback_text"],
           description: "The routing decision for this response"
         },
         safety: {
@@ -487,7 +512,7 @@ const structuredOutputTool = {
               description: "Whether to suggest escalating to a human agronomist"
             }
           },
-          required: ["blocked", "suggest_escalate"],
+          required: ["blocked"],
           additionalProperties: false
         }
       },
@@ -497,12 +522,114 @@ const structuredOutputTool = {
   }
 };
 
+// Type for parse mode tracking
+type ParseMode = "schema_ok" | "extracted_json" | "retry_ok" | "fallback_text";
+
+// Helper to extract JSON from text
+function extractJsonFromText(text: string): Record<string, unknown> | null {
+  // Try to find JSON object in text
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Validate and normalize parsed output
+function normalizeOutput(parsed: Record<string, unknown>): StructuredAIOutput {
+  const validRoutes = ['internal', 'general_agro', 'blocked', 'quota_block', 'fallback_text'] as const;
+  const route = typeof parsed.route === 'string' && validRoutes.includes(parsed.route as typeof validRoutes[number]) 
+    ? parsed.route as typeof validRoutes[number]
+    : 'general_agro';
+  
+  const safetyData = parsed.safety as Record<string, unknown> | undefined;
+  
+  return {
+    assistant_text: typeof parsed.assistant_text === 'string' ? parsed.assistant_text : String(parsed.assistant_text || ''),
+    actions: Array.isArray(parsed.actions) ? parsed.actions.map((a: Record<string, unknown>) => ({
+      type: String(a?.type || 'escalate_agronomist'),
+      payload: a?.payload as Record<string, unknown> | undefined
+    })) : [],
+    route,
+    safety: {
+      blocked: Boolean(safetyData?.blocked),
+      reason: safetyData?.reason as string | undefined,
+      suggest_escalate: Boolean(safetyData?.suggest_escalate)
+    }
+  };
+}
+
+// Type for AI API response
+interface AIAPIResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+      tool_calls?: Array<{
+        function?: {
+          arguments?: string;
+        };
+      }>;
+    };
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+  };
+}
+
+// Make a single AI call
+async function makeAICall(
+  apiKey: string,
+  messages: Array<{ role: string; content: unknown }>,
+  useTools: boolean
+): Promise<{ data: AIAPIResponse; tokensIn: number; tokensOut: number }> {
+  const requestBody: Record<string, unknown> = {
+    model: "openai/gpt-5-mini",
+    messages,
+    max_completion_tokens: 1024,
+  };
+
+  if (useTools) {
+    requestBody.tools = [structuredOutputTool];
+    requestBody.tool_choice = { type: "function", function: { name: "respond_to_user" } };
+  }
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[ai-ask] AI gateway error:', response.status, errorText);
+    
+    if (response.status === 429) throw new Error("rate_limited");
+    if (response.status === 402) throw new Error("payment_required");
+    throw new Error("AI gateway error");
+  }
+
+  const data: AIAPIResponse = await response.json();
+  return {
+    data,
+    tokensIn: data.usage?.prompt_tokens || 0,
+    tokensOut: data.usage?.completion_tokens || 0
+  };
+}
+
 async function callLovableAI(
   systemPrompt: string,
   userMessage: string,
   photoUrl?: string,
   useStructuredOutput: boolean = true
-): Promise<{ output: StructuredAIOutput; tokensIn: number; tokensOut: number }> {
+): Promise<{ output: StructuredAIOutput; tokensIn: number; tokensOut: number; parseMode: ParseMode }> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
     throw new Error("LOVABLE_API_KEY not configured");
@@ -525,92 +652,138 @@ async function callLovableAI(
     messages.push({ role: "user", content: userMessage });
   }
 
-  // Build request body - use openai/gpt-5-mini with tool calling for structured output
-  const requestBody: Record<string, unknown> = {
-    model: "openai/gpt-5-mini",
-    messages,
-    max_completion_tokens: 1024,
-  };
-
-  if (useStructuredOutput) {
-    requestBody.tools = [structuredOutputTool];
-    requestBody.tool_choice = { type: "function", function: { name: "respond_to_user" } };
-  }
-
   console.log('[ai-ask] Calling Lovable AI with model: openai/gpt-5-mini');
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
+  let totalTokensIn = 0;
+  let totalTokensOut = 0;
+  let parseMode: ParseMode = "schema_ok";
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[ai-ask] AI gateway error:', response.status, errorText);
-    
-    if (response.status === 429) {
-      throw new Error("rate_limited");
-    }
-    if (response.status === 402) {
-      throw new Error("payment_required");
-    }
-    throw new Error("AI gateway error");
-  }
+  // First attempt with tool calling
+  const { data, tokensIn, tokensOut } = await makeAICall(LOVABLE_API_KEY, messages, useStructuredOutput);
+  totalTokensIn += tokensIn;
+  totalTokensOut += tokensOut;
 
-  const data = await response.json();
-  const tokensIn = data.usage?.prompt_tokens || 0;
-  const tokensOut = data.usage?.completion_tokens || 0;
+  let output: StructuredAIOutput | null = null;
 
-  // Parse structured output from tool call
-  let output: StructuredAIOutput;
-  
   if (useStructuredOutput) {
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    
+    // Strategy 1: Parse tool call arguments directly
     if (toolCall?.function?.arguments) {
       try {
-        output = JSON.parse(toolCall.function.arguments);
+        const parsed = JSON.parse(toolCall.function.arguments as string);
+        output = normalizeOutput(parsed);
+        parseMode = "schema_ok";
+        console.log('[ai-ask] Parsed tool call successfully');
       } catch (parseError) {
-        console.error('[ai-ask] Failed to parse tool call arguments:', parseError);
-        // Fallback to plain text response
-        const text = data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
-        output = {
-          assistant_text: text,
-          actions: [],
-          route: 'general_agro',
-          safety: { blocked: false, suggest_escalate: false }
-        };
+        console.warn('[ai-ask] Failed to parse tool call arguments:', parseError);
+        
+        // Strategy 2: Try to extract JSON from malformed arguments
+        const extracted = extractJsonFromText(toolCall.function.arguments as string);
+        if (extracted) {
+          output = normalizeOutput(extracted);
+          parseMode = "extracted_json";
+          console.log('[ai-ask] Extracted JSON from tool arguments');
+        }
       }
-    } else {
-      // Fallback: no tool call in response
-      const text = data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
+    }
+    
+    // Strategy 3: Check for plain text response and try to extract JSON
+    if (!output) {
+      const textContent = data.choices?.[0]?.message?.content as string;
+      if (textContent) {
+        const extracted = extractJsonFromText(textContent);
+        if (extracted) {
+          output = normalizeOutput(extracted);
+          parseMode = "extracted_json";
+          console.log('[ai-ask] Extracted JSON from text content');
+        }
+      }
+    }
+
+    // Strategy 4: Retry with explicit JSON request
+    if (!output) {
+      console.log('[ai-ask] Retrying with explicit JSON request...');
+      
+      const retryMessages = [
+        ...messages,
+        { role: "assistant", content: data.choices?.[0]?.message?.content || "" },
+        { role: "user", content: "Por favor, retorne sua resposta APENAS como JSON válido seguindo exatamente este schema: { assistant_text: string, actions: array, route: string, safety: { blocked: boolean, suggest_escalate: boolean } }" }
+      ];
+
+      try {
+        const { data: retryData, tokensIn: retryIn, tokensOut: retryOut } = await makeAICall(
+          LOVABLE_API_KEY, 
+          retryMessages, 
+          false // Don't use tools for retry
+        );
+        totalTokensIn += retryIn;
+        totalTokensOut += retryOut;
+
+        const retryText = retryData.choices?.[0]?.message?.content as string;
+        if (retryText) {
+          const extracted = extractJsonFromText(retryText);
+          if (extracted) {
+            output = normalizeOutput(extracted);
+            parseMode = "retry_ok";
+            console.log('[ai-ask] Successfully extracted JSON from retry');
+          }
+        }
+      } catch (retryError) {
+        console.error('[ai-ask] Retry failed:', retryError);
+      }
+    }
+
+    // Strategy 5: Fallback to raw text with helpful guidance
+    if (!output) {
+      const rawText = data.choices?.[0]?.message?.content as string || 
+                     (data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments as string) ||
+                     "";
+      
+      // Clean up any partial JSON from the text
+      const cleanedText = rawText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .replace(/^\{[\s\S]*\}$/m, '') // Remove JSON blocks
+        .trim();
+
+      const fallbackText = cleanedText || 
+        "Entendi sua pergunta! Para te ajudar melhor, sugiro:\n\n" +
+        "📋 Registre observações no app para acompanhamento\n" +
+        "👨‍🌾 Consulte um agrônomo para orientação específica\n" +
+        "📊 Verifique os relatórios disponíveis";
+
       output = {
-        assistant_text: text,
-        actions: [],
-        route: 'general_agro',
-        safety: { blocked: false, suggest_escalate: false }
+        assistant_text: fallbackText,
+        actions: [
+          { type: 'escalate_agronomist' as const }
+        ],
+        route: 'fallback_text',
+        safety: { blocked: false, suggest_escalate: true }
       };
+      parseMode = "fallback_text";
+      console.log('[ai-ask] Using fallback text response');
     }
   } else {
-    const text = data.choices?.[0]?.message?.content || "";
+    // Non-structured output mode
+    const text = data.choices?.[0]?.message?.content as string || "";
     output = {
       assistant_text: text,
       actions: [],
       route: 'general_agro',
       safety: { blocked: false, suggest_escalate: false }
     };
+    parseMode = "schema_ok";
   }
 
   console.log('[ai-ask] AI response parsed:', { 
     route: output.route, 
     actionsCount: output.actions?.length || 0,
-    safetyBlocked: output.safety?.blocked 
+    safetyBlocked: output.safety?.blocked,
+    parseMode
   });
 
-  return { output, tokensIn, tokensOut };
+  return { output, tokensIn: totalTokensIn, tokensOut: totalTokensOut, parseMode };
 }
 
 serve(async (req) => {
@@ -833,7 +1006,7 @@ ESTILO:
 
     // 5. Call LLM with structured output
     try {
-      const { output, tokensIn, tokensOut } = await callLovableAI(
+      const { output, tokensIn, tokensOut, parseMode } = await callLovableAI(
         systemPrompt,
         user_message,
         photo_url
@@ -914,6 +1087,7 @@ ESTILO:
           decision_route: output.route || decisionRoute,
           sources_used: sourcesUsed,
           ai_actions_enabled: canDoActions,
+          parse_mode: parseMode,
         },
         safety: output.safety,
       };
