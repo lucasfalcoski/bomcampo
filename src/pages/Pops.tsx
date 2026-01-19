@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 
 const CATEGORIES = [
-  { value: '', label: 'Todas as categorias' },
+  { value: 'all', label: 'Todas as categorias' },
   { value: 'Aplicação', label: 'Aplicação' },
   { value: 'Monitoramento', label: 'Monitoramento' },
   { value: 'Irrigação', label: 'Irrigação' },
@@ -41,10 +41,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function Pops() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState('all');
   
   const { pops, loading, error } = usePopList(
-    category || undefined,
+    category === 'all' ? undefined : category,
     search || undefined
   );
 
