@@ -91,18 +91,19 @@ const INTENT_PATTERNS = {
 interface AIRequest {
   workspace_id?: string;
   farm_id?: string;
+  plot_id?: string;
   user_message: string;
   photo_url?: string;
   conversation_id?: string;
-  action_draft_id?: string; // For continuing an action flow
+  action_draft_id?: string;
 }
 
 interface AIAction {
-  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'confirm_action' | 'edit_draft' | 'cancel_draft' | 'send_to_agronomist';
+  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'confirm_action' | 'edit_draft' | 'cancel_draft' | 'send_to_agronomist' | 'open_pricing';
   id?: string;
   payload?: Record<string, unknown>;
   label?: string;
-  action_type?: string; // For start_action
+  action_type?: string;
 }
 
 interface ActionFlow {
@@ -112,7 +113,20 @@ interface ActionFlow {
   next_question?: string;
   missing_fields?: string[];
   summary_preview?: string;
-  ui_buttons?: string[]; // 'confirm' | 'edit' | 'cancel' | 'open_full_form' | 'send_to_agronomist'
+  ui_buttons?: string[];
+}
+
+interface SafetyInfo {
+  blocked: boolean;
+  reason?: string;
+  suggest_escalate: boolean;
+}
+
+interface StructuredAIOutput {
+  assistant_text: string;
+  actions: Array<{ type: string; payload?: Record<string, unknown> }>;
+  route: 'internal' | 'general_agro' | 'blocked' | 'quota_block';
+  safety: SafetyInfo;
 }
 
 interface AIResponse {
@@ -126,6 +140,7 @@ interface AIResponse {
     sources_used?: string[];
     ai_actions_enabled?: boolean;
   };
+  safety?: SafetyInfo;
 }
 
 function checkBlockedContent(message: string): string | null {
@@ -171,7 +186,6 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
     ai_actions_enabled_premium: true,
   };
 
-  // Get global flags
   const { data: globalFlags } = await supabase
     .from('feature_flags_global')
     .select('key, value_json');
@@ -179,7 +193,6 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
   if (globalFlags) {
     for (const flag of globalFlags) {
       const val = flag.value_json;
-      // Handle both boolean and object formats
       if (typeof val === 'boolean') {
         flags[flag.key] = val;
       } else if (typeof val === 'object' && val !== null) {
@@ -191,17 +204,14 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
   }
 
   if (workspaceId) {
-    // Get workspace plan
     const plan = await getWorkspacePlan(supabase, workspaceId);
     flags.plan = plan;
     flags.ai_daily_quota = plan === 'enterprise' ? 500 : plan === 'premium' ? 150 : 10;
     
-    // Enable AI actions for premium plans if flag is set
     if ((plan === 'premium' || plan === 'enterprise') && flags.ai_actions_enabled_premium) {
       flags.ai_actions_enabled = true;
     }
 
-    // Get workspace-specific flags
     const { data: wsFlags } = await supabase
       .from('feature_flags_workspace')
       .select('key, value_json')
@@ -224,7 +234,6 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
   return flags;
 }
 
-// Check if user can perform an action based on role and flags
 // deno-lint-ignore no-explicit-any
 async function canPerformAction(
   supabase: any,
@@ -232,14 +241,12 @@ async function canPerformAction(
   userId: string,
   _actionType: string
 ): Promise<boolean> {
-  // Get effective flags
   const flags = await getEffectiveFlags(supabase, workspaceId);
   
   if (!flags.ai_actions_enabled) {
     return false;
   }
 
-  // Check workspace role if workspace exists
   if (workspaceId) {
     const { data: membership } = await supabase
       .from('workspace_members')
@@ -248,7 +255,6 @@ async function canPerformAction(
       .eq('user_id', userId)
       .maybeSingle();
 
-    // Only owner, manager, and operator can perform actions
     const allowedRoles = ['owner', 'manager', 'operator'];
     if (membership && !allowedRoles.includes(membership.role)) {
       return false;
@@ -283,7 +289,6 @@ async function incrementUsage(
 ): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
 
-  // Try to update existing record first
   const { data: existing } = await supabase
     .from('ai_usage_log')
     .select('id, requests, tokens_in, tokens_out')
@@ -329,7 +334,6 @@ async function saveConversation(
 ): Promise<string> {
   let convId = conversationId;
 
-  // Create conversation if needed
   if (!convId) {
     const { data: conv, error: convError } = await supabase
       .from('ai_conversations')
@@ -347,14 +351,12 @@ async function saveConversation(
     convId = conv.id;
   }
 
-  // Save user message
   await supabase.from('ai_messages').insert({
     conversation_id: convId,
     role: 'user',
     content: userMessage,
   });
 
-  // Save assistant message
   await supabase.from('ai_messages').insert({
     conversation_id: convId,
     role: 'assistant',
@@ -365,11 +367,76 @@ async function saveConversation(
   return convId!;
 }
 
+// Tool definition for structured output
+const structuredOutputTool = {
+  type: "function" as const,
+  function: {
+    name: "respond_to_user",
+    description: "Provide a structured response to the user's agricultural question",
+    parameters: {
+      type: "object",
+      properties: {
+        assistant_text: {
+          type: "string",
+          description: "The response text to show the user. Should be helpful, concise, and use emojis when appropriate."
+        },
+        actions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["open_report", "create_task", "escalate_agronomist", "view_content"],
+                description: "Action type to suggest"
+              },
+              payload: {
+                type: "object",
+                description: "Optional payload for the action"
+              }
+            },
+            required: ["type"],
+            additionalProperties: false
+          },
+          description: "Suggested actions for the user"
+        },
+        route: {
+          type: "string",
+          enum: ["internal", "general_agro", "blocked", "quota_block"],
+          description: "The routing decision for this response"
+        },
+        safety: {
+          type: "object",
+          properties: {
+            blocked: {
+              type: "boolean",
+              description: "Whether the response was blocked due to safety concerns"
+            },
+            reason: {
+              type: "string",
+              description: "Reason for blocking, if applicable"
+            },
+            suggest_escalate: {
+              type: "boolean",
+              description: "Whether to suggest escalating to a human agronomist"
+            }
+          },
+          required: ["blocked", "suggest_escalate"],
+          additionalProperties: false
+        }
+      },
+      required: ["assistant_text", "actions", "route", "safety"],
+      additionalProperties: false
+    }
+  }
+};
+
 async function callLovableAI(
   systemPrompt: string,
   userMessage: string,
-  photoUrl?: string
-): Promise<{ text: string; tokensIn: number; tokensOut: number }> {
+  photoUrl?: string,
+  useStructuredOutput: boolean = true
+): Promise<{ output: StructuredAIOutput; tokensIn: number; tokensOut: number }> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
     throw new Error("LOVABLE_API_KEY not configured");
@@ -392,17 +459,27 @@ async function callLovableAI(
     messages.push({ role: "user", content: userMessage });
   }
 
+  // Build request body - use openai/gpt-5-mini with tool calling for structured output
+  const requestBody: Record<string, unknown> = {
+    model: "openai/gpt-5-mini",
+    messages,
+    max_tokens: 1024,
+  };
+
+  if (useStructuredOutput) {
+    requestBody.tools = [structuredOutputTool];
+    requestBody.tool_choice = { type: "function", function: { name: "respond_to_user" } };
+  }
+
+  console.log('[ai-ask] Calling Lovable AI with model: openai/gpt-5-mini');
+
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages,
-      max_tokens: 1024,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -419,11 +496,55 @@ async function callLovableAI(
   }
 
   const data = await response.json();
-  const text = data.choices?.[0]?.message?.content || "";
   const tokensIn = data.usage?.prompt_tokens || 0;
   const tokensOut = data.usage?.completion_tokens || 0;
 
-  return { text, tokensIn, tokensOut };
+  // Parse structured output from tool call
+  let output: StructuredAIOutput;
+  
+  if (useStructuredOutput) {
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      try {
+        output = JSON.parse(toolCall.function.arguments);
+      } catch (parseError) {
+        console.error('[ai-ask] Failed to parse tool call arguments:', parseError);
+        // Fallback to plain text response
+        const text = data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
+        output = {
+          assistant_text: text,
+          actions: [],
+          route: 'general_agro',
+          safety: { blocked: false, suggest_escalate: false }
+        };
+      }
+    } else {
+      // Fallback: no tool call in response
+      const text = data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
+      output = {
+        assistant_text: text,
+        actions: [],
+        route: 'general_agro',
+        safety: { blocked: false, suggest_escalate: false }
+      };
+    }
+  } else {
+    const text = data.choices?.[0]?.message?.content || "";
+    output = {
+      assistant_text: text,
+      actions: [],
+      route: 'general_agro',
+      safety: { blocked: false, suggest_escalate: false }
+    };
+  }
+
+  console.log('[ai-ask] AI response parsed:', { 
+    route: output.route, 
+    actionsCount: output.actions?.length || 0,
+    safetyBlocked: output.safety?.blocked 
+  });
+
+  return { output, tokensIn, tokensOut };
 }
 
 serve(async (req) => {
@@ -440,12 +561,10 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get user from token
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
@@ -457,7 +576,7 @@ serve(async (req) => {
     }
 
     const body: AIRequest = await req.json();
-    const { workspace_id, farm_id, user_message, photo_url, conversation_id } = body;
+    const { workspace_id, farm_id, plot_id, user_message, photo_url, conversation_id } = body;
 
     if (!user_message?.trim()) {
       return new Response(
@@ -470,27 +589,38 @@ serve(async (req) => {
       userId: user.id, 
       workspaceId: workspace_id, 
       farmId: farm_id,
+      plotId: plot_id,
       hasPhoto: !!photo_url,
       messageLength: user_message.length 
     });
 
-    // 1. Check for blocked content (guardrails)
+    // 1. Check for blocked content (hard guardrails - deterministic)
     const blockedReason = checkBlockedContent(user_message);
     if (blockedReason) {
       console.log('[ai-ask] Blocked content detected:', blockedReason);
       
+      // Log guardrail block (no tokens, just request count)
+      if (workspace_id) {
+        await incrementUsage(supabase, workspace_id, user.id, 'guardrail_block', 0, 0);
+      }
+
       const response: AIResponse = {
-        assistant_text: `⚠️ **Não posso fornecer prescrição ou recomendação técnica específica sobre "${blockedReason}".**\n\nPor razões de segurança e regulatórias, informações sobre doses, misturas de tanque, períodos de carência ou recomendações de produtos específicos devem ser fornecidas por um agrônomo responsável técnico.\n\n**O que você pode fazer:**\n- Consultar o agrônomo responsável pela sua fazenda\n- Verificar a bula/receituário do produto\n- Consultar o MAPA para informações oficiais`,
+        assistant_text: `⚠️ **Não posso fornecer prescrição ou recomendação técnica específica sobre "${blockedReason}".**\n\nPor razões de segurança e regulatórias, informações sobre doses, misturas de tanque, períodos de carência ou recomendações de produtos específicos devem ser fornecidas por um agrônomo responsável técnico.\n\n**O que você pode fazer:**\n✅ Consultar o agrônomo responsável pela sua fazenda\n✅ Verificar a bula/receituário do produto\n✅ Consultar o MAPA para informações oficiais\n\n📋 **Próximos passos sugeridos:**\n1. Faça uma inspeção detalhada da área\n2. Tire fotos dos sintomas encontrados\n3. Registre as ocorrências no sistema\n4. Envie o relatório para o agrônomo`,
         actions: [
           {
             type: 'escalate_agronomist',
-            label: 'Enviar ao Agrônomo',
+            label: 'Perguntar ao Agrônomo',
           },
         ],
         flags: {
           show_escalate_to_agronomist: true,
           blocked_reason: blockedReason,
           decision_route: 'blocked_guardrail',
+        },
+        safety: {
+          blocked: true,
+          reason: blockedReason,
+          suggest_escalate: true,
         },
       };
 
@@ -503,7 +633,7 @@ serve(async (req) => {
           conversation_id || null,
           user_message,
           response.assistant_text,
-          response.flags
+          { ...response.flags, safety: response.safety }
         );
       }
 
@@ -513,17 +643,19 @@ serve(async (req) => {
       );
     }
 
-    // 2. Check quotas
+    // 2. Check quotas and feature flags
     if (workspace_id) {
       const flags = await getEffectiveFlags(supabase, workspace_id);
       
       if (!flags.ai_enabled) {
+        const response: AIResponse = {
+          assistant_text: "O assistente de IA não está habilitado para sua conta. Entre em contato com o administrador.",
+          actions: [],
+          flags: { decision_route: 'disabled' },
+          safety: { blocked: true, reason: 'AI disabled', suggest_escalate: false },
+        };
         return new Response(
-          JSON.stringify({
-            assistant_text: "O assistente de IA não está habilitado para sua conta. Entre em contato com o administrador.",
-            actions: [],
-            flags: { decision_route: 'disabled' },
-          }),
+          JSON.stringify(response),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -535,13 +667,14 @@ serve(async (req) => {
         const response: AIResponse = {
           assistant_text: `📊 **Você atingiu o limite diário de ${limit} consultas ao assistente.**\n\nSeu limite será renovado amanhã. Para aumentar seu limite, considere fazer upgrade do seu plano.\n\n**Enquanto isso, você pode:**\n- Consultar nossos conteúdos técnicos\n- Enviar sua dúvida para um agrônomo`,
           actions: [
-            { type: 'view_content', label: 'Ver Conteúdos' },
-            { type: 'escalate_agronomist', label: 'Falar com Agrônomo' },
+            { type: 'open_pricing', label: 'Ver Planos' },
+            { type: 'escalate_agronomist', label: 'Perguntar ao Agrônomo' },
           ],
           flags: {
             show_escalate_to_agronomist: true,
-            decision_route: 'quota_exceeded',
+            decision_route: 'quota_block',
           },
+          safety: { blocked: false, suggest_escalate: true },
         };
 
         return new Response(
@@ -551,155 +684,119 @@ serve(async (req) => {
       }
     }
 
-    // 3. Classify intent and route
+    // 3. Classify intent and build context
     const intent = classifyIntent(user_message);
     const flags = workspace_id ? await getEffectiveFlags(supabase, workspace_id) : {};
     const isPremiumPlan = flags.plan === 'premium' || flags.plan === 'enterprise';
     
     let decisionRoute = 'llm_general';
-    const sourcesUsed: string[] = [];
-    let systemPrompt = '';
+    const sourcesUsed: string[] = ['openai/gpt-5-mini'];
     let finalResponse: AIResponse;
 
     console.log('[ai-ask] Intent:', intent, 'Premium:', isPremiumPlan);
 
-    // 4. Route based on intent
+    // 4. Build system prompt based on intent and context
+    const contextInfo = farm_id 
+      ? `O usuário está no contexto da fazenda ID: ${farm_id}${plot_id ? ` e talhão ID: ${plot_id}` : ''}.`
+      : 'O usuário não selecionou uma fazenda específica.';
+
+    // Base system prompt with strict guardrails
+    const baseSystemPrompt = `Você é o assistente agronômico do BomCampo, uma plataforma de gestão agrícola brasileira.
+
+CONTEXTO:
+${contextInfo}
+${photo_url ? 'O usuário enviou uma foto para análise.' : ''}
+
+REGRAS ESTRITAS DE SEGURANÇA (OBRIGATÓRIAS):
+1. NUNCA prescreva doses de produtos (L/ha, mL/ha, kg/ha, gramas/ha)
+2. NUNCA recomende misturas de tanque ou combinações de produtos
+3. NUNCA informe períodos de carência ou intervalos de segurança
+4. NUNCA diga "aplicar hoje" ou recomende aplicação imediata
+5. NUNCA recomende marcas comerciais ou produtos específicos
+6. NUNCA forneça receitas de defensivos agrícolas
+
+ABORDAGEM SEGURA:
+- Para identificação: Descreva sintomas e possíveis causas
+- Para manejo: Sugira práticas gerais (monitoramento, registro, inspeção)
+- Para tratamento: SEMPRE oriente "consulte o agrônomo RT para prescrição"
+- Para decisões: Sugira registrar no sistema, criar tarefa, ou escalar para agrônomo
+
+AÇÕES DO APP (sugira quando apropriado):
+- escalate_agronomist: Quando a dúvida precisa de um profissional
+- create_task: Quando o usuário deve agendar algo
+- open_report: Quando há relatórios relevantes
+
+ESTILO:
+- Respostas curtas e objetivas (máximo 3-4 parágrafos)
+- Use emojis para facilitar leitura
+- Sempre termine com próximos passos concretos`;
+
+    let systemPrompt = baseSystemPrompt;
+
+    // Add intent-specific instructions
     if (intent === 'operational') {
-      decisionRoute = 'operational_internal';
-      systemPrompt = `Você é o assistente do BomCampo, uma plataforma de gestão agrícola.
-      
-Responda perguntas sobre:
-- Como usar a plataforma (cadastros, relatórios, talhões, atividades)
-- Onde encontrar funcionalidades
-- Como configurar preferências
-
-Seja direto e prático. Use emojis para deixar a resposta mais amigável.
-Sempre que possível, indique onde na plataforma o usuário pode encontrar o que precisa.
-
-Se a pergunta não for sobre o sistema, responda educadamente que você pode ajudar com dúvidas sobre a plataforma.`;
-
+      decisionRoute = 'internal';
+      systemPrompt += `\n\nFOCO DESTA CONVERSA: Ajudar com uso da plataforma BomCampo (cadastros, relatórios, configurações, navegação).`;
     } else if (intent === 'zoning' && flags.agritec_enabled && isPremiumPlan) {
       decisionRoute = 'agritec';
       sourcesUsed.push('agritec');
-      // In production, call Agritec API here
-      systemPrompt = `Você é um especialista em zoneamento agrícola.
-      
-Forneça informações sobre:
-- Janelas de plantio recomendadas
-- Cultivares indicadas para a região
-- Riscos climáticos
-
-Seja técnico mas acessível. Cite fontes quando possível (ex: ZARC/MAPA).
-
-IMPORTANTE: Nunca recomende doses ou produtos específicos.`;
-
+      systemPrompt += `\n\nFOCO DESTA CONVERSA: Zoneamento agrícola, janelas de plantio, cultivares indicadas. Cite ZARC/MAPA quando aplicável.`;
     } else if (intent === 'ndvi' && flags.satveg_enabled && isPremiumPlan) {
       decisionRoute = 'satveg';
       sourcesUsed.push('satveg');
-      // In production, call SATVeg API here
-      systemPrompt = `Você é um especialista em sensoriamento remoto agrícola.
-      
-Ajude com:
-- Interpretação de índices de vegetação (NDVI, EVI)
-- Análise de vigor vegetativo
-- Identificação de variabilidade espacial
-
-Explique de forma prática como usar essas informações no manejo.`;
-
-    } else if ((intent === 'agronomic' || intent === 'general') && flags.respondeagro_enabled) {
-      decisionRoute = 'respondeagro_llm';
-      sourcesUsed.push('respondeagro');
-      // In production, call RespondeAgro API here, then synthesize with LLM
-      systemPrompt = `Você é um assistente agronômico do BomCampo.
-      
-Sua missão é ajudar produtores com dúvidas sobre:
-- Identificação de pragas e doenças (apenas descrição, NÃO prescreva tratamento)
-- Deficiências nutricionais (apenas identificação)
-- Boas práticas de manejo
-- Fenologia e estádios de desenvolvimento
-
-REGRAS ESTRITAS:
-1. NUNCA recomende doses, produtos ou misturas específicas
-2. NUNCA diga "aplicar X litros/ha" ou similar
-3. NUNCA recomende marcas comerciais
-4. Para tratamentos, sempre oriente: "consulte o agrônomo responsável técnico"
-
-Se uma foto foi enviada, descreva o que você observa e possíveis causas, mas NÃO prescreva tratamento.
-
-Seja técnico mas acessível. Use emojis para facilitar a leitura.`;
-
-    } else {
-      // General fallback
-      systemPrompt = `Você é um assistente do BomCampo, uma plataforma de gestão agrícola.
-      
-Ajude o usuário com sua dúvida de forma educada e prestativa.
-
-REGRAS:
-1. NUNCA recomende doses, produtos ou misturas específicas
-2. Para questões técnicas complexas, sugira consultar um agrônomo
-3. Seja amigável e use emojis
-
-Se a pergunta for muito específica sobre prescrição técnica, explique que você não pode fornecer essa informação e ofereça alternativas.`;
+      systemPrompt += `\n\nFOCO DESTA CONVERSA: Sensoriamento remoto, índices de vegetação (NDVI, EVI), análise de vigor.`;
+    } else if (intent === 'agronomic' || photo_url) {
+      decisionRoute = 'general_agro';
+      systemPrompt += `\n\nFOCO DESTA CONVERSA: Dúvida agronômica. ${photo_url ? 'ANALISE A FOTO enviada e descreva o que observa, possíveis causas, mas NÃO prescreva tratamento.' : 'Ajude com identificação e próximos passos seguros.'}`;
     }
 
-    // 5. Call LLM
+    // 5. Call LLM with structured output
     try {
-      const { text, tokensIn, tokensOut } = await callLovableAI(
+      const { output, tokensIn, tokensOut } = await callLovableAI(
         systemPrompt,
         user_message,
         photo_url
       );
 
-      sourcesUsed.push('lovable_ai');
+      // Build actions from AI output + additional context
+      const actions: AIAction[] = (output.actions || []).map(a => ({
+        type: a.type as AIAction['type'],
+        payload: a.payload,
+        label: a.type === 'escalate_agronomist' ? 'Perguntar ao Agrônomo' :
+               a.type === 'open_report' ? 'Ver Relatórios' :
+               a.type === 'create_task' ? 'Criar Tarefa' :
+               a.type === 'view_content' ? 'Ver Conteúdos' : undefined,
+      }));
 
-      // Build actions based on response
-      const actions: AIAction[] = [];
-      
-      // Add escalate option for agronomic questions
-      if (intent === 'agronomic' || photo_url) {
+      // Add escalate option for agronomic questions if not already present
+      if ((intent === 'agronomic' || photo_url || output.safety?.suggest_escalate) && 
+          !actions.some(a => a.type === 'escalate_agronomist')) {
         actions.push({
           type: 'escalate_agronomist',
-          label: 'Falar com Agrônomo',
-        });
-      }
-
-      // Add report action for operational questions
-      if (intent === 'operational' && /relat[óo]rio/i.test(user_message)) {
-        actions.push({
-          type: 'open_report',
-          id: 'reports',
-          label: 'Ver Relatórios',
+          label: 'Perguntar ao Agrônomo',
         });
       }
 
       // Check if AI actions are enabled and add action buttons
       const canDoActions = await canPerformAction(supabase, workspace_id || null, user.id, 'any');
       if (canDoActions) {
-        // Detect action intents in the message
-        if (/criar\s+(plantio|cultivo)|plantar/i.test(user_message)) {
+        if (/criar\s+(plantio|cultivo)|plantar/i.test(user_message) && !actions.some(a => a.type === 'start_action')) {
           actions.push({
             type: 'start_action',
             action_type: 'create_planting',
             label: '➕ Criar Plantio',
           });
         }
-        if (/registrar\s+atividade|criar\s+atividade|nova\s+atividade/i.test(user_message)) {
+        if (/registrar\s+atividade|criar\s+atividade|nova\s+atividade/i.test(user_message) && !actions.some(a => a.type === 'start_action')) {
           actions.push({
             type: 'start_action',
             action_type: 'create_activity',
             label: '➕ Registrar Atividade',
           });
         }
-        if (/agendar|programar|marcar/i.test(user_message)) {
-          actions.push({
-            type: 'start_action',
-            action_type: 'schedule_task',
-            label: '📅 Agendar Tarefa',
-          });
-        }
       }
 
-      // Determine action_flow if there's a pending draft
+      // Handle action drafts
       let actionFlow: ActionFlow | undefined;
       if (body.action_draft_id) {
         const { data: draft } = await supabase
@@ -728,20 +825,21 @@ Se a pergunta for muito específica sobre prescrição técnica, explique que vo
       }
 
       finalResponse = {
-        assistant_text: text,
+        assistant_text: output.assistant_text,
         actions,
         action_flow: actionFlow,
         flags: {
-          show_escalate_to_agronomist: intent === 'agronomic' || !!photo_url,
-          decision_route: decisionRoute,
+          show_escalate_to_agronomist: output.safety?.suggest_escalate || intent === 'agronomic' || !!photo_url,
+          decision_route: output.route || decisionRoute,
           sources_used: sourcesUsed,
           ai_actions_enabled: canDoActions,
         },
+        safety: output.safety,
       };
 
       // 6. Record usage
       if (workspace_id) {
-        await incrementUsage(supabase, workspace_id, user.id, 'lovable_ai', tokensIn, tokensOut);
+        await incrementUsage(supabase, workspace_id, user.id, 'openai_gpt5mini', tokensIn, tokensOut);
       }
 
       // 7. Save conversation
@@ -752,8 +850,8 @@ Se a pergunta for muito específica sobre prescrição técnica, explique que vo
           workspace_id,
           conversation_id || null,
           user_message,
-          text,
-          finalResponse.flags
+          output.assistant_text,
+          { ...finalResponse.flags, safety: output.safety }
         );
       }
 
@@ -777,19 +875,21 @@ Se a pergunta for muito específica sobre prescrição técnica, explique que vo
       finalResponse = {
         assistant_text: "Desculpe, estou com dificuldades técnicas no momento. Por favor, tente novamente mais tarde ou envie sua dúvida para um agrônomo.",
         actions: [
-          { type: 'escalate_agronomist', label: 'Falar com Agrônomo' },
+          { type: 'escalate_agronomist', label: 'Perguntar ao Agrônomo' },
         ],
         flags: {
           show_escalate_to_agronomist: true,
           decision_route: 'error_fallback',
         },
+        safety: { blocked: false, suggest_escalate: true },
       };
     }
 
     console.log('[ai-ask] Response sent:', { 
       route: finalResponse.flags.decision_route,
       sources: finalResponse.flags.sources_used,
-      actionsCount: finalResponse.actions.length 
+      actionsCount: finalResponse.actions.length,
+      safetyBlocked: finalResponse.safety?.blocked
     });
 
     return new Response(

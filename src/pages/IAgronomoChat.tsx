@@ -48,9 +48,10 @@ interface ActionButtonProps {
     label?: string;
     id?: string;
   };
+  onEscalate?: () => void;
 }
 
-function ActionButton({ action }: ActionButtonProps) {
+function ActionButton({ action, onEscalate }: ActionButtonProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -61,8 +62,19 @@ function ActionButton({ action }: ActionButtonProps) {
       case 'view_content':
         navigate('/ai');
         break;
+      case 'open_pricing':
+        navigate('/configuracoes');
+        break;
       case 'escalate_agronomist':
-        // Handled internally now
+        onEscalate?.();
+        break;
+      case 'create_task':
+        // TODO: Open task creation modal
+        console.log('Create task action:', action);
+        break;
+      case 'start_action':
+        // TODO: Start action flow
+        console.log('Start action:', action);
         break;
       default:
         console.log('Action clicked:', action);
@@ -396,7 +408,11 @@ export default function IAgronomoChat() {
                   {msg.actions && msg.actions.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
                       {msg.actions.map((action, idx) => (
-                        <ActionButton key={idx} action={action} />
+                        <ActionButton 
+                          key={idx} 
+                          action={action} 
+                          onEscalate={canEscalate ? handleOpenEscalate : undefined}
+                        />
                       ))}
                     </div>
                   )}

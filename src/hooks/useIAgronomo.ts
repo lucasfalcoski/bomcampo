@@ -9,10 +9,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useEntitlements } from '@/hooks/useEntitlements';
 
 interface AIAction {
-  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content';
+  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'open_pricing';
   id?: string;
   payload?: Record<string, unknown>;
   label?: string;
+  action_type?: string;
+}
+
+interface SafetyInfo {
+  blocked: boolean;
+  reason?: string;
+  suggest_escalate: boolean;
 }
 
 interface AIResponse {
@@ -24,6 +31,7 @@ interface AIResponse {
     decision_route?: string;
     sources_used?: string[];
   };
+  safety?: SafetyInfo;
 }
 
 interface ChatMessage {
@@ -32,6 +40,7 @@ interface ChatMessage {
   content: string;
   actions?: AIAction[];
   flags?: AIResponse['flags'];
+  safety?: SafetyInfo;
   createdAt: Date;
 }
 
@@ -155,7 +164,7 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
             user_message: content,
             photo_url: photoUrl,
             conversation_id: conversationId,
-          }),
+          } as Record<string, unknown>),
         }
       );
 
@@ -200,6 +209,7 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
         content: data.assistant_text,
         actions: data.actions,
         flags: data.flags,
+        safety: data.safety,
         createdAt: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
