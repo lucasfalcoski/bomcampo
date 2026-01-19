@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useEntitlements } from '@/hooks/useEntitlements';
 
 interface AIAction {
-  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'open_pricing';
+  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'open_pricing' | 'open_screen';
   id?: string;
   payload?: Record<string, unknown>;
   label?: string;
