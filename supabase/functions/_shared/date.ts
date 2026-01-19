@@ -19,6 +19,14 @@ export function getTodayBRT(): string {
 }
 
 /**
+ * Get current date in UTC timezone.
+ * Returns YYYY-MM-DD format.
+ */
+export function getTodayUTC(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
  * Fixed source identifier for AI usage tracking.
  * All AI interactions should use this source to ensure consistent quota tracking.
  */

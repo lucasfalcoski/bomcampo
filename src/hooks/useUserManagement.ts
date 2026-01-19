@@ -293,9 +293,14 @@ export function useUserManagement() {
 
       const result = await response.json();
       
+      // Show detailed toast with day info
+      const dayInfo = result.day_brt && result.day_utc && result.day_brt !== result.day_utc 
+        ? ` (BRT: ${result.day_brt}, UTC: ${result.day_utc})` 
+        : '';
+      
       toast({ 
         title: 'Consumo de IA zerado (hoje)', 
-        description: `${result.previous_usage || 0} consultas removidas.` 
+        description: `${result.deleted_count || 0} registro(s) removido(s), ${result.previous_usage || 0} consulta(s)${dayInfo}` 
       });
       return true;
     } catch (err: unknown) {
