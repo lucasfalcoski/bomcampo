@@ -38,6 +38,7 @@ interface ChatMessage {
 interface UseIAgronomoOptions {
   workspaceId?: string;
   farmId?: string;
+  plotId?: string;
 }
 
 export function useIAgronomo(options: UseIAgronomoOptions = {}) {
@@ -150,6 +151,7 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
           body: JSON.stringify({
             workspace_id: effectiveWorkspaceId,
             farm_id: options.farmId,
+            plot_id: options.plotId,
             user_message: content,
             photo_url: photoUrl,
             conversation_id: conversationId,

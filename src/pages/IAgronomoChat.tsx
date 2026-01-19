@@ -20,12 +20,14 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useIAgronomo } from '@/hooks/useIAgronomo';
 import { useAgronomistEscalation } from '@/hooks/useAgronomistEscalation';
+import { useChatContext } from '@/hooks/useChatContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { ChatContextSelector, ChatContextBadge } from '@/components/ChatContextSelector';
 import {
   Dialog,
   DialogContent,
@@ -34,13 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface ActionButtonProps {
   action: {
@@ -59,10 +54,10 @@ function ActionButton({ action }: ActionButtonProps) {
         navigate('/relatorios');
         break;
       case 'view_content':
-        navigate('/fala-agronomo');
+        navigate('/ai');
         break;
       case 'escalate_agronomist':
-        navigate('/fala-agronomo');
+        // Handled internally now
         break;
       default:
         console.log('Action clicked:', action);
@@ -82,6 +77,22 @@ function ActionButton({ action }: ActionButtonProps) {
 }
 
 export default function IAgronomoChat() {
+  // Context selection (farm/plot)
+  const {
+    farms,
+    plots,
+    selectedFarmId,
+    selectedPlotId,
+    selectedFarm,
+    selectedPlot,
+    loading: loadingContext,
+    hasNoFarms,
+    escalationContext,
+    selectFarm,
+    selectPlot,
+  } = useChatContext();
+
+  // AI chat with context
   const {
     messages,
     sending,
@@ -91,22 +102,24 @@ export default function IAgronomoChat() {
     sendMessage,
     uploadPhoto,
     clearHistory,
-  } = useIAgronomo();
+  } = useIAgronomo({
+    farmId: selectedFarmId,
+    plotId: selectedPlotId,
+  });
 
+  // Escalation - depends on selected farm
   const {
     loading: loadingEscalation,
     hasLinkedAgronomist,
-    userFarms,
     sending: sendingEscalation,
     sendToAgronomist,
-  } = useAgronomistEscalation();
+  } = useAgronomistEscalation({ farmId: selectedFarmId });
 
   const [input, setInput] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [escalateOpen, setEscalateOpen] = useState(false);
   const [escalateQuestion, setEscalateQuestion] = useState('');
-  const [escalateFarmId, setEscalateFarmId] = useState<string>('');
   const [escalationSent, setEscalationSent] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -178,10 +191,7 @@ export default function IAgronomoChat() {
   };
 
   const handleOpenEscalate = () => {
-    // Pre-fill with last AI response context if available
-    const lastAIMessage = [...messages].reverse().find(m => m.role === 'assistant');
     setEscalateQuestion('');
-    setEscalateFarmId(userFarms[0]?.id || '');
     setEscalationSent(false);
     setEscalateOpen(true);
   };
@@ -194,13 +204,17 @@ export default function IAgronomoChat() {
     
     const success = await sendToAgronomist(escalateQuestion, {
       aiResponse: lastAIMessage?.content,
-      farmId: escalateFarmId || undefined,
+      farmId: selectedFarmId || undefined,
+      ...escalationContext,
     });
     
     if (success) {
       setEscalationSent(true);
     }
   };
+
+  // Can escalate only if farm is selected and has linked agronomist
+  const canEscalate = !loadingEscalation && hasLinkedAgronomist && !!selectedFarmId;
 
   return (
     <div className="container max-w-3xl mx-auto py-4 px-4 md:py-6 h-[calc(100vh-8rem)] flex flex-col">
@@ -226,15 +240,15 @@ export default function IAgronomoChat() {
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Escalate to agronomist button */}
-            {!loadingEscalation && hasLinkedAgronomist && (
+            {/* Escalate to agronomist button - only if farm selected & has agronomist */}
+            {canEscalate && (
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={handleOpenEscalate}
               >
                 <UserCheck className="h-4 w-4 mr-1" />
-                Perguntar ao Agrônomo
+                <span className="hidden sm:inline">Perguntar ao</span> Agrônomo
               </Button>
             )}
             
@@ -246,10 +260,26 @@ export default function IAgronomoChat() {
                 className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4 mr-1" />
-                Limpar
+                <span className="hidden sm:inline">Limpar</span>
               </Button>
             )}
           </div>
+        </div>
+
+        {/* Context selector (farm/plot) */}
+        <div className="mt-3">
+          <ChatContextSelector
+            farms={farms}
+            plots={plots}
+            selectedFarmId={selectedFarmId}
+            selectedPlotId={selectedPlotId}
+            onFarmChange={selectFarm}
+            onPlotChange={selectPlot}
+            loading={loadingContext}
+            hasNoFarms={hasNoFarms}
+            selectedFarm={selectedFarm}
+            selectedPlot={selectedPlot}
+          />
         </div>
 
         {/* Quota indicator */}
@@ -482,21 +512,16 @@ export default function IAgronomoChat() {
             </div>
           ) : (
             <>
-              {userFarms.length > 1 && (
+              {/* Context info badge */}
+              {selectedFarm && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Fazenda</label>
-                  <Select value={escalateFarmId} onValueChange={setEscalateFarmId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma fazenda" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userFarms.map((farm) => (
-                        <SelectItem key={farm.id} value={farm.id}>
-                          {farm.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium">Contexto</label>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+                    <ChatContextBadge 
+                      farmName={selectedFarm.nome} 
+                      plotName={selectedPlot?.nome} 
+                    />
+                  </div>
                 </div>
               )}
               

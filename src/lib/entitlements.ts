@@ -58,9 +58,19 @@ const PLAN_QUOTAS: Record<WorkspacePlan, number> = {
 /**
  * Parse flag value from JSONB to typed value
  */
-function parseFlagValue(valueJson: Record<string, unknown>): boolean | number | string {
-  if ('enabled' in valueJson) return valueJson.enabled as boolean;
-  if ('value' in valueJson) return valueJson.value as number | string;
+function parseFlagValue(valueJson: unknown): boolean | number | string {
+  // Handle primitive values directly
+  if (typeof valueJson === 'boolean') return valueJson;
+  if (typeof valueJson === 'number') return valueJson;
+  if (typeof valueJson === 'string') return valueJson;
+  
+  // Handle object format { enabled: true } or { value: X }
+  if (valueJson && typeof valueJson === 'object') {
+    const obj = valueJson as Record<string, unknown>;
+    if ('enabled' in obj) return obj.enabled as boolean;
+    if ('value' in obj) return obj.value as number | string;
+  }
+  
   return false;
 }
 
