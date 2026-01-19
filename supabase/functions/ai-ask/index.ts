@@ -164,6 +164,66 @@ function classifyIntent(message: string): 'operational' | 'zoning' | 'ndvi' | 'a
   return 'general';
 }
 
+// Helper to get current date in BRT (America/Sao_Paulo)
+function getTodayBRT(): string {
+  const now = new Date();
+  const brtOffset = -3 * 60; // BRT is UTC-3
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+  const brtTime = new Date(utcTime + brtOffset * 60000);
+  return brtTime.toISOString().split('T')[0];
+}
+
+// Helper to safely parse numeric values from flags
+function parseNumericFlag(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && !isNaN(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!isNaN(parsed)) return parsed;
+    console.warn('[ai-ask] Could not parse numeric flag from string:', value, '- using fallback:', fallback);
+    return fallback;
+  }
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    if ('value' in obj) {
+      const parsed = Number(obj.value);
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+  console.warn('[ai-ask] Could not parse numeric flag:', value, '- using fallback:', fallback);
+  return fallback;
+}
+
+// Helper to safely parse boolean values from flags
+function parseBooleanFlag(value: unknown, fallback: boolean = false): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.toLowerCase() === 'true';
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    if ('enabled' in obj) return obj.enabled === true;
+    if ('value' in obj) return obj.value === true;
+  }
+  return fallback;
+}
+
+// Check if user is a superadmin
+// deno-lint-ignore no-explicit-any
+async function isSuperadmin(supabase: any, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('user_system_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'superadmin')
+    .maybeSingle();
+  
+  if (error) {
+    console.error('[ai-ask] Error checking superadmin role:', error);
+    return false;
+  }
+  return !!data;
+}
+
 // deno-lint-ignore no-explicit-any
 async function getWorkspacePlan(supabase: any, workspaceId: string): Promise<string> {
   const { data } = await supabase
@@ -179,6 +239,7 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
   const flags: Record<string, unknown> = {
     ai_enabled: true,
     ai_daily_quota: 10,
+    ai_admin_bypass: false,
     respondeagro_enabled: true,
     agritec_enabled: false,
     satveg_enabled: false,
@@ -193,12 +254,12 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
   if (globalFlags) {
     for (const flag of globalFlags) {
       const val = flag.value_json;
-      if (typeof val === 'boolean') {
-        flags[flag.key] = val;
-      } else if (typeof val === 'object' && val !== null) {
-        flags[flag.key] = (val as Record<string, unknown>)?.enabled ?? (val as Record<string, unknown>)?.value ?? false;
+      // Handle numeric flags
+      if (flag.key.includes('quota') || flag.key.includes('limit')) {
+        flags[flag.key] = parseNumericFlag(val, flags[flag.key] as number || 10);
       } else {
-        flags[flag.key] = val === 'true';
+        // Handle boolean/other flags
+        flags[flag.key] = parseBooleanFlag(val, false);
       }
     }
   }
@@ -206,7 +267,10 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
   if (workspaceId) {
     const plan = await getWorkspacePlan(supabase, workspaceId);
     flags.plan = plan;
-    flags.ai_daily_quota = plan === 'enterprise' ? 500 : plan === 'premium' ? 150 : 10;
+    
+    // Apply plan-based quota as default, can be overridden by flags
+    const planQuota = plan === 'enterprise' ? 500 : plan === 'premium' ? 150 : 10;
+    flags.ai_daily_quota = planQuota;
     
     if ((plan === 'premium' || plan === 'enterprise') && flags.ai_actions_enabled_premium) {
       flags.ai_actions_enabled = true;
@@ -220,12 +284,12 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
     if (wsFlags) {
       for (const flag of wsFlags) {
         const val = flag.value_json;
-        if (typeof val === 'boolean') {
-          flags[flag.key] = val;
-        } else if (typeof val === 'object' && val !== null) {
-          flags[flag.key] = (val as Record<string, unknown>)?.enabled ?? (val as Record<string, unknown>)?.value ?? false;
+        // Handle numeric flags
+        if (flag.key.includes('quota') || flag.key.includes('limit')) {
+          flags[flag.key] = parseNumericFlag(val, flags[flag.key] as number || 10);
         } else {
-          flags[flag.key] = val === 'true';
+          // Handle boolean/other flags
+          flags[flag.key] = parseBooleanFlag(val, false);
         }
       }
     }
@@ -266,7 +330,9 @@ async function canPerformAction(
 
 // deno-lint-ignore no-explicit-any
 async function getTodayUsage(supabase: any, workspaceId: string, userId: string): Promise<number> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayBRT();
+  console.log('[ai-ask] Checking usage for day (BRT):', today);
+  
   const { data } = await supabase
     .from('ai_usage_log')
     .select('requests')
@@ -287,7 +353,7 @@ async function incrementUsage(
   tokensIn: number = 0,
   tokensOut: number = 0
 ): Promise<void> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayBRT();
 
   const { data: existing } = await supabase
     .from('ai_usage_log')
@@ -647,12 +713,13 @@ serve(async (req) => {
     if (workspace_id) {
       const flags = await getEffectiveFlags(supabase, workspace_id);
       
-      if (!flags.ai_enabled) {
+      // Check if AI is globally disabled
+      if (!parseBooleanFlag(flags.ai_enabled, true)) {
         const response: AIResponse = {
-          assistant_text: "O assistente de IA não está habilitado para sua conta. Entre em contato com o administrador.",
+          assistant_text: "🔒 **IA desativada pelo administrador.**\n\nO assistente de IA não está habilitado para sua conta. Entre em contato com o administrador para mais informações.",
           actions: [],
           flags: { decision_route: 'disabled' },
-          safety: { blocked: true, reason: 'AI disabled', suggest_escalate: false },
+          safety: { blocked: true, reason: 'disabled', suggest_escalate: false },
         };
         return new Response(
           JSON.stringify(response),
@@ -660,27 +727,41 @@ serve(async (req) => {
         );
       }
 
-      const usage = await getTodayUsage(supabase, workspace_id, user.id);
-      const limit = flags.ai_daily_quota as number;
+      // Check for superadmin bypass or ai_admin_bypass flag
+      const userIsSuperadmin = await isSuperadmin(supabase, user.id);
+      const hasAdminBypass = parseBooleanFlag(flags.ai_admin_bypass, false);
+      const bypassQuota = userIsSuperadmin || hasAdminBypass;
 
-      if (usage >= limit) {
-        const response: AIResponse = {
-          assistant_text: `📊 **Você atingiu o limite diário de ${limit} consultas ao assistente.**\n\nSeu limite será renovado amanhã. Para aumentar seu limite, considere fazer upgrade do seu plano.\n\n**Enquanto isso, você pode:**\n- Consultar nossos conteúdos técnicos\n- Enviar sua dúvida para um agrônomo`,
-          actions: [
-            { type: 'open_pricing', label: 'Ver Planos' },
-            { type: 'escalate_agronomist', label: 'Perguntar ao Agrônomo' },
-          ],
-          flags: {
-            show_escalate_to_agronomist: true,
-            decision_route: 'quota_block',
-          },
-          safety: { blocked: false, suggest_escalate: true },
-        };
+      if (bypassQuota) {
+        console.log('[ai-ask] Quota bypassed - superadmin:', userIsSuperadmin, 'admin_bypass:', hasAdminBypass);
+      }
 
-        return new Response(
-          JSON.stringify(response),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // Only check quota if user doesn't have bypass
+      if (!bypassQuota) {
+        const usage = await getTodayUsage(supabase, workspace_id, user.id);
+        const limit = parseNumericFlag(flags.ai_daily_quota, 10);
+
+        console.log('[ai-ask] Quota check - usage:', usage, 'limit:', limit);
+
+        if (usage >= limit) {
+          const response: AIResponse = {
+            assistant_text: `📊 **Limite atingido.**\n\nVocê utilizou todas as ${limit} consultas diárias ao assistente. Seu limite será renovado amanhã.\n\n**Enquanto isso, você pode:**\n- Consultar nossos conteúdos técnicos\n- Enviar sua dúvida para um agrônomo`,
+            actions: [
+              { type: 'open_pricing', label: 'Ver Planos' },
+              { type: 'escalate_agronomist', label: 'Perguntar ao Agrônomo' },
+            ],
+            flags: {
+              show_escalate_to_agronomist: true,
+              decision_route: 'quota_exceeded',
+            },
+            safety: { blocked: false, reason: 'quota_exceeded', suggest_escalate: true },
+          };
+
+          return new Response(
+            JSON.stringify(response),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
 

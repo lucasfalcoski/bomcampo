@@ -53,7 +53,7 @@ interface UseIAgronomoOptions {
 export function useIAgronomo(options: UseIAgronomoOptions = {}) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { canUseAIFeature, quota, workspaceId: entitlementWorkspaceId } = useEntitlements({ 
+  const { canUseAIFeature, quota, aiAccess, workspaceId: entitlementWorkspaceId } = useEntitlements({ 
     workspaceId: options.workspaceId 
   });
   
@@ -63,6 +63,9 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const effectiveWorkspaceId = options.workspaceId || entitlementWorkspaceId;
+
+  // Get the reason for AI access denial
+  const aiAccessReason = aiAccess?.reason;
 
   // Load existing conversation on mount
   useEffect(() => {
@@ -299,6 +302,7 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
     conversationId,
     remainingQuota: quota?.remaining,
     canUseAI: canUseAIFeature,
+    aiAccessReason,
     sendMessage,
     uploadPhoto,
     clearHistory,

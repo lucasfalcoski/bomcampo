@@ -43,6 +43,7 @@ const DEFAULT_FLAGS: EffectiveFlags = {
   ai_enabled: false,
   ai_daily_quota: 0,
   ai_photo_enabled: false,
+  ai_admin_bypass: false,
   respondeagro_enabled: true,
   agritec_enabled: false,
   satveg_enabled: false,
@@ -50,10 +51,41 @@ const DEFAULT_FLAGS: EffectiveFlags = {
 
 // Plan-based quotas
 const PLAN_QUOTAS: Record<WorkspacePlan, number> = {
-  free: 0,
+  free: 10,
   premium: 150,
   enterprise: 500,
 };
+
+/**
+ * Get current date in BRT (America/Sao_Paulo)
+ */
+function getTodayBRT(): string {
+  const now = new Date();
+  const brtOffset = -3 * 60; // BRT is UTC-3
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+  const brtTime = new Date(utcTime + brtOffset * 60000);
+  return brtTime.toISOString().split('T')[0];
+}
+
+/**
+ * Safely parse numeric flag values
+ */
+function parseNumericFlag(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && !isNaN(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!isNaN(parsed)) return parsed;
+  }
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    if ('value' in obj) {
+      const parsed = Number(obj.value);
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+  console.warn('[Entitlements] Could not parse numeric flag:', value, '- using fallback:', fallback);
+  return fallback;
+}
 
 /**
  * Parse flag value from JSONB to typed value
@@ -220,13 +252,13 @@ export async function getEffectiveFlags(
 }
 
 /**
- * Get AI usage for today
+ * Get AI usage for today (using BRT timezone)
  */
 export async function getTodayAIUsage(
   workspaceId: string,
   userId: string
 ): Promise<number> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayBRT();
 
   const { data, error } = await supabase
     .from('ai_usage_log')
@@ -252,15 +284,20 @@ export async function getRemainingAIQuota(
 ): Promise<QuotaInfo> {
   const flags = await getEffectiveFlags(workspaceId, userId);
   const used = await getTodayAIUsage(workspaceId, userId);
-  const limit = flags.ai_daily_quota as number;
+  const limit = parseNumericFlag(flags.ai_daily_quota, 10);
 
-  // Calculate reset time (midnight UTC)
+  // Calculate reset time (midnight BRT - approximately 3:00 UTC)
   const now = new Date();
+  const brtOffset = -3 * 60;
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+  const brtTime = new Date(utcTime + brtOffset * 60000);
+  
+  // Next midnight in BRT
   const resetAt = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() + 1,
-    0, 0, 0, 0
+    brtTime.getUTCFullYear(),
+    brtTime.getUTCMonth(),
+    brtTime.getUTCDate() + 1,
+    3, 0, 0, 0 // 3:00 UTC = 00:00 BRT
   ));
 
   return {
@@ -269,6 +306,24 @@ export async function getRemainingAIQuota(
     remaining: Math.max(0, limit - used),
     resetAt,
   };
+}
+
+/**
+ * Check if user is a superadmin
+ */
+async function checkIsSuperadmin(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('user_system_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'superadmin')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Entitlements] Error checking superadmin:', error);
+    return false;
+  }
+  return !!data;
 }
 
 /**
@@ -292,6 +347,20 @@ export async function canUseAI(
     return {
       allowed: false,
       reason: 'disabled',
+    };
+  }
+
+  // Check for superadmin or admin bypass
+  const isSuperadmin = await checkIsSuperadmin(userId);
+  const hasAdminBypass = flags.ai_admin_bypass === true;
+  
+  if (isSuperadmin || hasAdminBypass) {
+    console.log('[Entitlements] AI quota bypassed - superadmin:', isSuperadmin, 'admin_bypass:', hasAdminBypass);
+    return {
+      allowed: true,
+      reason: 'ok',
+      remaining: 999,
+      dailyLimit: 999,
     };
   }
 
