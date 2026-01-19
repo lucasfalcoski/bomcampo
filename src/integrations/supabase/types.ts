@@ -887,6 +887,36 @@ export type Database = {
           },
         ]
       }
+      impersonation_sessions: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          reason: string | null
+          started_at: string
+          target_user_id: string
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+          target_user_id: string
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       integrations_status: {
         Row: {
           is_enabled: boolean
@@ -1151,6 +1181,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_suspended: boolean | null
           nome: string | null
           origin: Database["public"]["Enums"]["user_origin"] | null
           partner_id: string | null
@@ -1159,6 +1190,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id: string
+          is_suspended?: boolean | null
           nome?: string | null
           origin?: Database["public"]["Enums"]["user_origin"] | null
           partner_id?: string | null
@@ -1167,6 +1199,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          is_suspended?: boolean | null
           nome?: string | null
           origin?: Database["public"]["Enums"]["user_origin"] | null
           partner_id?: string | null
@@ -1346,6 +1379,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      workspace_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by_user_id: string
+          last_resent_at: string | null
+          role: Database["public"]["Enums"]["workspace_role"]
+          sent_at: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id: string
+          last_resent_at?: string | null
+          role?: Database["public"]["Enums"]["workspace_role"]
+          sent_at?: string
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by_user_id?: string
+          last_resent_at?: string | null
+          role?: Database["public"]["Enums"]["workspace_role"]
+          sent_at?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_invites_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspace_members: {
         Row: {

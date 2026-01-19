@@ -50,6 +50,7 @@ import SuperadminFlags from "./pages/superadmin/Flags";
 import SuperadminCampaigns from "./pages/superadmin/Campaigns";
 import SuperadminIntegrations from "./pages/superadmin/Integrations";
 import SuperadminAudit from "./pages/superadmin/Audit";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
               path="/"
               element={
