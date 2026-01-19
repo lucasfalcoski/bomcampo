@@ -28,6 +28,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIAgronomo } from '@/hooks/useIAgronomo';
 import { useAgronomistEscalation } from '@/hooks/useAgronomistEscalation';
 import { useChatContext } from '@/hooks/useChatContext';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -55,36 +56,109 @@ interface ActionButtonProps {
 
 function ActionButton({ action, onEscalate }: ActionButtonProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleClick = () => {
     switch (action.type) {
-      case 'open_report':
-        navigate('/relatorios');
+      // Open POP detail page
+      case 'open_pop': {
+        const popId = action.payload?.pop_id || action.id;
+        if (popId) {
+          navigate(`/pops/${popId}`);
+        } else {
+          toast({
+            title: 'Erro',
+            description: 'POP não encontrado.',
+            variant: 'destructive',
+          });
+        }
         break;
+      }
+
+      // Open specific screen/module
+      case 'open_screen':
+      case 'open_module': {
+        const route = action.payload?.route as string;
+        const screenId = action.payload?.id as string;
+        
+        if (route) {
+          navigate(route);
+        } else if (screenId === 'clima' || screenId === 'weather') {
+          navigate('/clima');
+        } else if (screenId === 'relatorios' || screenId === 'reports') {
+          navigate('/relatorios');
+        } else if (screenId === 'fazendas' || screenId === 'farms') {
+          navigate('/fazendas');
+        } else if (screenId === 'talhoes' || screenId === 'plots') {
+          navigate('/talhoes');
+        } else if (screenId === 'pops') {
+          navigate('/pops');
+        } else {
+          toast({
+            title: 'Ação não configurada',
+            description: `Tela "${screenId || 'desconhecida'}" não reconhecida.`,
+          });
+        }
+        break;
+      }
+
+      // Escalate to human agronomist
+      case 'escalate_agronomist':
+      case 'escalate_to_agronomist':
+      case 'create_agro_question': {
+        if (onEscalate) {
+          onEscalate();
+        } else {
+          toast({
+            title: 'Agrônomo indisponível',
+            description: 'Nenhum agrônomo vinculado a esta fazenda.',
+          });
+        }
+        break;
+      }
+
+      // Reports
+      case 'open_report': {
+        const reportId = action.payload?.report_id as string;
+        if (reportId) {
+          navigate(`/relatorios/${reportId}`);
+        } else {
+          navigate('/relatorios');
+        }
+        break;
+      }
+
+      // Content/AI page
       case 'view_content':
         navigate('/ai');
         break;
+
+      // Pricing/settings
       case 'open_pricing':
         navigate('/configuracoes');
         break;
-      case 'open_screen':
-        if (action.payload?.route) {
-          navigate(action.payload.route as string);
-        }
-        break;
-      case 'escalate_agronomist':
-        onEscalate?.();
-        break;
+
+      // Task creation (handled by ActionFlowCard usually)
       case 'create_task':
-        // TODO: Open task creation modal
         console.log('Create task action:', action);
+        toast({
+          title: 'Criação de tarefa',
+          description: 'Use o fluxo de ação acima para criar tarefas.',
+        });
         break;
+
+      // Start action flow (handled by ActionFlowCard)
       case 'start_action':
-        // TODO: Start action flow
         console.log('Start action:', action);
         break;
+
+      // Unknown action
       default:
-        console.log('Action clicked:', action);
+        console.log('Unknown action clicked:', action);
+        toast({
+          title: 'Ação não configurada',
+          description: `Tipo de ação "${action.type}" ainda não implementado.`,
+        });
     }
   };
 
