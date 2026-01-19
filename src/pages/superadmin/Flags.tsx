@@ -100,16 +100,34 @@ export default function SuperadminFlags() {
     }
   };
 
-  const renderFlagValue = (value: Record<string, unknown>) => {
-    if ('enabled' in value) {
-      return value.enabled ? (
+  const renderFlagValue = (value: unknown) => {
+    // Handle primitives (boolean, string, number)
+    if (typeof value === 'boolean') {
+      return value ? (
         <Badge className="bg-green-500/10 text-green-600">Ativo</Badge>
       ) : (
         <Badge variant="outline">Inativo</Badge>
       );
     }
-    if ('value' in value) {
-      return <Badge variant="secondary">{String(value.value)}</Badge>;
+    if (typeof value === 'string' || typeof value === 'number') {
+      return <Badge variant="secondary">{String(value)}</Badge>;
+    }
+    // Handle null/undefined
+    if (value === null || value === undefined) {
+      return <Badge variant="outline">null</Badge>;
+    }
+    // Handle objects
+    if (typeof value === 'object') {
+      if ('enabled' in value) {
+        return (value as Record<string, unknown>).enabled ? (
+          <Badge className="bg-green-500/10 text-green-600">Ativo</Badge>
+        ) : (
+          <Badge variant="outline">Inativo</Badge>
+        );
+      }
+      if ('value' in value) {
+        return <Badge variant="secondary">{String((value as Record<string, unknown>).value)}</Badge>;
+      }
     }
     return <code className="text-xs">{JSON.stringify(value)}</code>;
   };
