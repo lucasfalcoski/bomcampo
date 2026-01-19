@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, MapPin, Cloud, Sprout, MoreHorizontal, Sprout as Logo, TrendingUp, DollarSign, FileText, Settings, ChevronRight, MessageSquare } from 'lucide-react';
+import { Home, MapPin, Cloud, Sprout, MoreHorizontal, Sprout as Logo, TrendingUp, DollarSign, FileText, Settings, ChevronRight, Bot, Sparkles } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
@@ -12,11 +12,19 @@ const navItems = [
   { label: 'Mais', to: '/mais', icon: MoreHorizontal, isMore: true },
 ];
 
-const moreItems = [
+interface MoreItem {
+  label: string;
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  secondaryIcon?: React.ComponentType<{ className?: string }>;
+}
+
+const moreItems: MoreItem[] = [
   { label: 'Preços', to: '/precos', icon: TrendingUp, description: 'Cotações de commodities' },
   { label: 'Financeiro', to: '/financeiro', icon: DollarSign, description: 'Gestão de custos e receitas' },
   { label: 'Relatórios', to: '/relatorios', icon: FileText, description: 'Análises e exportações' },
-  { label: 'Fala Agrônomo', to: '/fala-agronomo', icon: MessageSquare, description: 'Suporte técnico' },
+  { label: 'Fala AI Agrônomo', to: '/ai', icon: Bot, description: 'Assistente com IA', secondaryIcon: Sparkles },
   { label: 'Configurações', to: '/configuracoes', icon: Settings, description: 'Preferências do app' },
 ];
 
@@ -114,13 +122,16 @@ export function MobileBottomNav() {
                   )}
                 >
                   <div className={cn(
-                    "p-2.5 rounded-lg",
+                    "p-2.5 rounded-lg relative",
                     active ? "bg-primary/20" : "bg-muted"
                   )}>
                     <item.icon className={cn(
                       "h-5 w-5",
                       active ? "text-primary" : "text-muted-foreground"
                     )} />
+                    {item.secondaryIcon && (
+                      <item.secondaryIcon className="h-3 w-3 absolute -top-1 -right-1 text-amber-500" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={cn(

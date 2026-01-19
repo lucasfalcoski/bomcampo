@@ -1,4 +1,4 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList, LayoutDashboard, Flag, Megaphone, Plug, Building2, Bot, Inbox } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, Users, ClipboardList, LayoutDashboard, Flag, Megaphone, Plug, Building2, Bot, Inbox, Sparkles } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState, useMemo } from 'react';
 import {
@@ -22,7 +22,8 @@ type MenuItem = {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
-  visibility?: 'all' | 'b2b_admin' | 'agronomist' | 'ai_enabled';
+  secondaryIcon?: React.ComponentType<{ className?: string }>;
+  visibility?: 'all' | 'b2b_admin' | 'agronomist';
 };
 
 const menuItems: MenuItem[] = [
@@ -33,8 +34,7 @@ const menuItems: MenuItem[] = [
   { title: 'Preços', url: '/precos', icon: TrendingUp },
   { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
   { title: 'Relatórios', url: '/relatorios', icon: FileText },
-  { title: 'Fala IAgrônomo', url: '/ai', icon: Bot, visibility: 'ai_enabled' },
-  { title: 'Fala Agrônomo', url: '/fala-agronomo', icon: MessageSquare },
+  { title: 'Fala AI Agrônomo', url: '/ai', icon: Bot, secondaryIcon: Sparkles },
   { title: 'Painel', url: '/org', icon: Building2, visibility: 'b2b_admin' },
   { title: 'Caixa do Agrônomo', url: '/agronomist/inbox', icon: Inbox, visibility: 'agronomist' },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
@@ -168,8 +168,6 @@ export function AppSidebar() {
           return permissions.isB2BAdmin;
         case 'agronomist':
           return permissions.isAgronomist;
-        case 'ai_enabled':
-          return permissions.aiEnabled;
         default:
           return true;
       }
@@ -202,7 +200,12 @@ export function AppSidebar() {
                         isActive ? 'bg-muted text-primary font-medium' : 'hover:bg-muted/50'
                       }
                     >
-                      <item.icon className="h-4 w-4" />
+                      <div className="relative">
+                        <item.icon className="h-4 w-4" />
+                        {item.secondaryIcon && (
+                          <item.secondaryIcon className="h-2.5 w-2.5 absolute -top-1 -right-1 text-amber-500" />
+                        )}
+                      </div>
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
