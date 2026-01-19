@@ -305,6 +305,149 @@ interface AIResponse {
   debug?: AIDebugInfo;
 }
 
+// ========== POP LOOKUP CACHE AND HELPER ==========
+// Cache for POP lookups within the same request
+const popCache = new Map<string, { id: string; title: string } | null>();
+
+async function getPopBySlug(
+  supabase: any,
+  slug: string
+): Promise<{ id: string; title: string } | null> {
+  // Check cache first
+  if (popCache.has(slug)) {
+    return popCache.get(slug) || null;
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('pops')
+      .select('id, title')
+      .eq('slug', slug)
+      .eq('is_active', true)
+      .is('workspace_id', null)
+      .single();
+    
+    if (error || !data) {
+      popCache.set(slug, null);
+      return null;
+    }
+    
+    // Cast data to expected type
+    const popData = data as { id: string; title: string };
+    const result = { id: popData.id, title: popData.title };
+    popCache.set(slug, result);
+    return result;
+  } catch {
+    popCache.set(slug, null);
+    return null;
+  }
+}
+
+// ========== POP SUGGESTIONS BY INTENT ==========
+interface PopSuggestion {
+  slug: string;
+  fallbackTitle: string;
+}
+
+function getPopSuggestionsForHighRisk(message: string): PopSuggestion[] {
+  const suggestions: PopSuggestion[] = [
+    { slug: 'checklist-pre-aplicacao-condicoes', fallbackTitle: 'Checklist pré-aplicação' },
+    { slug: 'checklist-seguranca-epi', fallbackTitle: 'Checklist de segurança — EPI' },
+  ];
+  
+  // Check for rain/wet conditions
+  const rainPatterns = /chuv[ao]|choveu|encharcad[ao]|atolar|po[çc]a|molhad[ao]|[áa]gua\s+parada/i;
+  if (rainPatterns.test(message)) {
+    suggestions.push({ slug: 'checklist-pos-chuva', fallbackTitle: 'Checklist pós-chuva' });
+  }
+  
+  return suggestions;
+}
+
+function getPopSuggestionsForInspection(message: string): PopSuggestion[] {
+  const suggestions: PopSuggestion[] = [];
+  
+  // Check for pest-related terms
+  const pestPatterns = /praga|inseto|lagarta|[áa]caro|formiga|broca|teia|melada|percevejo|pulg[ãa]o|trip[es]?|mosca\s+branca|bicho/i;
+  // Check for disease-related terms
+  const diseasePatterns = /mancha|ferrugem|mofo|p[óo]\s+(branco|preto)|necrose|queda\s+de\s+(folha|fruto)|podrid[ãa]o|fungo|m[íi]ldio|o[íi]dio|antracnose|doen[çc]a/i;
+  
+  if (pestPatterns.test(message)) {
+    suggestions.push({ slug: 'checklist-inspecao-pragas', fallbackTitle: 'Checklist de inspeção — pragas' });
+    suggestions.push({ slug: 'checklist-registro-atividades', fallbackTitle: 'Padrão de registro — atividades' });
+  }
+  
+  if (diseasePatterns.test(message)) {
+    suggestions.push({ slug: 'checklist-inspecao-doencas', fallbackTitle: 'Checklist de inspeção — doenças' });
+    if (!pestPatterns.test(message)) {
+      suggestions.push({ slug: 'checklist-registro-atividades', fallbackTitle: 'Padrão de registro — atividades' });
+    }
+  }
+  
+  // Default if no specific match
+  if (suggestions.length === 0) {
+    suggestions.push({ slug: 'checklist-inspecao-pragas', fallbackTitle: 'Checklist de inspeção — pragas' });
+    suggestions.push({ slug: 'checklist-inspecao-doencas', fallbackTitle: 'Checklist de inspeção — doenças' });
+    suggestions.push({ slug: 'checklist-registro-atividades', fallbackTitle: 'Padrão de registro — atividades' });
+  }
+  
+  return suggestions;
+}
+
+function getPopSuggestionsForIrrigation(message: string): PopSuggestion[] {
+  return [
+    { slug: 'checklist-irrigacao-verificacao', fallbackTitle: 'Checklist de irrigação — verificação' },
+    { slug: 'checklist-manutencao-irrigacao', fallbackTitle: 'Checklist manutenção — irrigação' },
+  ];
+}
+
+function getPopSuggestionsForPulverizador(message: string): PopSuggestion[] {
+  return [
+    { slug: 'checklist-manutencao-pulverizador', fallbackTitle: 'Checklist manutenção — pulverizador' },
+    { slug: 'checklist-seguranca-epi', fallbackTitle: 'Checklist de segurança — EPI' },
+  ];
+}
+
+function getPopSuggestionsForPreColheitaCafe(message: string): PopSuggestion[] {
+  return [
+    { slug: 'checklist-pre-colheita-cafe', fallbackTitle: 'Checklist pré-colheita — café' },
+    { slug: 'checklist-seguranca-epi', fallbackTitle: 'Checklist de segurança — EPI' },
+  ];
+}
+
+async function buildPopActions(
+  supabase: any,
+  suggestions: PopSuggestion[]
+): Promise<AIAction[]> {
+  const actions: AIAction[] = [];
+  
+  for (const suggestion of suggestions) {
+    const pop = await getPopBySlug(supabase, suggestion.slug);
+    if (pop) {
+      actions.push({
+        type: 'open_pop',
+        label: `📋 ${pop.title}`,
+        payload: { pop_id: pop.id },
+      });
+    }
+  }
+  
+  return actions;
+}
+
+// Detect specific sub-intents for POP suggestions
+function detectIrrigationMaintenance(message: string): boolean {
+  return /press[ãa]o\s+(caiu|baixa)|vazamento|entupimento|bomba|aspersor|gotejo|sangria|mangueira/i.test(message);
+}
+
+function detectPulverizadorMaintenance(message: string): boolean {
+  return /bico\s+entup|vazamento\s+(no\s+)?pulverizador|calibra[çc][ãa]o|lavar\s+pulverizador|pulverizador\s+(com|precisa)/i.test(message);
+}
+
+function detectPreColheitaCafe(message: string): boolean {
+  return /colheita\s+(de\s+)?caf[ée]|terreiro|secagem|sacaria|caf[ée]\s+(pronto|maduro|cereja)|pre-colheita|p[óo]s-colheita/i.test(message);
+}
+
 // ========== HELPER FUNCTIONS ==========
 function getTodayBRT(): string {
   const now = new Date();
@@ -958,11 +1101,15 @@ serve(async (req) => {
 
     // D) HIGH_RISK_TODAY - NUNCA sim/não
     else if (intent === 'high_risk_today') {
+      // Get dynamic POP suggestions based on message content
+      const popSuggestions = getPopSuggestionsForHighRisk(user_message);
+      const popActions = await buildPopActions(supabase, popSuggestions);
+      
       response = {
-        assistant_text: `⚠️ **Checklist de Segurança para Aplicação**\n\nAntes de aplicar, verifique:\n\n☐ **Chuva**: Sem previsão de chuva nas próximas 6-12h\n☐ **Vento**: Rajadas abaixo de 10 km/h\n☐ **Umidade**: Entre 60-90% (evitar inversão térmica)\n☐ **Temperatura**: Abaixo de 30°C\n☐ **Orvalho**: Aguardar secar se houver\n☐ **Solo**: Verificar se o acesso está liberado\n☐ **Equipamento**: Calibrado e em bom estado\n\n📊 **Consulte o módulo Clima** para ver as condições atuais e a janela de aplicação recomendada.\n\n📋 **Veja o POP completo** de pré-aplicação para o checklist detalhado.\n\n👨‍🌾 **Importante**: Consulte sempre o agrônomo RT para decisões de aplicação.`,
+        assistant_text: `⚠️ **Checklist de Segurança para Aplicação**\n\nAntes de aplicar, verifique:\n\n☐ **Chuva**: Sem previsão de chuva nas próximas 6-12h\n☐ **Vento**: Rajadas abaixo de 10 km/h\n☐ **Umidade**: Entre 60-90% (evitar inversão térmica)\n☐ **Temperatura**: Abaixo de 30°C\n☐ **Orvalho**: Aguardar secar se houver\n☐ **Solo**: Verificar se o acesso está liberado\n☐ **Equipamento**: Calibrado e em bom estado\n\n📊 **Consulte o módulo Clima** para ver as condições atuais e a janela de aplicação recomendada.\n\n📋 **Veja os POPs** para os checklists detalhados.\n\n👨‍🌾 **Importante**: Consulte sempre o agrônomo RT para decisões de aplicação.`,
         actions: [
           { type: 'open_screen', label: '☁️ Ver Clima', payload: { route: '/clima' } },
-          { type: 'open_pop', label: '📋 POP Pré-Aplicação', payload: { pop_slug: 'checklist-pre-aplicacao-condicoes' } },
+          ...popActions,
           { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
         ],
         flags: { decision_route: 'high_risk_today' },
@@ -980,10 +1127,14 @@ serve(async (req) => {
         plots = await getFarmPlots(supabase, farm_id);
       }
 
+      // Get dynamic POP suggestions based on message content
+      const popSuggestions = getPopSuggestionsForInspection(user_message);
+      const popActions = await buildPopActions(supabase, popSuggestions);
+
       response = {
-        assistant_text: `🔍 **Vamos investigar!**\n\nPara ajudar na identificação, siga este checklist:\n\n☐ **Localização**: Onde está o problema? (talhão/linha)\n☐ **Extensão**: Pontual, em reboleira ou espalhado?\n☐ **Fotos**: Tire fotos de perto e de longe\n☐ **Condições**: Choveu recentemente? Área úmida?\n\n📋 **Veja o POP de inspeção** para mais detalhes.\n\n⚠️ Para diagnóstico preciso e tratamento, consulte o agrônomo.`,
+        assistant_text: `🔍 **Vamos investigar!**\n\nPara ajudar na identificação, siga este checklist:\n\n☐ **Localização**: Onde está o problema? (talhão/linha)\n☐ **Extensão**: Pontual, em reboleira ou espalhado?\n☐ **Fotos**: Tire fotos de perto e de longe\n☐ **Condições**: Choveu recentemente? Área úmida?\n\n📋 **Veja os POPs de inspeção** para mais detalhes.\n\n⚠️ Para diagnóstico preciso e tratamento, consulte o agrônomo.`,
         actions: [
-          { type: 'open_pop', label: '📋 POP Inspeção', payload: { pop_slug: 'checklist-inspecao-pragas' } },
+          ...popActions,
           { type: 'escalate_to_agronomist', label: 'Enviar ao Agrônomo' },
         ],
         action_flow_data: {
