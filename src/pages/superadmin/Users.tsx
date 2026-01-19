@@ -47,7 +47,9 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 
 interface ExtendedAdminUser extends AdminUser {
-  is_suspended?: boolean;
+  status?: 'active' | 'pending' | 'suspended';
+  email_confirmed_at?: string | null;
+  last_sign_in_at?: string | null;
 }
 
 export default function SuperadminUsers() {
@@ -217,17 +219,22 @@ export default function SuperadminUsers() {
     if (user.is_suspended) {
       return <Badge variant="destructive">Suspenso</Badge>;
     }
+    if (user.status === 'pending' || !user.email_confirmed_at) {
+      return <Badge variant="secondary" className="text-amber-600 border-amber-500">Convite Pendente</Badge>;
+    }
     return <Badge variant="outline" className="text-green-600 border-green-600">Ativo</Badge>;
   };
 
   // Filter users
   const filteredUsers = users.filter(user => {
+    const extUser = user as ExtendedAdminUser;
     if (searchTerm && !user.email.toLowerCase().includes(searchTerm.toLowerCase()) && 
         !(user.nome || '').toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
-    if (statusFilter === 'suspended' && !(user as ExtendedAdminUser).is_suspended) return false;
-    if (statusFilter === 'active' && (user as ExtendedAdminUser).is_suspended) return false;
+    if (statusFilter === 'suspended' && !extUser.is_suspended) return false;
+    if (statusFilter === 'active' && (extUser.is_suspended || extUser.status === 'pending')) return false;
+    if (statusFilter === 'pending' && extUser.status !== 'pending') return false;
     return true;
   });
 
@@ -282,6 +289,7 @@ export default function SuperadminUsers() {
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="pending">Convite Pendente</SelectItem>
                   <SelectItem value="suspended">Suspensos</SelectItem>
                 </SelectContent>
               </Select>
