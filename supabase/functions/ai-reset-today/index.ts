@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getTodayBRT } from "../_shared/date.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,17 +10,6 @@ const corsHeaders = {
 interface ResetRequest {
   user_id: string;
   workspace_id: string;
-}
-
-/**
- * Get current date in BRT (America/Sao_Paulo)
- */
-function getTodayBRT(): string {
-  const now = new Date();
-  const brtOffset = -3 * 60;
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const brtTime = new Date(utcTime + brtOffset * 60000);
-  return brtTime.toISOString().split('T')[0];
 }
 
 serve(async (req) => {
@@ -87,7 +77,7 @@ serve(async (req) => {
 
     const today = getTodayBRT();
 
-    // Reset usage for today - set requests to 0
+    // First, get count of records to delete (for audit)
     const { data: existingRecords, error: fetchError } = await supabase
       .from('ai_usage_log')
       .select('id, source, requests')
@@ -103,29 +93,23 @@ serve(async (req) => {
       });
     }
 
-    let resetCount = 0;
-    let previousTotal = 0;
+    const previousTotal = (existingRecords || []).reduce((sum, r) => sum + (r.requests || 0), 0);
+    const recordCount = existingRecords?.length || 0;
 
-    if (existingRecords && existingRecords.length > 0) {
-      previousTotal = existingRecords.reduce((sum, r) => sum + (r.requests || 0), 0);
-      
-      // Update all records for today to 0
-      const { error: updateError } = await supabase
-        .from('ai_usage_log')
-        .update({ requests: 0 })
-        .eq('workspace_id', workspace_id)
-        .eq('user_id', user_id)
-        .eq('day', today);
+    // DELETE all records for today (regardless of source) to avoid mismatch
+    const { error: deleteError, count: deletedCount } = await supabase
+      .from('ai_usage_log')
+      .delete({ count: 'exact' })
+      .eq('workspace_id', workspace_id)
+      .eq('user_id', user_id)
+      .eq('day', today);
 
-      if (updateError) {
-        console.error('[ai-reset-today] Update error:', updateError);
-        return new Response(JSON.stringify({ error: "Failed to reset usage" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        });
-      }
-
-      resetCount = existingRecords.length;
+    if (deleteError) {
+      console.error('[ai-reset-today] Delete error:', deleteError);
+      return new Response(JSON.stringify({ error: "Failed to reset usage" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
     }
 
     // Log the action in admin audit
@@ -138,18 +122,19 @@ serve(async (req) => {
         workspace_id,
         day: today,
         previous_total: previousTotal,
-        records_reset: resetCount,
+        deleted_count: deletedCount ?? recordCount,
       },
     });
 
-    console.log('[ai-reset-today] Reset by:', user.id, 'Target:', user_id, 'Workspace:', workspace_id, 'Previous:', previousTotal);
+    console.log('[ai-reset-today] Reset by:', user.id, 'Target:', user_id, 'Workspace:', workspace_id, 'Deleted:', deletedCount ?? recordCount);
 
     return new Response(
       JSON.stringify({
+        ok: true,
         success: true,
         message: `Consumo de IA zerado para hoje`,
         previous_usage: previousTotal,
-        records_reset: resetCount,
+        deleted_count: deletedCount ?? recordCount,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
