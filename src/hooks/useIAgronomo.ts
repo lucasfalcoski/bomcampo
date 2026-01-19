@@ -326,6 +326,7 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
     sending,
     uploadingPhoto,
     conversationId,
+    workspaceId: effectiveWorkspaceId,
     remainingQuota: quota?.remaining,
     canUseAI: canUseAIFeature,
     aiAccessReason,
