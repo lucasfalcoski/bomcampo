@@ -43,6 +43,17 @@ const BLOCKED_PATTERNS = [
 
 // Intent classification patterns
 const INTENT_PATTERNS = {
+  register_activity: [
+    /registr(ar|ei|ou|amos)\s*(uma?\s*)?(atividade|trabalho|servi[çc]o)/i,
+    /fiz(emos)?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|aplica[çc][ãa]o)/i,
+    /realizei?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o)/i,
+    /trabalho\s+(feito|realizado|executado)/i,
+    /servi[çc]o\s+(realizado|feito|conclu[ií]do)/i,
+    /anotar\s+(atividade|trabalho)/i,
+    /lan[çc]ar\s+(atividade|trabalho)/i,
+    /criar\s+(atividade|registro)/i,
+    /nova\s+atividade/i,
+  ],
   operational: [
     /relat[óo]rio/i,
     /exportar/i,
@@ -88,6 +99,21 @@ const INTENT_PATTERNS = {
   ],
 };
 
+// Activity types with display names
+const ACTIVITY_TYPES = [
+  { value: 'limpeza', label: 'Limpeza' },
+  { value: 'rocada', label: 'Roçada' },
+  { value: 'adubacao', label: 'Adubação' },
+  { value: 'pulverizacao', label: 'Pulverização' },
+  { value: 'colheita', label: 'Colheita' },
+  { value: 'manutencao', label: 'Manutenção' },
+  { value: 'capina', label: 'Capina' },
+  { value: 'irrigacao', label: 'Irrigação' },
+  { value: 'plantio', label: 'Plantio' },
+  { value: 'preparo_solo', label: 'Preparo de Solo' },
+  { value: 'outros', label: 'Outros' },
+];
+
 interface AIRequest {
   workspace_id?: string;
   farm_id?: string;
@@ -129,6 +155,23 @@ interface StructuredAIOutput {
   safety: SafetyInfo;
 }
 
+interface ActionFlowField {
+  key: string;
+  label: string;
+  type: 'text' | 'select' | 'date' | 'number';
+  value?: unknown;
+  options?: Array<{ value: string; label: string }>;
+  required?: boolean;
+}
+
+interface ActionFlowData {
+  type: string;
+  title: string;
+  fields: ActionFlowField[];
+  confirm_label: string;
+  cancel_label: string;
+}
+
 interface AIResponse {
   assistant_text: string;
   actions: AIAction[];
@@ -140,6 +183,7 @@ interface AIResponse {
     sources_used?: string[];
     ai_actions_enabled?: boolean;
     parse_mode?: ParseMode;
+    action_flow_data?: ActionFlowData;
   };
   safety?: SafetyInfo;
 }
@@ -154,15 +198,88 @@ function checkBlockedContent(message: string): string | null {
   return null;
 }
 
-function classifyIntent(message: string): 'operational' | 'zoning' | 'ndvi' | 'agronomic' | 'general' {
+function classifyIntent(message: string): 'register_activity' | 'operational' | 'zoning' | 'ndvi' | 'agronomic' | 'general' {
   for (const [intent, patterns] of Object.entries(INTENT_PATTERNS)) {
     for (const pattern of patterns) {
       if (pattern.test(message)) {
-        return intent as 'operational' | 'zoning' | 'ndvi' | 'agronomic';
+        return intent as 'register_activity' | 'operational' | 'zoning' | 'ndvi' | 'agronomic';
       }
     }
   }
   return 'general';
+}
+
+// Extract activity info from user message
+function extractActivityInfo(message: string): { tipo?: string; descricao?: string; talhaoSearch?: string } {
+  const result: { tipo?: string; descricao?: string; talhaoSearch?: string } = {};
+  
+  // Detect activity type
+  const tipoPatterns = [
+    { pattern: /limpeza/i, tipo: 'limpeza' },
+    { pattern: /ro[çc]ada/i, tipo: 'rocada' },
+    { pattern: /aduba[çc][ãa]o/i, tipo: 'adubacao' },
+    { pattern: /pulveriza[çc][ãa]o/i, tipo: 'pulverizacao' },
+    { pattern: /colheita/i, tipo: 'colheita' },
+    { pattern: /manuten[çc][ãa]o/i, tipo: 'manutencao' },
+    { pattern: /capina/i, tipo: 'capina' },
+    { pattern: /irriga[çc][ãa]o/i, tipo: 'irrigacao' },
+    { pattern: /plantio/i, tipo: 'plantio' },
+    { pattern: /preparo\s+(de\s+)?solo/i, tipo: 'preparo_solo' },
+  ];
+  
+  for (const { pattern, tipo } of tipoPatterns) {
+    if (pattern.test(message)) {
+      result.tipo = tipo;
+      break;
+    }
+  }
+  
+  // Search for talhão reference
+  const talhaoMatch = message.match(/talh[ãa]o\s+(\d+|[a-zA-Z]+)/i);
+  if (talhaoMatch) {
+    result.talhaoSearch = talhaoMatch[1];
+  }
+  
+  // Build description from detected info
+  if (result.tipo) {
+    const tipoLabel = ACTIVITY_TYPES.find(t => t.value === result.tipo)?.label || result.tipo;
+    result.descricao = `${tipoLabel} realizada`;
+  }
+  
+  return result;
+}
+
+// Get plots for a farm
+// deno-lint-ignore no-explicit-any
+async function getFarmPlots(supabase: any, farmId: string): Promise<Array<{ id: string; nome: string }>> {
+  const { data } = await supabase
+    .from('plots')
+    .select('id, nome')
+    .eq('farm_id', farmId)
+    .order('nome');
+  
+  return data || [];
+}
+
+// Find plot by name/number
+function findPlotBySearch(plots: Array<{ id: string; nome: string }>, search: string): { id: string; nome: string } | null {
+  const searchLower = search.toLowerCase();
+  
+  // Exact match
+  const exact = plots.find(p => p.nome.toLowerCase() === searchLower);
+  if (exact) return exact;
+  
+  // Contains match
+  const contains = plots.find(p => p.nome.toLowerCase().includes(searchLower));
+  if (contains) return contains;
+  
+  // Number match (e.g., "2" matches "Talhão 2")
+  const numberMatch = plots.find(p => 
+    p.nome.match(new RegExp(`\\b${search}\\b`, 'i'))
+  );
+  if (numberMatch) return numberMatch;
+  
+  return null;
 }
 
 // Helper to get current date in BRT (America/Sao_Paulo)
@@ -986,6 +1103,115 @@ ESTILO:
 - Sempre termine com próximos passos concretos`;
 
     let systemPrompt = baseSystemPrompt;
+
+    // Handle register_activity intent with action_flow
+    if (intent === 'register_activity' && farm_id) {
+      decisionRoute = 'register_activity';
+      
+      // Get plots for the farm
+      const plots = await getFarmPlots(supabase, farm_id);
+      const activityInfo = extractActivityInfo(user_message);
+      
+      // Try to find the plot from user message or use selected one
+      let selectedPlot: { id: string; nome: string } | null = null;
+      if (plot_id) {
+        selectedPlot = plots.find(p => p.id === plot_id) || null;
+      } else if (activityInfo.talhaoSearch) {
+        selectedPlot = findPlotBySearch(plots, activityInfo.talhaoSearch);
+      }
+      
+      // Build action_flow for activity registration
+      const actionFlowForActivity: ActionFlow = {
+        mode: 'collecting',
+        action_type: 'create_activity',
+        ui_buttons: ['confirm', 'cancel'],
+      };
+      
+      const today = new Date().toISOString().split('T')[0];
+      const tipoLabel = activityInfo.tipo 
+        ? ACTIVITY_TYPES.find(t => t.value === activityInfo.tipo)?.label 
+        : undefined;
+      
+      const responseWithFlow: AIResponse = {
+        assistant_text: `📋 **Vamos registrar a atividade!**\n\nDetectei que você quer registrar ${tipoLabel ? `uma **${tipoLabel}**` : 'uma atividade'}${selectedPlot ? ` no **${selectedPlot.nome}**` : ''}. Confira os dados abaixo e confirme:`,
+        actions: [
+          { type: 'confirm_action', label: '✅ Salvar Atividade' },
+          { type: 'cancel_draft', label: 'Cancelar' },
+        ],
+        action_flow: actionFlowForActivity,
+        flags: {
+          decision_route: 'register_activity',
+          action_flow_data: {
+            type: 'activity_registration',
+            title: 'Registrar Atividade',
+            fields: [
+              {
+                key: 'plot_id',
+                label: 'Talhão',
+                type: 'select',
+                value: selectedPlot?.id || '',
+                options: plots.map(p => ({ value: p.id, label: p.nome })),
+                required: true,
+              },
+              {
+                key: 'tipo',
+                label: 'Tipo de Atividade',
+                type: 'select',
+                value: activityInfo.tipo || '',
+                options: ACTIVITY_TYPES,
+                required: true,
+              },
+              {
+                key: 'data',
+                label: 'Data',
+                type: 'date',
+                value: today,
+                required: true,
+              },
+              {
+                key: 'descricao',
+                label: 'Descrição',
+                type: 'text',
+                value: activityInfo.descricao || '',
+              },
+              {
+                key: 'observacoes',
+                label: 'Observações',
+                type: 'text',
+                value: '',
+              },
+            ],
+            confirm_label: 'Salvar Atividade',
+            cancel_label: 'Cancelar',
+          },
+        },
+        safety: { blocked: false, suggest_escalate: false },
+      };
+
+      // Save to conversation
+      if (workspace_id) {
+        await saveConversation(
+          supabase,
+          user.id,
+          workspace_id,
+          conversation_id || null,
+          user_message,
+          responseWithFlow.assistant_text,
+          responseWithFlow.flags
+        );
+      }
+
+      console.log('[ai-ask] Response sent:', {
+        route: 'register_activity',
+        sources: sourcesUsed,
+        hasActionFlow: true,
+      });
+
+      return new Response(
+        JSON.stringify(responseWithFlow),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Add intent-specific instructions
     if (intent === 'operational') {
