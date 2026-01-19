@@ -79,6 +79,9 @@ export function useAgronomistEscalation(options: EscalationOptions = {}) {
     context?: {
       aiResponse?: string;
       farmId?: string;
+      plot_id?: string;
+      cultura?: string;
+      estagio?: string;
     }
   ): Promise<boolean> => {
     if (!user) {
@@ -119,10 +122,12 @@ export function useAgronomistEscalation(options: EscalationOptions = {}) {
         workspaceId = farm?.workspace_id || undefined;
       }
 
-      // Build context JSON
-      const contextJson: { ai_response?: string } | null = context?.aiResponse 
-        ? { ai_response: context.aiResponse }
-        : null;
+      // Build context JSON with all available info
+      const contextJson: Record<string, string | undefined> = {};
+      if (context?.aiResponse) contextJson.ai_response = context.aiResponse;
+      if (context?.plot_id) contextJson.plot_id = context.plot_id;
+      if (context?.cultura) contextJson.cultura = context.cultura;
+      if (context?.estagio) contextJson.estagio = context.estagio;
 
       // Create agro_question
       const { error } = await supabase
@@ -132,7 +137,7 @@ export function useAgronomistEscalation(options: EscalationOptions = {}) {
           question,
           farm_id: farmId || null,
           workspace_id: workspaceId || null,
-          context_json: contextJson,
+          context_json: Object.keys(contextJson).length > 0 ? contextJson : null,
           status: 'open' as const,
         }]);
 
