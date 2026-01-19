@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getTodayBRT, AI_USAGE_SOURCE } from "../_shared/date.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -453,14 +454,7 @@ function detectPreColheitaCafe(message: string): boolean {
   return /colheita\s+(de\s+)?caf[ée]|terreiro|secagem|sacaria|caf[ée]\s+(pronto|maduro|cereja)|pre-colheita|p[óo]s-colheita/i.test(message);
 }
 
-// ========== HELPER FUNCTIONS ==========
-function getTodayBRT(): string {
-  const now = new Date();
-  const brtOffset = -3 * 60;
-  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-  const brtTime = new Date(utcTime + brtOffset * 60000);
-  return brtTime.toISOString().split('T')[0];
-}
+// getTodayBRT is now imported from _shared/date.ts
 
 function parseNumericFlag(value: unknown, fallback: number): number {
   if (typeof value === 'number' && !isNaN(value)) return value;
@@ -706,8 +700,15 @@ async function checkQuotaWithDebug(supabase: any, workspaceId: string, userId: s
       }
     }
     if (f.key === 'ai_admin_bypass') {
-      aiAdminBypass = f.value_json === true || 
-                      (typeof f.value_json === 'object' && (f.value_json as Record<string, unknown>)?.enabled === true);
+      // Normalize bypass flag - support multiple formats
+      const val = f.value_json;
+      aiAdminBypass = val === true || 
+                      val === 'true' ||
+                      (typeof val === 'object' && val !== null && (
+                        (val as Record<string, unknown>)?.enabled === true ||
+                        (val as Record<string, unknown>)?.is_enabled === true ||
+                        (val as Record<string, unknown>)?.value === true
+                      ));
     }
   }
   
@@ -726,8 +727,15 @@ async function checkQuotaWithDebug(supabase: any, workspaceId: string, userId: s
       }
     }
     if (f.key === 'ai_admin_bypass') {
-      aiAdminBypass = f.value_json === true ||
-                      (typeof f.value_json === 'object' && (f.value_json as Record<string, unknown>)?.enabled === true);
+      // Normalize bypass flag - support multiple formats (workspace can override global)
+      const val = f.value_json;
+      aiAdminBypass = val === true || 
+                      val === 'true' ||
+                      (typeof val === 'object' && val !== null && (
+                        (val as Record<string, unknown>)?.enabled === true ||
+                        (val as Record<string, unknown>)?.is_enabled === true ||
+                        (val as Record<string, unknown>)?.value === true
+                      ));
     }
   }
   
@@ -795,7 +803,7 @@ async function incrementUsage(supabase: any, workspaceId: string, userId: string
   // If bypass is active, we still want to track for auditing but not block
   // We'll still increment to have an accurate count
   const today = getTodayBRT();
-  const source = 'copilot'; // Single source for all AI questions
+  const source = AI_USAGE_SOURCE; // Use shared constant for consistency
   
   const { data: existing } = await supabase
     .from('ai_usage_log')

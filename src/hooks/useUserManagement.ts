@@ -246,44 +246,70 @@ export function useUserManagement() {
     }
   }, [isSuperadmin, logAudit, toast]);
 
-  // Reset AI usage for today (testing/support)
+  // Reset AI usage for today (testing/support) - uses edge function for consistency
   const resetAIUsageToday = useCallback(async (userId: string, workspaceId?: string) => {
     if (!isSuperadmin) return false;
+    
+    // workspace_id is required for the edge function
+    if (!workspaceId) {
+      toast({ 
+        title: 'Erro ao resetar consumo', 
+        description: 'Workspace não definido para este usuário.',
+        variant: 'destructive' 
+      });
+      return false;
+    }
+    
     setLoading(true);
 
     try {
-      // Get today in BRT
-      const now = new Date();
-      const brtOffset = -3 * 60; // BRT is UTC-3
-      const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
-      const brtTime = new Date(utcTime + brtOffset * 60000);
-      const today = brtTime.toISOString().split('T')[0];
-
-      // Delete usage records for today
-      let query = supabase
-        .from('ai_usage_log')
-        .delete()
-        .eq('user_id', userId)
-        .eq('day', today);
-
-      if (workspaceId) {
-        query = query.eq('workspace_id', workspaceId);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (!token) {
+        throw new Error('Não autenticado');
       }
 
-      const { error } = await query;
-      if (error) throw error;
+      // Call edge function to ensure consistent date handling
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-reset-today`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            workspace_id: workspaceId,
+          }),
+        }
+      );
 
-      await logAudit('reset_ai_usage', 'user', userId, null, { day: today, workspaceId });
-      toast({ title: 'Consumo de IA resetado', description: `Consultas do dia ${today} zeradas` });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao resetar consumo');
+      }
+
+      const result = await response.json();
+      
+      toast({ 
+        title: 'Consumo de IA zerado (hoje)', 
+        description: `${result.previous_usage || 0} consultas removidas.` 
+      });
       return true;
     } catch (err: unknown) {
       console.error('[resetAIUsageToday] Error:', err);
-      toast({ title: 'Erro ao resetar consumo', variant: 'destructive' });
+      toast({ 
+        title: 'Erro ao resetar consumo', 
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive' 
+      });
       return false;
     } finally {
       setLoading(false);
     }
-  }, [isSuperadmin, logAudit, toast]);
+  }, [isSuperadmin, toast]);
 
   // Load pending invites
   const loadInvites = useCallback(async () => {
