@@ -1,5 +1,5 @@
 /**
- * Fala IAgrônomo - AI-powered agronomist assistant
+ * Fala AI Agrônomo - AI-powered agronomist assistant
  */
 
 import { useState, useRef, useEffect, ChangeEvent } from 'react';
@@ -13,16 +13,34 @@ import {
   AlertTriangle,
   FileText,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  UserCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIAgronomo } from '@/hooks/useIAgronomo';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useAgronomistEscalation } from '@/hooks/useAgronomistEscalation';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ActionButtonProps {
   action: {
@@ -75,9 +93,21 @@ export default function IAgronomoChat() {
     clearHistory,
   } = useIAgronomo();
 
+  const {
+    loading: loadingEscalation,
+    hasLinkedAgronomist,
+    userFarms,
+    sending: sendingEscalation,
+    sendToAgronomist,
+  } = useAgronomistEscalation();
+
   const [input, setInput] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [escalateOpen, setEscalateOpen] = useState(false);
+  const [escalateQuestion, setEscalateQuestion] = useState('');
+  const [escalateFarmId, setEscalateFarmId] = useState<string>('');
+  const [escalationSent, setEscalationSent] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -147,18 +177,43 @@ export default function IAgronomoChat() {
     }
   };
 
+  const handleOpenEscalate = () => {
+    // Pre-fill with last AI response context if available
+    const lastAIMessage = [...messages].reverse().find(m => m.role === 'assistant');
+    setEscalateQuestion('');
+    setEscalateFarmId(userFarms[0]?.id || '');
+    setEscalationSent(false);
+    setEscalateOpen(true);
+  };
+
+  const handleSendEscalation = async () => {
+    if (!escalateQuestion.trim()) return;
+    
+    // Get last AI response for context
+    const lastAIMessage = [...messages].reverse().find(m => m.role === 'assistant');
+    
+    const success = await sendToAgronomist(escalateQuestion, {
+      aiResponse: lastAIMessage?.content,
+      farmId: escalateFarmId || undefined,
+    });
+    
+    if (success) {
+      setEscalationSent(true);
+    }
+  };
+
   return (
     <div className="container max-w-3xl mx-auto py-4 px-4 md:py-6 h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
       <div className="mb-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2.5 rounded-lg">
               <Bot className="h-6 w-6 text-primary" />
             </div>
             <div>
               <h1 className="text-xl font-bold flex items-center gap-2">
-                Fala IAgrônomo
+                Fala AI Agrônomo
                 <Badge variant="secondary" className="text-xs">
                   <Sparkles className="h-3 w-3 mr-1" />
                   Beta
@@ -170,17 +225,31 @@ export default function IAgronomoChat() {
             </div>
           </div>
           
-          {messages.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={clearHistory}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Limpar
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Escalate to agronomist button */}
+            {!loadingEscalation && hasLinkedAgronomist && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleOpenEscalate}
+              >
+                <UserCheck className="h-4 w-4 mr-1" />
+                Perguntar ao Agrônomo
+              </Button>
+            )}
+            
+            {messages.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={clearHistory}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Limpar
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Quota indicator */}
@@ -384,6 +453,93 @@ export default function IAgronomoChat() {
           </p>
         </div>
       </Card>
+
+      {/* Escalation Dialog */}
+      <Dialog open={escalateOpen} onOpenChange={setEscalateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" />
+              Perguntar ao Agrônomo
+            </DialogTitle>
+            <DialogDescription>
+              Envie sua dúvida para um agrônomo humano. Você receberá a resposta pelo painel.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {escalationSent ? (
+            <div className="py-6 text-center space-y-3">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+              <div>
+                <p className="font-medium">Pergunta enviada!</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Você será notificado quando o agrônomo responder.
+                </p>
+              </div>
+              <Button onClick={() => setEscalateOpen(false)} className="mt-4">
+                Fechar
+              </Button>
+            </div>
+          ) : (
+            <>
+              {userFarms.length > 1 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Fazenda</label>
+                  <Select value={escalateFarmId} onValueChange={setEscalateFarmId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione uma fazenda" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userFarms.map((farm) => (
+                        <SelectItem key={farm.id} value={farm.id}>
+                          {farm.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Sua pergunta</label>
+                <Textarea
+                  value={escalateQuestion}
+                  onChange={(e) => setEscalateQuestion(e.target.value)}
+                  placeholder="Descreva sua dúvida em detalhes..."
+                  rows={4}
+                />
+              </div>
+
+              {messages.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  O contexto da conversa com a IA será incluído automaticamente.
+                </p>
+              )}
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setEscalateOpen(false)}
+                  disabled={sendingEscalation}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleSendEscalation}
+                  disabled={!escalateQuestion.trim() || sendingEscalation}
+                >
+                  {sendingEscalation ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Enviar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
