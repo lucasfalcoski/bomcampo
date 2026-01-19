@@ -246,6 +246,45 @@ export function useUserManagement() {
     }
   }, [isSuperadmin, logAudit, toast]);
 
+  // Reset AI usage for today (testing/support)
+  const resetAIUsageToday = useCallback(async (userId: string, workspaceId?: string) => {
+    if (!isSuperadmin) return false;
+    setLoading(true);
+
+    try {
+      // Get today in BRT
+      const now = new Date();
+      const brtOffset = -3 * 60; // BRT is UTC-3
+      const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+      const brtTime = new Date(utcTime + brtOffset * 60000);
+      const today = brtTime.toISOString().split('T')[0];
+
+      // Delete usage records for today
+      let query = supabase
+        .from('ai_usage_log')
+        .delete()
+        .eq('user_id', userId)
+        .eq('day', today);
+
+      if (workspaceId) {
+        query = query.eq('workspace_id', workspaceId);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      await logAudit('reset_ai_usage', 'user', userId, null, { day: today, workspaceId });
+      toast({ title: 'Consumo de IA resetado', description: `Consultas do dia ${today} zeradas` });
+      return true;
+    } catch (err: unknown) {
+      console.error('[resetAIUsageToday] Error:', err);
+      toast({ title: 'Erro ao resetar consumo', variant: 'destructive' });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [isSuperadmin, logAudit, toast]);
+
   // Load pending invites
   const loadInvites = useCallback(async () => {
     if (!isSuperadmin) return;
@@ -304,6 +343,7 @@ export function useUserManagement() {
     sendPasswordReset,
     toggleUserSuspension,
     removeFromWorkspace,
+    resetAIUsageToday,
     loadInvites,
   };
 }

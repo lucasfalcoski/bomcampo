@@ -7,7 +7,7 @@ import { useImpersonation } from '@/hooks/useImpersonation';
 import { 
   Loader2, Users, RefreshCw, Shield, Building2, Plus, 
   Mail, MailPlus, UserX, UserCheck, Key, Eye, Trash2,
-  Clock, Filter
+  Clock, Filter, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +63,7 @@ export default function SuperadminUsers() {
     sendPasswordReset,
     toggleUserSuspension,
     removeFromWorkspace,
+    resetAIUsageToday,
     loadInvites,
   } = useUserManagement();
   const { startImpersonation } = useImpersonation();
@@ -200,6 +201,15 @@ export default function SuperadminUsers() {
     if (confirm(`Remover ${user.email} do workspace?`)) {
       await removeFromWorkspace(user.id, user.workspace_id);
       refresh();
+    }
+  };
+
+  const handleResetAIUsage = async (user: ExtendedAdminUser) => {
+    if (confirm(`Resetar consumo de IA do dia para ${user.email}?`)) {
+      const success = await resetAIUsageToday(user.id, user.workspace_id);
+      if (success) {
+        refresh();
+      }
     }
   };
 
@@ -360,6 +370,10 @@ export default function SuperadminUsers() {
                                 <DropdownMenuItem onClick={() => openImpersonateDialog(user)}>
                                   <Eye className="h-4 w-4 mr-2" />
                                   Impersonar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleResetAIUsage(user as ExtendedAdminUser)}>
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Resetar Consumo IA
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 

@@ -118,6 +118,7 @@ export default function IAgronomoChat() {
     uploadingPhoto,
     remainingQuota,
     canUseAI,
+    aiAccessReason,
     sendMessage,
     uploadPhoto,
     clearHistory,
@@ -445,24 +446,34 @@ export default function IAgronomoChat() {
 
       {/* Input area - sticky bottom */}
       <div className="flex-shrink-0 border-t bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        {/* Quota limit state */}
+        {/* Quota limit / disabled state */}
         {!canUseAI && (
           <div className="mb-3 p-3 bg-muted rounded-lg">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 text-sm">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
-                <span className="font-medium">Limite atingido</span>
+                <span className="font-medium">
+                  {aiAccessReason === 'disabled' 
+                    ? 'IA desativada pelo administrador'
+                    : aiAccessReason === 'no_workspace'
+                    ? 'Nenhum workspace configurado'
+                    : aiAccessReason === 'plan_limit'
+                    ? 'Plano não inclui IA'
+                    : 'Limite diário atingido'}
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 text-xs"
-                  onClick={() => navigate('/configuracoes')}
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  Ver planos
-                </Button>
+                {aiAccessReason !== 'disabled' && aiAccessReason !== 'no_workspace' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-xs"
+                    onClick={() => navigate('/configuracoes')}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Ver planos
+                  </Button>
+                )}
                 {canEscalate && (
                   <Button 
                     size="sm" 
