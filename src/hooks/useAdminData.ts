@@ -24,10 +24,14 @@ export interface AdminUser {
   email: string;
   nome: string | null;
   created_at: string;
+  last_sign_in_at?: string | null;
+  email_confirmed_at?: string | null;
+  status?: 'active' | 'pending' | 'suspended';
   workspace_id?: string;
   workspace_name?: string;
   workspace_role?: string;
   system_role?: string;
+  is_suspended?: boolean;
 }
 
 export interface FeatureFlag {
@@ -269,49 +273,21 @@ export function useAdminUsers() {
     setLoading(true);
 
     try {
-      // Get profiles
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, nome, created_at')
-        .order('created_at', { ascending: false });
+      // Use Edge Function that leverages Auth Admin API
+      const { data, error } = await supabase.functions.invoke('admin-list-users', {
+        body: { page: 1, perPage: 500 },
+      });
 
-      if (error) throw error;
-
-      // Get emails using RPC
-      const userIds = (profiles || []).map(p => p.id);
-      const usersWithEmail: AdminUser[] = [];
-
-      for (const profile of profiles || []) {
-        const { data: email } = await supabase.rpc('get_user_email', { _user_id: profile.id });
-        
-        // Get workspace membership
-        const { data: membership } = await supabase
-          .from('workspace_members')
-          .select('workspace_id, role, workspaces(name)')
-          .eq('user_id', profile.id)
-          .limit(1)
-          .single();
-
-        // Get system role
-        const { data: sysRole } = await supabase
-          .from('user_system_roles')
-          .select('role')
-          .eq('user_id', profile.id)
-          .single();
-
-        usersWithEmail.push({
-          id: profile.id,
-          email: email || 'N/A',
-          nome: profile.nome,
-          created_at: profile.created_at,
-          workspace_id: membership?.workspace_id,
-          workspace_name: (membership?.workspaces as { name: string } | null)?.name,
-          workspace_role: membership?.role,
-          system_role: sysRole?.role,
-        });
+      if (error) {
+        console.error('[AdminUsers] Edge function error:', error);
+        throw error;
       }
 
-      setUsers(usersWithEmail);
+      if (data?.users) {
+        setUsers(data.users);
+      } else {
+        setUsers([]);
+      }
     } catch (err) {
       console.error('[AdminUsers] Error:', err);
       toast({ title: 'Erro ao carregar usuários', variant: 'destructive' });
