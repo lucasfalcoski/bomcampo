@@ -28,6 +28,8 @@ import Precos from "./pages/Precos";
 import Mais from "./pages/Mais";
 import FalaAgronomo from "./pages/FalaAgronomo";
 import IAgronomoChat from "./pages/IAgronomoChat";
+import Pops from "./pages/Pops";
+import PopDetail from "./pages/PopDetail";
 import AgronomistPanel from "./pages/partner/AgronomistPanel";
 import ConversationDetail from "./pages/partner/ConversationDetail";
 import OrgHome from "./pages/org/OrgHome";
@@ -476,6 +478,26 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Alertas />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pops"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Pops />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pops/:id"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PopDetail />
                   </AppLayout>
                 </ProtectedRoute>
               }

@@ -23,3 +23,15 @@ verify_jwt = false
 
 [functions.activities-create]
 verify_jwt = false
+
+[functions.tasks-create]
+verify_jwt = false
+
+[functions.occurrences-create]
+verify_jwt = false
+
+[functions.transactions-create]
+verify_jwt = false
+
+[functions.pops-seed-minimal]
+verify_jwt = false

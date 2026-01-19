@@ -1172,6 +1172,88 @@ export type Database = {
           },
         ]
       }
+      pop_steps: {
+        Row: {
+          created_at: string
+          id: string
+          pop_id: string
+          step_order: number
+          step_text: string
+          step_title: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pop_id: string
+          step_order: number
+          step_text: string
+          step_title?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pop_id?: string
+          step_order?: number
+          step_text?: string
+          step_title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pop_steps_pop_id_fkey"
+            columns: ["pop_id"]
+            isOneToOne: false
+            referencedRelation: "pops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pops: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          keywords: string[] | null
+          slug: string
+          summary: string | null
+          title: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[] | null
+          slug: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string[] | null
+          slug?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pops_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_alerts: {
         Row: {
           active: boolean

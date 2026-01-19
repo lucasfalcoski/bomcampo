@@ -885,9 +885,10 @@ serve(async (req) => {
       const farms = await getUserFarms(supabase, user.id);
       
       response = {
-        assistant_text: `⚠️ **Checklist de Segurança para Aplicação**\n\nAntes de aplicar, verifique:\n\n☐ **Chuva**: Sem previsão de chuva nas próximas 6-12h\n☐ **Vento**: Rajadas abaixo de 10 km/h\n☐ **Umidade**: Entre 60-90% (evitar inversão térmica)\n☐ **Temperatura**: Abaixo de 30°C\n☐ **Orvalho**: Aguardar secar se houver\n☐ **Solo**: Verificar se o acesso está liberado\n☐ **Equipamento**: Calibrado e em bom estado\n\n📊 **Consulte o módulo Clima** para ver as condições atuais e a janela de aplicação recomendada.\n\n👨‍🌾 **Importante**: Consulte sempre o agrônomo RT para decisões de aplicação.`,
+        assistant_text: `⚠️ **Checklist de Segurança para Aplicação**\n\nAntes de aplicar, verifique:\n\n☐ **Chuva**: Sem previsão de chuva nas próximas 6-12h\n☐ **Vento**: Rajadas abaixo de 10 km/h\n☐ **Umidade**: Entre 60-90% (evitar inversão térmica)\n☐ **Temperatura**: Abaixo de 30°C\n☐ **Orvalho**: Aguardar secar se houver\n☐ **Solo**: Verificar se o acesso está liberado\n☐ **Equipamento**: Calibrado e em bom estado\n\n📊 **Consulte o módulo Clima** para ver as condições atuais e a janela de aplicação recomendada.\n\n📋 **Veja o POP completo** de pré-aplicação para o checklist detalhado.\n\n👨‍🌾 **Importante**: Consulte sempre o agrônomo RT para decisões de aplicação.`,
         actions: [
           { type: 'open_screen', label: '☁️ Ver Clima', payload: { route: '/clima' } },
+          { type: 'open_pop', label: '📋 POP Pré-Aplicação', payload: { pop_slug: 'checklist-pre-aplicacao-condicoes' } },
           { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
         ],
         action_flow_data: {
@@ -945,9 +946,23 @@ serve(async (req) => {
         plots = await getFarmPlots(supabase, farm_id);
       }
 
+      // Determine which POP to suggest based on category
+      const popSlug = category === 'praga' 
+        ? 'checklist-inspecao-pragas' 
+        : category === 'doenca' 
+          ? 'checklist-inspecao-doencas' 
+          : 'checklist-inspecao-pragas';
+      
+      const popLabel = category === 'praga' 
+        ? '📋 POP Inspeção Pragas' 
+        : category === 'doenca' 
+          ? '📋 POP Inspeção Doenças' 
+          : '📋 POP Inspeção';
+
       response = {
-        assistant_text: `🔍 **Possível ${categoryLabel} identificada**\n\n**Próximos passos seguros:**\n1. 📸 Tire fotos claras dos sintomas\n2. 🔎 Inspecione plantas vizinhas\n3. 📝 Registre a área afetada\n4. 👨‍🌾 Envie para o agrônomo avaliar\n\n⚠️ **Não aplique produtos sem orientação do RT.**\n\nRegistre a ocorrência abaixo para acompanhamento.`,
+        assistant_text: `🔍 **Possível ${categoryLabel} identificada**\n\n**Próximos passos seguros:**\n1. 📸 Tire fotos claras dos sintomas\n2. 🔎 Inspecione plantas vizinhas\n3. 📝 Registre a área afetada\n4. 👨‍🌾 Envie para o agrônomo avaliar\n\n📋 **Consulte o POP de inspeção** para o procedimento completo.\n\n⚠️ **Não aplique produtos sem orientação do RT.**\n\nRegistre a ocorrência abaixo para acompanhamento.`,
         actions: [
+          { type: 'open_pop', label: popLabel, payload: { pop_slug: popSlug } },
           { type: 'escalate_to_agronomist', label: 'Enviar para Agrônomo' },
         ],
         action_flow_data: {
