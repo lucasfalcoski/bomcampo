@@ -30,39 +30,29 @@ const BLOCKED_PATTERNS = [
 ];
 
 // ========== INTENT PATTERNS ==========
-// Expanded to cover 300+ real-life variations with typos, abbreviations, and informal language
 const INTENT_PATTERNS = {
   register_activity: [
-    // Core patterns - "fiz/fizemos/realizei"
     /fiz(emos)?\s+(uma?\s*)?(limp[ea]?[sz]?[ao]?|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|irriga[çc][ãa]o|poda|preparo|desbrota|replantio)/i,
     /realizei?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina)/i,
-    // "foi feito/feita"
     /foi\s+feit[ao]\s+(uma?\s*)?(limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|carreiro|regulagem|revis[ãa]o)/i,
-    // "registrar/anota" patterns
     /registr(ar?|ei|amos)\s+(uma?\s*)?(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o)/i,
     /anota(r)?\s+(a[ií]?|que)?\s*(atividade|limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|hoje|hj)/i,
     /lan[çc]ar\s+(atividade|trabalho)/i,
     /hoje\s+(fiz|fizemos|realizamos)/i,
     /aplicamos\s+(adubo|fertilizante|calc[áa]rio)/i,
     /colhemos|plantamos|irrigamos|podamos|adubei|capinei|irriguei/i,
-    // Abbreviated patterns: "T2:", "t3:", "talhão1"
     /t\d+:\s*(limpeza|ro[çc]a|poda|aduba|feita?|conclu[íi]da)/i,
     /(talhao|talh[ãa]o)\s*\d+\s*(limpeza|ro[çc]a|poda|conclu[íi]d[ao]|feit[ao]|agora|hj)/i,
-    // Maintenance/repair patterns
     /consert(ei|amos)\s+(cano|bomba|porteira|cerca)/i,
     /fiz\s+manuten[çc][ãa]o\s+(na|no|da|do)/i,
     /troca\s+(de\s+)?(bico|[óo]leo|rolamento)/i,
     /lavagem\s+(do|da)\s+(pulverizador|epi|m[áa]quina)/i,
-    // Irrigation/gotejo patterns
     /(desentupimos|sangria|revis[ãa]o|regulagem)\s+(gotejador|aspersor|gotejo|linha)/i,
     /vistoria\s+(das?\s+)?(mangueira|gotejo|irriga)/i,
-    // Harvest/terrain patterns
     /limpeza\s+(do\s+)?terreiro/i,
     /coleta\s+(de\s+)?(amostra|solo|folha)/i,
-    // General activities with "registra/anota"
     /registra\s*[.:,]?\s*(ro[çc]a|poda|limpeza|capina|aduba|irriga|colheita)/i,
     /anota\s*[.:,]?\s*que\s+(hoje\s+)?(fiz|fizemos|realizamos)/i,
-    // Informal/abbreviated
     /(roça|rocada|ro[çc]agem)\s+(feit[ao]|conclu[íi]d[ao])/i,
     /(poda|desbrota|amarr[açã][ãa]o)\s+(feit[ao]|conclu[íi]d[ao]|finalizada)/i,
     /fechamos\s+(buraco|cerca|dreno)/i,
@@ -74,7 +64,6 @@ const INTENT_PATTERNS = {
     /lubrifica[çc][ãa]o\s+(do\s+)?trator/i,
     /carregamos\s+adubo/i,
     /aterramos\s+(um\s+)?trecho/i,
-    // Conjugations
     /(arrumamos|consertamos|limpamos|lavamos|trocamos|fizemos|realizamos|terminamos|conclu[íi]mos)/i,
   ],
   create_task: [
@@ -93,41 +82,33 @@ const INTENT_PATTERNS = {
     /criar\s+(tarefa|lembrete|checklist)/i,
     /cria\s+tarefa\s+(pra|para)/i,
     /tarefa\s*:\s*(checar|revisar|monitorar|verificar|limpar)/i,
-    // Informal "coloca pra eu"
     /coloca\s+pra\s+(eu|mim)\s+(registrar|lembrar|verificar)/i,
   ],
   open_screen: [
-    // Direct screen patterns
     /abr(e|a|ir)\s+(a\s+)?(tela\s+de\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|talh[õo]es|fazendas|dashboard|atividades|ocorr[êe]ncias|plantios|tarefas)/i,
     /mostrar?\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|atividades|tarefas|alertas)/i,
     /ver\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|financeiro|talh[õo]es|hist[óo]rico|custos|receita|consumo)/i,
     /ir\s+para\s+(clima|relat[óo]rios?|pre[çc]os|financeiro)/i,
     /quero\s+(ver|acessar)\s+(o\s+)?(clima|relat[óo]rio|pre[çc]os|atividades|tarefas|alertas|painel|calend[áa]rio)/i,
     /acessar\s+(o\s+)?(m[óo]dulo|tela|[áa]rea)\s+(de\s+)?(clima|financeiro|plantios|atividades)/i,
-    // Specific report patterns
     /relat[óo]rio\s+(mensal|por\s+talh[ãa]o|de\s+despesas|semanal)/i,
     /lista\s+(de\s+)?(ocorr[êe]ncias|tarefas|atividades)/i,
-    // Admin patterns
     /gerenciar\s+usu[áa]rios/i,
     /v[íi]nculo\s+(do\s+)?agr[ôo]nomo/i,
     /abr(e|ir)\s+(admin|integra[çc][õo]es|auditoria)/i,
-    // Abbreviated
     /abre\s+(clima|talh[õo]es|plantios|financeiro|relat[óo]rios?)/i,
     /dashboard\s+geral/i,
     /painel\s+(do\s+)?b2b/i,
   ],
   high_risk_today: [
-    // Core "posso/dá para" patterns
     /posso\s+(pulverizar|aplicar|adubar|irrigar|plantar|colher|ro[çc]ar|entrar|passar|mexer|secar)\s*(hoje|agora|hj|cedo)?/i,
     /d[áa]\s+(para|pra)\s+(pulverizar|aplicar|adubar|irrigar|plantar|colher|ro[çc]ar|entrar|plantar|secar)\s*(hoje|agora|hj)?/i,
-    // Weather condition patterns
     /hoje\s+[ée]\s+bom\s+(dia|momento)\s+(para|de)\s+(pulverizar|aplicar|adubar)/i,
     /condi[çc][õo]es?\s+(para|de)\s+(pulveriza[çc][ãa]o|aplica[çc][ãa]o)\s*(hoje)?/i,
     /janela\s+de\s+(pulveriza[çc][ãa]o|aplica[çc][ãa]o)/i,
     /hora\s+(boa|ideal)\s+(para|de)\s+(pulverizar|aplicar)/i,
     /(pulverizar|aplicar)\s+agora/i,
     /melhor\s+(hora|momento)\s+(para|de|do\s+dia)\s+(aplicar|pulverizar)/i,
-    // Condition-based questions
     /(t[áa]\s+)?nublado.*posso\s+pulverizar/i,
     /vento\s+(t[áa]\s+)?forte.*rola\s+aplicar/i,
     /vento\s+fraco.*d[áa]\s+(pra|para)\s+entrar/i,
@@ -138,7 +119,6 @@ const INTENT_PATTERNS = {
     /encharcado.*d[áa]\s+(pra|para)\s+ro[çc]ar/i,
     /secar.*d[áa]\s+(pra|para)\s+plantar/i,
     /choveu.*d[áa]\s+(pra|para)\s+entrar/i,
-    // Informal variations
     /rola\s+aplicar/i,
     /consigo\s+ro[çc]ar/i,
     /posso\s+passar\s+veneno/i,
@@ -147,68 +127,28 @@ const INTENT_PATTERNS = {
     /d[áa]\s+pra\s+passar\s+herbicida/i,
     /o\s+que\s+checar\s+antes/i,
     /quero\s+aplicar\s+hoje/i,
-    // Rajada/previsão patterns
     /rajada\s+de\s+vento.*d[áa]/i,
     /previs[ãa]o\s+de\s+chuva.*posso/i,
     /chuva\s+parar.*posso\s+aplicar/i,
     /temperatura\s+cair.*posso/i,
-    // Segurança patterns
     /[ée]\s+seguro\s+entrar/i,
   ],
   observation_diagnosis: [
-    // Leaf symptoms
     /folha(s)?\s+(amarela|seca|murcha|manchada|com\s+mancha|enrolando|queimando|bronzeada|com\s+pont|com\s+perfura)/i,
     /folha\s+(com\s+)?(pontinhos?|p[óo]\s+preto|pequenas?\s+perfura)/i,
     /mancha(s)?\s+(na|nas|em|circular)\s+(folha|planta|fruto)/i,
     /murcha(ndo|s)?/i,
     /broto\s+(novo\s+)?t[áa]\s+secando/i,
     /planta\s+(com\s+)?aspecto\s+queimado/i,
-    // Pest patterns
-    /praga/i,
-    /inseto/i,
-    /[áa]caro/i,
-    /ferrugem/i,
-    /formiga/i,
-    /mofo/i,
-    /fungo/i,
-    /lagarta/i,
-    /percevejo/i,
-    /pulgão/i,
-    /trip(e|s)/i,
-    /mosca\s+branca/i,
-    /nematoide/i,
-    /ant?racnose/i,
-    /m[íi]ldio/i,
-    /o[íi]dio/i,
-    /podrid[ãa]o/i,
-    /necrose/i,
-    /clorose/i,
-    /queima/i,
-    /broca/i,
-    // Identification patterns
-    /identific(ar|a[çc][ãa]o|ou)/i,
-    /sintoma/i,
-    /o\s+que\s+[ée]\s+isso/i,
-    /que\s+praga\s+[ée]/i,
-    /pode\s+ser\s+(praga|doen[çc]a)/i,
-    /como\s+confirm(o|ar)/i,
-    /como\s+investigar/i,
-    /isso\s+preocupa/i,
-    // Informal patterns
-    /bicho\s+pequeno\s+na\s+folha/i,
-    /tem\s+uns\s+bicho/i,
-    /teia\s+fina/i,
-    /frutos?\s+caindo/i,
-    /inseto\s+voando/i,
-    /formigueiro\s+apareceu/i,
-    /caule\s+com\s+les[ãa]o/i,
-    /raiz\s+exposta/i,
-    /plantas?\s+mais\s+baixas/i,
-    /mato\s+subiu\s+r[áa]pido/i,
-    /fruto\s+com\s+mancha/i,
-    /eros[ãa]o\s+come[çc]ando/i,
-    /[áa]gua\s+empoçando/i,
-    /press[ãa]o\s+(do\s+)?gotejo\s+caiu/i,
+    /praga/i, /inseto/i, /[áa]caro/i, /ferrugem/i, /formiga/i, /mofo/i, /fungo/i, /lagarta/i,
+    /percevejo/i, /pulgão/i, /trip(e|s)/i, /mosca\s+branca/i, /nematoide/i, /ant?racnose/i,
+    /m[íi]ldio/i, /o[íi]dio/i, /podrid[ãa]o/i, /necrose/i, /clorose/i, /queima/i, /broca/i,
+    /identific(ar|a[çc][ãa]o|ou)/i, /sintoma/i, /o\s+que\s+[ée]\s+isso/i, /que\s+praga\s+[ée]/i,
+    /pode\s+ser\s+(praga|doen[çc]a)/i, /como\s+confirm(o|ar)/i, /como\s+investigar/i, /isso\s+preocupa/i,
+    /bicho\s+pequeno\s+na\s+folha/i, /tem\s+uns\s+bicho/i, /teia\s+fina/i, /frutos?\s+caindo/i,
+    /inseto\s+voando/i, /formigueiro\s+apareceu/i, /caule\s+com\s+les[ãa]o/i, /raiz\s+exposta/i,
+    /plantas?\s+mais\s+baixas/i, /mato\s+subiu\s+r[áa]pido/i, /fruto\s+com\s+mancha/i,
+    /eros[ãa]o\s+come[çc]ando/i, /[áa]gua\s+empoçando/i, /press[ãa]o\s+(do\s+)?gotejo\s+caiu/i,
     /(parece|confirmar)\s+defici[êe]ncia/i,
   ],
   cadastro: [
@@ -220,7 +160,6 @@ const INTENT_PATTERNS = {
     /atualiza(r)?\s+[áa]rea\s+(do\s+)?talh[ãa]o/i,
     /muda(r)?\s+variedade/i,
     /vincular\s+agr[ôo]nomo/i,
-    // Specific patterns
     /criar\s+talh[ãa]?o\s*\d+/i,
     /cadastrar\s+plantio\s+caf[ée]/i,
     /criar\s+fazenda/i,
@@ -234,7 +173,6 @@ const INTENT_PATTERNS = {
     /relat[óo]rio\s+financeiro/i,
     /despesas?\s+(do|da|de)/i,
     /custos?\s+(do|da|de|operacional)/i,
-    // Specific finance patterns
     /registra(r)?\s+despesa\s*:\s*(diesel|pe[çc]as|m[ãa]o\s+de\s+obra)/i,
     /despesa\s+(diesel|combust[íi]vel|pe[çc]as|m[ãa]o\s+de\s+obra)/i,
     /custo\s+(do\s+)?trator/i,
@@ -244,25 +182,13 @@ const INTENT_PATTERNS = {
     /financeiro\s+do\s+m[êe]s/i,
   ],
   weather: [
-    /clima/i,
-    /previs[ãa]o/i,
-    /chuva\s+(pra|para|de)\s+h(oje|j)/i,
-    /chov(e|er|eu|a|endo)/i,
-    /vai\s+chover/i,
-    /temperatura/i,
-    /umidade/i,
-    /vento/i,
-    /como\s+(est[aá]|vai\s+estar)\s+o\s+tempo/i,
-    /calor/i,
-    /frio/i,
-    /geada/i,
-    /seca/i,
-    /alertas?\s+(do\s+)?tempo/i,
-    /previsao\s+chuva/i,
+    /clima/i, /previs[ãa]o/i, /chuva\s+(pra|para|de)\s+h(oje|j)/i, /chov(e|er|eu|a|endo)/i,
+    /vai\s+chover/i, /temperatura/i, /umidade/i, /vento/i, /como\s+(est[aá]|vai\s+estar)\s+o\s+tempo/i,
+    /calor/i, /frio/i, /geada/i, /seca/i, /alertas?\s+(do\s+)?tempo/i, /previsao\s+chuva/i,
   ],
 };
 
-// ========== ACTIVITY TYPES ==========
+// ========== STATIC DATA ==========
 const ACTIVITY_TYPES = [
   { value: 'limpeza', label: 'Limpeza' },
   { value: 'rocada', label: 'Roçada' },
@@ -351,6 +277,16 @@ interface AIAction {
   payload?: Record<string, unknown>;
 }
 
+interface AIDebugInfo {
+  limit: number;
+  used: number;
+  remaining: number;
+  plan_used: 'free' | 'premium';
+  limit_source: 'campaign' | 'workspace' | 'global' | 'default';
+  bypass: boolean;
+  is_superadmin: boolean;
+}
+
 interface AIResponse {
   assistant_text: string;
   actions: AIAction[];
@@ -366,6 +302,7 @@ interface AIResponse {
     reason?: string;
     suggest_escalate: boolean;
   };
+  debug?: AIDebugInfo;
 }
 
 // ========== HELPER FUNCTIONS ==========
@@ -375,6 +312,22 @@ function getTodayBRT(): string {
   const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
   const brtTime = new Date(utcTime + brtOffset * 60000);
   return brtTime.toISOString().split('T')[0];
+}
+
+function parseNumericFlag(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && !isNaN(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!isNaN(parsed)) return parsed;
+  }
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    if ('value' in obj) {
+      const parsed = Number(obj.value);
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+  return fallback;
 }
 
 function checkBlockedContent(message: string): string | null {
@@ -391,7 +344,6 @@ type Intent = 'register_activity' | 'create_task' | 'open_screen' | 'high_risk_t
               'observation_diagnosis' | 'cadastro' | 'financeiro' | 'weather' | 'general';
 
 function classifyIntent(message: string): Intent {
-  // Prioridade: high_risk_today primeiro
   for (const pattern of INTENT_PATTERNS.high_risk_today) {
     if (pattern.test(message)) return 'high_risk_today';
   }
@@ -413,37 +365,21 @@ function classifyIntent(message: string): Intent {
 
 function extractActivityType(message: string): string | null {
   const patterns = [
-    // Limpeza variations
     { pattern: /limp[ea]?[sz]?[ao]?/i, tipo: 'limpeza' },
-    // Roçada variations (rocada, roça, roçagem, roçada)
     { pattern: /ro[çc]a(da|gem)?/i, tipo: 'rocada' },
-    // Adubação variations
     { pattern: /aduba[çc][ãa]o|adubar|adubamos|adubei|calc[áa]rio/i, tipo: 'adubacao' },
-    // Pulverização
     { pattern: /pulveriza[çc][ãa]o|pulverizar/i, tipo: 'pulverizacao' },
-    // Colheita
     { pattern: /colheita|colher|colhemos/i, tipo: 'colheita' },
-    // Manutenção (conserto, troca, revisão, lubrificação, lavagem)
     { pattern: /manuten[çc][ãa]o|consert(ei|amos)|troca\s+(de\s+)?(bico|[óo]leo|rolamento)|revis[ãa]o|lubrifica[çc][ãa]o|lavagem/i, tipo: 'manutencao' },
-    // Capina
     { pattern: /capina|capinei/i, tipo: 'capina' },
-    // Irrigação (irrigação, gotejo, aspersor, sangria)
     { pattern: /irriga[çc][ãa]o|irrigar|irriguei|gotejo|aspersor|sangria/i, tipo: 'irrigacao' },
-    // Plantio (plantio, replantio)
     { pattern: /plantio|plantar|replantio/i, tipo: 'plantio' },
-    // Preparo de solo
     { pattern: /preparo\s+(de\s+)?solo/i, tipo: 'preparo_solo' },
-    // Poda (poda, desbrota, amarração)
     { pattern: /poda|podar|desbrota|amarr[açã][ãa]o/i, tipo: 'poda' },
-    // Carreiro
     { pattern: /carreiro/i, tipo: 'outros' },
-    // Coleta
     { pattern: /coleta\s+(de\s+)?(amostra|solo|folha)/i, tipo: 'outros' },
-    // Controle de formiga
     { pattern: /controle\s+(de\s+)?formiga/i, tipo: 'outros' },
-    // Cobertura morta
     { pattern: /cobertura\s+morta/i, tipo: 'outros' },
-    // Armadilhas
     { pattern: /armadilha/i, tipo: 'outros' },
   ];
   
@@ -464,18 +400,18 @@ function extractScreenRoute(message: string): { route: string; label: string } |
     { pattern: /dashboard|in[íi]cio|painel\s+geral/i, route: '/', label: 'Dashboard' },
     { pattern: /atividades?/i, route: '/talhoes', label: 'Atividades' },
     { pattern: /plantios?/i, route: '/talhoes', label: 'Plantios' },
-    { pattern: /tarefas?\s+atrasadas?/i, route: '/', label: 'Dashboard' },
+    { pattern: /tarefas?|pendentes?/i, route: '/talhoes', label: 'Tarefas' },
     { pattern: /ocorr[êe]ncias?/i, route: '/talhoes', label: 'Ocorrências' },
-    { pattern: /calend[áa]rio/i, route: '/', label: 'Calendário' },
-    { pattern: /hist[óo]rico/i, route: '/talhoes', label: 'Histórico' },
-    { pattern: /custos?\s+por\s+talh[ãa]o/i, route: '/relatorios', label: 'Relatórios' },
-    { pattern: /consumo\s+(de\s+)?ia/i, route: '/configuracoes', label: 'Configurações' },
-    { pattern: /integra[çc][õo]es/i, route: '/configuracoes', label: 'Integrações' },
+    { pattern: /calend[áa]rio/i, route: '/talhoes', label: 'Calendário' },
+    { pattern: /hist[óo]rico/i, route: '/relatorios', label: 'Histórico' },
+    { pattern: /custos?/i, route: '/financeiro', label: 'Custos' },
+    { pattern: /consumo\s+ia/i, route: '/configuracoes', label: 'Consumo IA' },
     { pattern: /admin/i, route: '/admin', label: 'Admin' },
+    { pattern: /integra[çc][õo]es/i, route: '/configuracoes', label: 'Integrações' },
     { pattern: /auditoria/i, route: '/admin/auditoria', label: 'Auditoria' },
-    { pattern: /v[íi]nculo\s+(do\s+)?agr[ôo]nomo/i, route: '/org/agronomists', label: 'Agrônomos' },
-    { pattern: /gerenciar\s+usu[áa]rios/i, route: '/org/users', label: 'Usuários' },
-    { pattern: /painel\s+(do\s+)?b2b/i, route: '/org', label: 'Painel B2B' },
+    { pattern: /usu[áa]rios/i, route: '/org/users', label: 'Usuários' },
+    { pattern: /agr[ôo]nomo/i, route: '/org/agronomists', label: 'Agrônomos' },
+    { pattern: /painel\s+b2b/i, route: '/org', label: 'Painel B2B' },
   ];
   
   for (const { pattern, route, label } of patterns) {
@@ -484,42 +420,37 @@ function extractScreenRoute(message: string): { route: string; label: string } |
   return null;
 }
 
-function extractOccurrenceCategory(message: string): string {
+function extractOccurrenceCategory(message: string): string | null {
   const patterns = [
-    // Pragas - expanded
-    { pattern: /praga|inseto|lagarta|percevejo|pulg[ãa]o|trip|mosca|[áa]caro|formiga|nematoide|broca|bicho/i, category: 'praga' },
-    // Doenças - expanded
-    { pattern: /doen[çc]a|fungo|ferrugem|mofo|ant?racnose|m[íi]ldio|o[íi]dio|podrid[ãa]o|necrose|teia|les[ãa]o/i, category: 'doenca' },
-    // Deficiência - expanded
-    { pattern: /defici[êe]ncia|amarela|clorose|nutricional|queimando\s+na\s+ponta|folha\s+enrolando/i, category: 'deficiencia' },
-    // Dano climático
-    { pattern: /geada|granizo|vento\s+forte|temporal|eros[ãa]o|encharcado|empoçando/i, category: 'dano_climatico' },
-    // Erva daninha
-    { pattern: /erva\s+daninha|invasora|mato\s+subiu/i, category: 'erva_daninha' },
+    { pattern: /praga|inseto|lagarta|percevejo|pulgão|trip|mosca|bicho|formiga|[áa]caro|broca/i, category: 'praga' },
+    { pattern: /doen[çc]a|ferrugem|mofo|fungo|ant?racnose|m[íi]ldio|o[íi]dio|podrid[ãa]o/i, category: 'doenca' },
+    { pattern: /defici[êe]ncia|clorose|amarela|nutriente|carência/i, category: 'deficiencia' },
+    { pattern: /clima|geada|seca|granizo|vento\s+forte|queima\s+solar/i, category: 'dano_climatico' },
+    { pattern: /erva|daninha|mato|invas(or|ão)/i, category: 'erva_daninha' },
   ];
   
   for (const { pattern, category } of patterns) {
     if (pattern.test(message)) return category;
   }
-  return 'outro';
+  return null;
 }
 
-function extractFinanceType(message: string): 'receita' | 'custo' {
-  if (/receita|vendi|recebi|entrada|faturamento|venda\s+de/i.test(message)) return 'receita';
+function extractFinanceType(message: string): 'custo' | 'receita' {
+  if (/receita|venda|ganho|entrada/i.test(message)) return 'receita';
   return 'custo';
 }
 
 function extractFinanceCategory(message: string): string {
   const patterns = [
-    { pattern: /insumo|semente|defensivo|fertilizante/i, category: 'insumo' },
-    { pattern: /m[ãa]o\s+de\s+obra|funcion[áa]rio|di[áa]ria|prestador/i, category: 'mao_obra' },
-    { pattern: /m[áa]quina|trator|combust[íi]vel|diesel|pe[çc]as?/i, category: 'maquinas' },
+    { pattern: /diesel|combust[íi]vel|gasolina/i, category: 'maquinas' },
+    { pattern: /m[ãa]o\s+de\s+obra|trabalhador|di[áa]ria/i, category: 'mao_obra' },
+    { pattern: /pe[çc]as?|conserto|reparo/i, category: 'maquinas' },
+    { pattern: /adubo|fertilizante/i, category: 'adubacao' },
+    { pattern: /insumo|semente|defensivo/i, category: 'insumo' },
     { pattern: /energia|luz|eletricidade/i, category: 'energia' },
     { pattern: /transporte|frete/i, category: 'transporte' },
-    { pattern: /venda|vendi/i, category: 'venda' },
-    { pattern: /adubo|aduba[çc][ãa]o|calc[áa]rio/i, category: 'adubacao' },
-    { pattern: /luva|m[áa]scara|epi/i, category: 'outros' },
-    { pattern: /sacaria/i, category: 'outros' },
+    { pattern: /venda|caf[ée]|gr[ãa]o/i, category: 'venda' },
+    { pattern: /trator|m[áa]quina/i, category: 'maquinas' },
   ];
   
   for (const { pattern, category } of patterns) {
@@ -529,21 +460,21 @@ function extractFinanceCategory(message: string): string {
 }
 
 // deno-lint-ignore no-explicit-any
-async function getFarmPlots(supabase: any, farmId: string): Promise<Array<{ id: string; nome: string }>> {
-  const { data } = await supabase
-    .from('plots')
-    .select('id, nome')
-    .eq('farm_id', farmId)
-    .order('nome');
-  return data || [];
-}
-
-// deno-lint-ignore no-explicit-any
 async function getUserFarms(supabase: any, userId: string): Promise<Array<{ id: string; nome: string }>> {
   const { data } = await supabase
     .from('farms')
     .select('id, nome')
     .eq('user_id', userId)
+    .order('nome');
+  return data || [];
+}
+
+// deno-lint-ignore no-explicit-any
+async function getFarmPlots(supabase: any, farmId: string): Promise<Array<{ id: string; nome: string }>> {
+  const { data } = await supabase
+    .from('plots')
+    .select('id, nome')
+    .eq('farm_id', farmId)
     .order('nome');
   return data || [];
 }
@@ -560,21 +491,134 @@ async function getWorkspaceId(supabase: any, userId: string): Promise<string | n
 }
 
 // deno-lint-ignore no-explicit-any
-async function checkQuota(supabase: any, workspaceId: string, userId: string): Promise<{ allowed: boolean; remaining: number }> {
+async function checkIsSuperadmin(supabase: any, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('user_system_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'superadmin')
+    .maybeSingle();
+  return !!data;
+}
+
+interface QuotaResult {
+  allowed: boolean;
+  remaining: number;
+  limit: number;
+  used: number;
+  bypass: boolean;
+  plan_used: 'free' | 'premium';
+  limit_source: 'campaign' | 'workspace' | 'global' | 'default';
+  is_superadmin: boolean;
+}
+
+// deno-lint-ignore no-explicit-any
+async function checkQuotaWithDebug(supabase: any, workspaceId: string, userId: string): Promise<QuotaResult> {
   const today = getTodayBRT();
-  const { data: flags } = await supabase
+  
+  // Check if user is superadmin
+  const isSuperadmin = await checkIsSuperadmin(supabase, userId);
+  
+  // Get workspace plan
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('plan')
+    .eq('id', workspaceId)
+    .single();
+  
+  const plan = workspace?.plan || 'free';
+  const isPremiumPlan = plan === 'premium' || plan === 'enterprise';
+  const planUsed: 'free' | 'premium' = isPremiumPlan ? 'premium' : 'free';
+  
+  // Default quotas
+  const defaultQuotas = { free: 10, premium: 150 };
+  let limit = isPremiumPlan ? defaultQuotas.premium : defaultQuotas.free;
+  let limitSource: 'campaign' | 'workspace' | 'global' | 'default' = 'default';
+  let bypass = false;
+  
+  // 1. Check global flags
+  const { data: globalFlags } = await supabase
+    .from('feature_flags_global')
+    .select('key, value_json');
+  
+  let aiAdminBypass = false;
+  for (const f of globalFlags || []) {
+    if (f.key === 'ai_daily_quota_free' && !isPremiumPlan) {
+      const parsed = parseNumericFlag(f.value_json, defaultQuotas.free);
+      if (parsed > 0) {
+        limit = parsed;
+        limitSource = 'global';
+      }
+    }
+    if (f.key === 'ai_daily_quota_premium' && isPremiumPlan) {
+      const parsed = parseNumericFlag(f.value_json, defaultQuotas.premium);
+      if (parsed > 0) {
+        limit = parsed;
+        limitSource = 'global';
+      }
+    }
+    if (f.key === 'ai_admin_bypass') {
+      aiAdminBypass = f.value_json === true || 
+                      (typeof f.value_json === 'object' && (f.value_json as Record<string, unknown>)?.enabled === true);
+    }
+  }
+  
+  // 2. Check workspace flags (can override)
+  const { data: wsFlags } = await supabase
     .from('feature_flags_workspace')
     .select('key, value_json')
     .eq('workspace_id', workspaceId);
   
-  let limit = 10;
-  const wsFlags = flags || [];
-  for (const f of wsFlags) {
-    if (f.key === 'ai_daily_quota' && typeof f.value_json === 'number') {
-      limit = f.value_json;
+  for (const f of wsFlags || []) {
+    if (f.key === 'ai_daily_quota') {
+      const parsed = parseNumericFlag(f.value_json, 0);
+      if (parsed > 0) {
+        limit = parsed;
+        limitSource = 'workspace';
+      }
+    }
+    if (f.key === 'ai_admin_bypass') {
+      aiAdminBypass = f.value_json === true ||
+                      (typeof f.value_json === 'object' && (f.value_json as Record<string, unknown>)?.enabled === true);
     }
   }
   
+  // 3. Check campaigns (highest priority)
+  const now = new Date().toISOString();
+  const { data: campaigns } = await supabase
+    .from('campaigns')
+    .select('rule_json, payload_json')
+    .eq('is_enabled', true)
+    .lte('start_at', now)
+    .or(`end_at.is.null,end_at.gte.${now}`);
+  
+  for (const campaign of campaigns || []) {
+    const rules = campaign.rule_json as Record<string, unknown> | null;
+    const payload = campaign.payload_json as Record<string, unknown> | null;
+    
+    if (rules) {
+      const targetWorkspaces = rules.workspaces as string[] | undefined;
+      if (targetWorkspaces && !targetWorkspaces.includes(workspaceId)) {
+        continue;
+      }
+    }
+    
+    if (payload && payload.ai_daily_quota !== undefined) {
+      const parsed = parseNumericFlag(payload.ai_daily_quota, 0);
+      if (parsed > 0) {
+        limit = parsed;
+        limitSource = 'campaign';
+      }
+    }
+  }
+  
+  // 4. Check bypass (superadmin + ai_admin_bypass flag)
+  if (isSuperadmin && aiAdminBypass) {
+    bypass = true;
+    console.log('[ai-ask] Quota bypass active for superadmin');
+  }
+  
+  // 5. Get usage (count ALL sources together, not per-source)
   const { data: usage } = await supabase
     .from('ai_usage_log')
     .select('requests')
@@ -582,13 +626,29 @@ async function checkQuota(supabase: any, workspaceId: string, userId: string): P
     .eq('user_id', userId)
     .eq('day', today);
   
-  const used = usage?.reduce((sum: number, r: { requests: number }) => sum + (r.requests || 0), 0) || 0;
-  return { allowed: used < limit, remaining: Math.max(0, limit - used) };
+  const used = (usage || []).reduce((sum: number, r: { requests: number }) => sum + (r.requests || 0), 0);
+  const remaining = bypass ? 999 : Math.max(0, limit - used);
+  
+  return {
+    allowed: bypass || used < limit,
+    remaining,
+    limit,
+    used,
+    bypass,
+    plan_used: planUsed,
+    limit_source: limitSource,
+    is_superadmin: isSuperadmin,
+  };
 }
 
+// Increment usage ONCE per question (not per provider)
 // deno-lint-ignore no-explicit-any
-async function incrementUsage(supabase: any, workspaceId: string, userId: string, source: string): Promise<void> {
+async function incrementUsage(supabase: any, workspaceId: string, userId: string, bypass: boolean): Promise<void> {
+  // If bypass is active, we still want to track for auditing but not block
+  // We'll still increment to have an accurate count
   const today = getTodayBRT();
+  const source = 'copilot'; // Single source for all AI questions
+  
   const { data: existing } = await supabase
     .from('ai_usage_log')
     .select('id, requests')
@@ -612,6 +672,8 @@ async function incrementUsage(supabase: any, workspaceId: string, userId: string
       requests: 1,
     });
   }
+  
+  console.log('[ai-ask] Usage incremented. Bypass:', bypass);
 }
 
 // deno-lint-ignore no-explicit-any
@@ -700,19 +762,33 @@ serve(async (req) => {
       return new Response(JSON.stringify(response), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 2. Check quota
+    // 2. Check quota with full debug info
     const effectiveWorkspaceId = workspace_id || await getWorkspaceId(supabase, user.id);
+    let quotaInfo: QuotaResult | null = null;
+    
     if (effectiveWorkspaceId) {
-      const { allowed, remaining } = await checkQuota(supabase, effectiveWorkspaceId, user.id);
-      if (!allowed) {
+      quotaInfo = await checkQuotaWithDebug(supabase, effectiveWorkspaceId, user.id);
+      
+      if (!quotaInfo.allowed) {
+        const debugInfo: AIDebugInfo | undefined = quotaInfo.is_superadmin ? {
+          limit: quotaInfo.limit,
+          used: quotaInfo.used,
+          remaining: quotaInfo.remaining,
+          plan_used: quotaInfo.plan_used,
+          limit_source: quotaInfo.limit_source,
+          bypass: quotaInfo.bypass,
+          is_superadmin: quotaInfo.is_superadmin,
+        } : undefined;
+        
         const response: AIResponse = {
-          assistant_text: `📊 **Limite diário atingido.**\n\nSeu limite será renovado amanhã. Enquanto isso:\n- Consulte nossos conteúdos técnicos\n- Envie sua dúvida para um agrônomo`,
+          assistant_text: `📊 **Limite diário atingido.**\n\nVocê usou ${quotaInfo.used}/${quotaInfo.limit} consultas hoje. Seu limite será renovado amanhã às 00:00.\n\nEnquanto isso:\n- Consulte nossos conteúdos técnicos\n- Envie sua dúvida para um agrônomo`,
           actions: [
             { type: 'open_screen', label: 'Ver Planos', payload: { route: '/configuracoes' } },
             { type: 'escalate_to_agronomist', label: 'Perguntar ao Agrônomo' },
           ],
           flags: { decision_route: 'quota_exceeded' },
           safety: { blocked: false, suggest_escalate: true },
+          debug: debugInfo,
         };
         return new Response(JSON.stringify(response), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -882,8 +958,6 @@ serve(async (req) => {
 
     // D) HIGH_RISK_TODAY - NUNCA sim/não
     else if (intent === 'high_risk_today') {
-      const farms = await getUserFarms(supabase, user.id);
-      
       response = {
         assistant_text: `⚠️ **Checklist de Segurança para Aplicação**\n\nAntes de aplicar, verifique:\n\n☐ **Chuva**: Sem previsão de chuva nas próximas 6-12h\n☐ **Vento**: Rajadas abaixo de 10 km/h\n☐ **Umidade**: Entre 60-90% (evitar inversão térmica)\n☐ **Temperatura**: Abaixo de 30°C\n☐ **Orvalho**: Aguardar secar se houver\n☐ **Solo**: Verificar se o acesso está liberado\n☐ **Equipamento**: Calibrado e em bom estado\n\n📊 **Consulte o módulo Clima** para ver as condições atuais e a janela de aplicação recomendada.\n\n📋 **Veja o POP completo** de pré-aplicação para o checklist detalhado.\n\n👨‍🌾 **Importante**: Consulte sempre o agrônomo RT para decisões de aplicação.`,
         actions: [
@@ -891,48 +965,7 @@ serve(async (req) => {
           { type: 'open_pop', label: '📋 POP Pré-Aplicação', payload: { pop_slug: 'checklist-pre-aplicacao-condicoes' } },
           { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
         ],
-        action_flow_data: {
-          id: `task_check_${Date.now()}`,
-          title: 'Criar Tarefa de Verificação',
-          entity: 'task',
-          fields: [
-            {
-              key: 'title',
-              label: 'Título',
-              type: 'text',
-              value: 'Verificar janela de aplicação',
-              required: true,
-            },
-            {
-              key: 'due_date',
-              label: 'Data',
-              type: 'date',
-              value: today,
-            },
-            {
-              key: 'priority',
-              label: 'Prioridade',
-              type: 'select',
-              value: 'high',
-              options: PRIORITY_OPTIONS,
-            },
-            {
-              key: 'farm_id',
-              label: 'Fazenda',
-              type: 'select',
-              value: farm_id || '',
-              options: farms.map(f => ({ value: f.id, label: f.nome })),
-            },
-          ],
-          confirm_label: 'Criar Tarefa',
-          cancel_label: 'Pular',
-          on_confirm: {
-            endpoint: '/functions/v1/tasks-create',
-            method: 'POST',
-            body_map: { workspace_id: 'workspace_id', title: 'title', due_date: 'due_date', priority: 'priority', farm_id: 'farm_id' },
-          },
-        },
-        flags: { decision_route: 'high_risk_today', show_escalate_to_agronomist: true },
+        flags: { decision_route: 'high_risk_today' },
         safety: { blocked: false, suggest_escalate: true },
       };
     }
@@ -940,30 +973,18 @@ serve(async (req) => {
     // E) OBSERVATION_DIAGNOSIS
     else if (intent === 'observation_diagnosis') {
       const category = extractOccurrenceCategory(user_message);
-      const categoryLabel = OCCURRENCE_CATEGORIES.find(c => c.value === category)?.label || 'Ocorrência';
+      const categoryLabel = OCCURRENCE_CATEGORIES.find(c => c.value === category)?.label || 'problema';
+      
       let plots: Array<{ id: string; nome: string }> = [];
       if (farm_id) {
         plots = await getFarmPlots(supabase, farm_id);
       }
 
-      // Determine which POP to suggest based on category
-      const popSlug = category === 'praga' 
-        ? 'checklist-inspecao-pragas' 
-        : category === 'doenca' 
-          ? 'checklist-inspecao-doencas' 
-          : 'checklist-inspecao-pragas';
-      
-      const popLabel = category === 'praga' 
-        ? '📋 POP Inspeção Pragas' 
-        : category === 'doenca' 
-          ? '📋 POP Inspeção Doenças' 
-          : '📋 POP Inspeção';
-
       response = {
-        assistant_text: `🔍 **Possível ${categoryLabel} identificada**\n\n**Próximos passos seguros:**\n1. 📸 Tire fotos claras dos sintomas\n2. 🔎 Inspecione plantas vizinhas\n3. 📝 Registre a área afetada\n4. 👨‍🌾 Envie para o agrônomo avaliar\n\n📋 **Consulte o POP de inspeção** para o procedimento completo.\n\n⚠️ **Não aplique produtos sem orientação do RT.**\n\nRegistre a ocorrência abaixo para acompanhamento.`,
+        assistant_text: `🔍 **Vamos investigar!**\n\nPara ajudar na identificação, siga este checklist:\n\n☐ **Localização**: Onde está o problema? (talhão/linha)\n☐ **Extensão**: Pontual, em reboleira ou espalhado?\n☐ **Fotos**: Tire fotos de perto e de longe\n☐ **Condições**: Choveu recentemente? Área úmida?\n\n📋 **Veja o POP de inspeção** para mais detalhes.\n\n⚠️ Para diagnóstico preciso e tratamento, consulte o agrônomo.`,
         actions: [
-          { type: 'open_pop', label: popLabel, payload: { pop_slug: popSlug } },
-          { type: 'escalate_to_agronomist', label: 'Enviar para Agrônomo' },
+          { type: 'open_pop', label: '📋 POP Inspeção', payload: { pop_slug: 'checklist-inspecao-pragas' } },
+          { type: 'escalate_to_agronomist', label: 'Enviar ao Agrônomo' },
         ],
         action_flow_data: {
           id: `occurrence_${Date.now()}`,
@@ -971,19 +992,20 @@ serve(async (req) => {
           entity: 'occurrence',
           fields: [
             {
-              key: 'category',
-              label: 'Categoria',
-              type: 'select',
-              value: category,
-              options: OCCURRENCE_CATEGORIES,
-              required: true,
-            },
-            {
               key: 'talhao_id',
               label: 'Talhão',
               type: 'select',
               value: plot_id || '',
               options: plots.map(p => ({ value: p.id, label: p.nome })),
+              required: true,
+            },
+            {
+              key: 'category',
+              label: 'Categoria',
+              type: 'select',
+              value: category || '',
+              options: OCCURRENCE_CATEGORIES,
+              required: true,
             },
             {
               key: 'severity',
@@ -1007,74 +1029,19 @@ serve(async (req) => {
             body_map: { workspace_id: 'workspace_id', farm_id: 'farm_id', talhao_id: 'talhao_id', category: 'category', severity: 'severity', description: 'description' },
           },
         },
-        flags: { decision_route: 'observation_diagnosis', show_escalate_to_agronomist: true },
+        flags: { decision_route: 'observation_diagnosis' },
         safety: { blocked: false, suggest_escalate: true },
       };
     }
 
-    // F) CADASTRO (plantio)
+    // F) CADASTRO
     else if (intent === 'cadastro') {
-      const farms = await getUserFarms(supabase, user.id);
-      let plots: Array<{ id: string; nome: string }> = [];
-      if (farm_id) {
-        plots = await getFarmPlots(supabase, farm_id);
-      }
-
-      // Get crops
-      const { data: crops } = await supabase.from('crops').select('id, nome, variedade').order('nome');
-      const cropOptions = (crops || []).map((c: { id: string; nome: string; variedade?: string }) => ({
-        value: c.id,
-        label: c.variedade ? `${c.nome} - ${c.variedade}` : c.nome,
-      }));
-
       response = {
-        assistant_text: `🌱 **Vamos cadastrar um novo plantio!**\n\nPreencha os dados abaixo.`,
-        actions: [],
-        action_flow_data: {
-          id: `planting_${Date.now()}`,
-          title: 'Cadastrar Plantio',
-          entity: 'planting',
-          fields: [
-            {
-              key: 'farm_id',
-              label: 'Fazenda',
-              type: 'select',
-              value: farm_id || '',
-              options: farms.map(f => ({ value: f.id, label: f.nome })),
-              required: true,
-            },
-            {
-              key: 'plot_id',
-              label: 'Talhão',
-              type: 'select',
-              value: plot_id || '',
-              options: plots.map(p => ({ value: p.id, label: p.nome })),
-              required: true,
-            },
-            {
-              key: 'crop_id',
-              label: 'Cultura',
-              type: 'select',
-              value: '',
-              options: cropOptions,
-              required: true,
-            },
-            {
-              key: 'data_plantio',
-              label: 'Data de Plantio',
-              type: 'date',
-              value: today,
-              required: true,
-            },
-          ],
-          confirm_label: 'Cadastrar Plantio',
-          cancel_label: 'Cancelar',
-          on_confirm: {
-            endpoint: '/functions/v1/plantings-create',
-            method: 'POST',
-            body_map: { plot_id: 'plot_id', crop_id: 'crop_id', data_plantio: 'data_plantio' },
-          },
-        },
+        assistant_text: `📝 **Cadastro**\n\nPara cadastrar ou editar:\n\n- **Fazendas**: Vá em Fazendas → Nova Fazenda\n- **Talhões**: Vá em Talhões → Novo Talhão\n- **Plantios**: Vá em Talhões → Selecione → Novo Plantio\n\nClique abaixo para acessar a área desejada.`,
+        actions: [
+          { type: 'open_screen', label: '🌾 Fazendas', payload: { route: '/fazendas' } },
+          { type: 'open_screen', label: '📍 Talhões', payload: { route: '/talhoes' } },
+        ],
         flags: { decision_route: 'cadastro' },
         safety: { blocked: false, suggest_escalate: false },
       };
@@ -1083,18 +1050,16 @@ serve(async (req) => {
     // G) FINANCEIRO
     else if (intent === 'financeiro') {
       const farms = await getUserFarms(supabase, user.id);
-      const tipo = extractFinanceType(user_message);
-      const categoria = extractFinanceCategory(user_message);
+      const financeType = extractFinanceType(user_message);
+      const financeCategory = extractFinanceCategory(user_message);
 
       response = {
-        assistant_text: `💰 **Vamos registrar uma ${tipo === 'receita' ? 'receita' : 'despesa'}!**\n\nPreencha os dados abaixo.`,
-        actions: [
-          { type: 'open_screen', label: '📊 Ver Financeiro', payload: { route: '/financeiro' } },
-        ],
+        assistant_text: `💰 **Vamos registrar no financeiro!**\n\nPreencha os dados abaixo.`,
+        actions: [],
         action_flow_data: {
-          id: `finance_${Date.now()}`,
-          title: tipo === 'receita' ? 'Registrar Receita' : 'Registrar Despesa',
-          entity: 'finance',
+          id: `transaction_${Date.now()}`,
+          title: financeType === 'receita' ? 'Registrar Receita' : 'Registrar Despesa',
+          entity: 'transaction',
           fields: [
             {
               key: 'farm_id',
@@ -1108,10 +1073,10 @@ serve(async (req) => {
               key: 'tipo',
               label: 'Tipo',
               type: 'select',
-              value: tipo,
+              value: financeType,
               options: [
-                { value: 'receita', label: 'Receita' },
                 { value: 'custo', label: 'Despesa/Custo' },
+                { value: 'receita', label: 'Receita' },
               ],
               required: true,
             },
@@ -1119,7 +1084,7 @@ serve(async (req) => {
               key: 'categoria',
               label: 'Categoria',
               type: 'select',
-              value: categoria,
+              value: financeCategory,
               options: FINANCE_CATEGORIES,
               required: true,
             },
@@ -1142,6 +1107,7 @@ serve(async (req) => {
               label: 'Data',
               type: 'date',
               value: today,
+              required: true,
             },
           ],
           confirm_label: 'Salvar',
@@ -1157,7 +1123,7 @@ serve(async (req) => {
       };
     }
 
-    // WEATHER
+    // H) WEATHER
     else if (intent === 'weather') {
       response = {
         assistant_text: `🌤️ **Consulte o módulo Clima!**\n\nO módulo Clima oferece:\n📊 Previsão detalhada\n🌧️ Alertas de chuva\n📈 Histórico climático\n🚜 Janelas de pulverização\n\nClique abaixo para acessar.`,
@@ -1169,9 +1135,8 @@ serve(async (req) => {
       };
     }
 
-    // GENERAL - Fallback com IA
+    // I) GENERAL - Fallback com IA
     else {
-      // Try to call AI for general questions
       try {
         const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
         if (!LOVABLE_API_KEY) throw new Error("No API key");
@@ -1221,9 +1186,12 @@ Use emojis. Termine com próximos passos.`;
       }
     }
 
-    // Save conversation and increment usage
-    if (effectiveWorkspaceId) {
-      await incrementUsage(supabase, effectiveWorkspaceId, user.id, 'copilot');
+    // Save conversation and increment usage ONCE
+    if (effectiveWorkspaceId && quotaInfo) {
+      // Increment usage only ONCE per question
+      await incrementUsage(supabase, effectiveWorkspaceId, user.id, quotaInfo.bypass);
+      
+      // Save conversation
       await saveConversation(
         supabase,
         user.id,
@@ -1233,6 +1201,19 @@ Use emojis. Termine com próximos passos.`;
         response.assistant_text,
         response.flags
       );
+      
+      // Add debug info for superadmin
+      if (quotaInfo.is_superadmin) {
+        response.debug = {
+          limit: quotaInfo.limit,
+          used: quotaInfo.used + 1, // +1 because we just incremented
+          remaining: quotaInfo.bypass ? 999 : Math.max(0, quotaInfo.limit - quotaInfo.used - 1),
+          plan_used: quotaInfo.plan_used,
+          limit_source: quotaInfo.limit_source,
+          bypass: quotaInfo.bypass,
+          is_superadmin: quotaInfo.is_superadmin,
+        };
+      }
     }
 
     console.log('[ai-ask] Response sent:', { route: response.flags.decision_route, hasActionFlow: !!response.action_flow_data });

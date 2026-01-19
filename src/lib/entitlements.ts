@@ -18,6 +18,7 @@ export interface EffectiveFlags {
   ai_enabled: boolean;
   ai_daily_quota: number;
   ai_photo_enabled: boolean;
+  ai_admin_bypass: boolean;
   respondeagro_enabled: boolean;
   agritec_enabled: boolean;
   satveg_enabled: boolean;
@@ -29,6 +30,19 @@ export interface AIAccessResult {
   reason: 'ok' | 'quota_exceeded' | 'disabled' | 'plan_limit' | 'no_workspace';
   remaining?: number;
   dailyLimit?: number;
+  bypass?: boolean;
+  debug?: AIDebugInfo;
+}
+
+export interface AIDebugInfo {
+  limit: number;
+  used: number;
+  remaining: number;
+  plan_used: 'free' | 'premium';
+  limit_source: 'campaign' | 'workspace' | 'global' | 'default';
+  bypass: boolean;
+  is_superadmin: boolean;
+  ai_admin_bypass_flag: boolean;
 }
 
 export interface QuotaInfo {
@@ -36,6 +50,7 @@ export interface QuotaInfo {
   limit: number;
   remaining: number;
   resetAt: Date;
+  debug?: AIDebugInfo;
 }
 
 // Default flags
@@ -49,8 +64,8 @@ const DEFAULT_FLAGS: EffectiveFlags = {
   satveg_enabled: false,
 };
 
-// Plan-based quotas
-const PLAN_QUOTAS: Record<WorkspacePlan, number> = {
+// Default quotas per plan
+const DEFAULT_PLAN_QUOTAS = {
   free: 10,
   premium: 150,
   enterprise: 500,
@@ -68,7 +83,7 @@ function getTodayBRT(): string {
 }
 
 /**
- * Safely parse numeric flag values
+ * Safely parse numeric flag values from various formats
  */
 function parseNumericFlag(value: unknown, fallback: number): number {
   if (typeof value === 'number' && !isNaN(value)) return value;
@@ -78,12 +93,16 @@ function parseNumericFlag(value: unknown, fallback: number): number {
   }
   if (value && typeof value === 'object') {
     const obj = value as Record<string, unknown>;
+    // Handle { value: X } format
     if ('value' in obj) {
       const parsed = Number(obj.value);
       if (!isNaN(parsed)) return parsed;
     }
+    // Handle { enabled: true } for boolean-like flags stored as objects
+    if ('enabled' in obj && typeof obj.enabled === 'number') {
+      return obj.enabled;
+    }
   }
-  console.warn('[Entitlements] Could not parse numeric flag:', value, '- using fallback:', fallback);
   return fallback;
 }
 
@@ -109,36 +128,51 @@ function parseFlagValue(valueJson: unknown): boolean | number | string {
 /**
  * Get global feature flags from database
  */
-export async function getGlobalFlags(): Promise<Partial<EffectiveFlags>> {
+export async function getGlobalFlags(): Promise<{
+  flags: Partial<EffectiveFlags>;
+  quotaFree: number | null;
+  quotaPremium: number | null;
+}> {
   const { data, error } = await supabase
     .from('feature_flags_global')
     .select('key, value_json');
 
   if (error) {
     console.error('[Entitlements] Error fetching global flags:', error);
-    return {};
+    return { flags: {}, quotaFree: null, quotaPremium: null };
   }
 
   const flags: Partial<EffectiveFlags> = {};
+  let quotaFree: number | null = null;
+  let quotaPremium: number | null = null;
+
   for (const row of data || []) {
     const key = row.key;
-    const value = parseFlagValue(row.value_json as Record<string, unknown>);
+    const rawValue = row.value_json;
     
-    // Map quota keys
-    if (key === 'ai_daily_quota_free' || key === 'ai_daily_quota_premium') {
-      continue; // These are handled separately
+    // Handle quota keys specifically
+    if (key === 'ai_daily_quota_free') {
+      quotaFree = parseNumericFlag(rawValue, DEFAULT_PLAN_QUOTAS.free);
+      continue;
+    }
+    if (key === 'ai_daily_quota_premium') {
+      quotaPremium = parseNumericFlag(rawValue, DEFAULT_PLAN_QUOTAS.premium);
+      continue;
     }
     
-    flags[key] = value;
+    flags[key] = parseFlagValue(rawValue);
   }
 
-  return flags;
+  return { flags, quotaFree, quotaPremium };
 }
 
 /**
  * Get workspace-specific feature flags
  */
-export async function getWorkspaceFlags(workspaceId: string): Promise<Partial<EffectiveFlags>> {
+export async function getWorkspaceFlags(workspaceId: string): Promise<{
+  flags: Partial<EffectiveFlags>;
+  quotaOverride: number | null;
+}> {
   const { data, error } = await supabase
     .from('feature_flags_workspace')
     .select('key, value_json')
@@ -146,21 +180,35 @@ export async function getWorkspaceFlags(workspaceId: string): Promise<Partial<Ef
 
   if (error) {
     console.error('[Entitlements] Error fetching workspace flags:', error);
-    return {};
+    return { flags: {}, quotaOverride: null };
   }
 
   const flags: Partial<EffectiveFlags> = {};
+  let quotaOverride: number | null = null;
+
   for (const row of data || []) {
-    flags[row.key] = parseFlagValue(row.value_json as Record<string, unknown>);
+    const key = row.key;
+    const rawValue = row.value_json;
+    
+    // Handle workspace-level quota override
+    if (key === 'ai_daily_quota') {
+      quotaOverride = parseNumericFlag(rawValue, 0);
+      continue;
+    }
+    
+    flags[key] = parseFlagValue(rawValue);
   }
 
-  return flags;
+  return { flags, quotaOverride };
 }
 
 /**
  * Get active campaign flags for a workspace
  */
-export async function getCampaignFlags(workspaceId: string): Promise<Partial<EffectiveFlags>> {
+export async function getCampaignFlags(workspaceId: string): Promise<{
+  flags: Partial<EffectiveFlags>;
+  quotaOverride: number | null;
+}> {
   const now = new Date().toISOString();
   
   const { data, error } = await supabase
@@ -172,10 +220,11 @@ export async function getCampaignFlags(workspaceId: string): Promise<Partial<Eff
 
   if (error) {
     console.error('[Entitlements] Error fetching campaigns:', error);
-    return {};
+    return { flags: {}, quotaOverride: null };
   }
 
   const flags: Partial<EffectiveFlags> = {};
+  let quotaOverride: number | null = null;
   
   for (const campaign of data || []) {
     const rules = campaign.rule_json as Record<string, unknown> | null;
@@ -192,6 +241,12 @@ export async function getCampaignFlags(workspaceId: string): Promise<Partial<Eff
     // Apply campaign payload as flags
     if (payload) {
       for (const [key, value] of Object.entries(payload)) {
+        // Handle quota override from campaign
+        if (key === 'ai_daily_quota') {
+          quotaOverride = parseNumericFlag(value, 0);
+          continue;
+        }
+        
         if (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
           flags[key] = value;
         }
@@ -199,7 +254,7 @@ export async function getCampaignFlags(workspaceId: string): Promise<Partial<Eff
     }
   }
 
-  return flags;
+  return { flags, quotaOverride };
 }
 
 /**
@@ -221,38 +276,111 @@ export async function getWorkspacePlan(workspaceId: string): Promise<WorkspacePl
 }
 
 /**
+ * Check if user is a superadmin
+ */
+export async function checkIsSuperadmin(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('user_system_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'superadmin')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Entitlements] Error checking superadmin:', error);
+    return false;
+  }
+  return !!data;
+}
+
+interface EffectiveFlagsResult {
+  flags: EffectiveFlags;
+  debug: {
+    limit: number;
+    plan_used: 'free' | 'premium';
+    limit_source: 'campaign' | 'workspace' | 'global' | 'default';
+  };
+}
+
+/**
  * Get effective flags with priority: campaign > workspace > global > defaults
+ * Also returns debug info about which quota was applied
  */
 export async function getEffectiveFlags(
   workspaceId: string | null,
   _userId?: string
 ): Promise<EffectiveFlags> {
+  const result = await getEffectiveFlagsWithDebug(workspaceId);
+  return result.flags;
+}
+
+/**
+ * Get effective flags with debug information
+ */
+export async function getEffectiveFlagsWithDebug(
+  workspaceId: string | null
+): Promise<EffectiveFlagsResult> {
   // Start with defaults
   let flags: EffectiveFlags = { ...DEFAULT_FLAGS };
+  let limit = DEFAULT_PLAN_QUOTAS.free;
+  let planUsed: 'free' | 'premium' = 'free';
+  let limitSource: 'campaign' | 'workspace' | 'global' | 'default' = 'default';
 
   // Apply global flags
-  const globalFlags = await getGlobalFlags();
+  const { flags: globalFlags, quotaFree, quotaPremium } = await getGlobalFlags();
   flags = { ...flags, ...globalFlags };
 
   if (workspaceId) {
     // Get workspace plan for quota
     const plan = await getWorkspacePlan(workspaceId);
-    flags.ai_daily_quota = PLAN_QUOTAS[plan] || 0;
+    const isPremiumPlan = plan === 'premium' || plan === 'enterprise';
+    planUsed = isPremiumPlan ? 'premium' : 'free';
 
-    // Apply workspace-specific flags
-    const workspaceFlags = await getWorkspaceFlags(workspaceId);
+    // Determine base limit from global flags or defaults
+    if (isPremiumPlan) {
+      limit = quotaPremium ?? DEFAULT_PLAN_QUOTAS.premium;
+    } else {
+      limit = quotaFree ?? DEFAULT_PLAN_QUOTAS.free;
+    }
+    if (quotaFree !== null || quotaPremium !== null) {
+      limitSource = 'global';
+    }
+
+    // Apply workspace-specific flags (can override quota)
+    const { flags: workspaceFlags, quotaOverride: wsQuotaOverride } = await getWorkspaceFlags(workspaceId);
     flags = { ...flags, ...workspaceFlags };
+    
+    if (wsQuotaOverride !== null && wsQuotaOverride > 0) {
+      limit = wsQuotaOverride;
+      limitSource = 'workspace';
+    }
 
-    // Apply campaign flags (highest priority)
-    const campaignFlags = await getCampaignFlags(workspaceId);
+    // Apply campaign flags (highest priority, can override quota)
+    const { flags: campaignFlags, quotaOverride: campQuotaOverride } = await getCampaignFlags(workspaceId);
     flags = { ...flags, ...campaignFlags };
+    
+    if (campQuotaOverride !== null && campQuotaOverride > 0) {
+      limit = campQuotaOverride;
+      limitSource = 'campaign';
+    }
   }
 
-  return flags;
+  // Set the final quota on the flags object
+  flags.ai_daily_quota = limit;
+
+  return {
+    flags,
+    debug: {
+      limit,
+      plan_used: planUsed,
+      limit_source: limitSource,
+    },
+  };
 }
 
 /**
  * Get AI usage for today (using BRT timezone)
+ * Counts total requests across ALL sources (not per-source)
  */
 export async function getTodayAIUsage(
   workspaceId: string,
@@ -272,19 +400,25 @@ export async function getTodayAIUsage(
     return 0;
   }
 
+  // Sum all requests across all sources
   return (data || []).reduce((sum, row) => sum + (row.requests || 0), 0);
 }
 
 /**
- * Get remaining AI quota for today
+ * Get remaining AI quota for today with debug info
  */
 export async function getRemainingAIQuota(
   workspaceId: string,
   userId: string
 ): Promise<QuotaInfo> {
-  const flags = await getEffectiveFlags(workspaceId, userId);
+  const { flags, debug: flagDebug } = await getEffectiveFlagsWithDebug(workspaceId);
   const used = await getTodayAIUsage(workspaceId, userId);
-  const limit = parseNumericFlag(flags.ai_daily_quota, 10);
+  const limit = flagDebug.limit;
+
+  // Check for superadmin bypass
+  const isSuperadmin = await checkIsSuperadmin(userId);
+  const hasAdminBypass = flags.ai_admin_bypass === true;
+  const bypass = isSuperadmin && hasAdminBypass;
 
   // Calculate reset time (midnight BRT - approximately 3:00 UTC)
   const now = new Date();
@@ -303,31 +437,24 @@ export async function getRemainingAIQuota(
   return {
     used,
     limit,
-    remaining: Math.max(0, limit - used),
+    remaining: bypass ? 999 : Math.max(0, limit - used),
     resetAt,
+    debug: {
+      limit,
+      used,
+      remaining: Math.max(0, limit - used),
+      plan_used: flagDebug.plan_used,
+      limit_source: flagDebug.limit_source,
+      bypass,
+      is_superadmin: isSuperadmin,
+      ai_admin_bypass_flag: hasAdminBypass,
+    },
   };
 }
 
 /**
- * Check if user is a superadmin
- */
-async function checkIsSuperadmin(userId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('user_system_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .eq('role', 'superadmin')
-    .maybeSingle();
-
-  if (error) {
-    console.error('[Entitlements] Error checking superadmin:', error);
-    return false;
-  }
-  return !!data;
-}
-
-/**
  * Check if user can use AI features
+ * Returns detailed info including debug for superadmins
  */
 export async function canUseAI(
   workspaceId: string | null,
@@ -340,7 +467,7 @@ export async function canUseAI(
     };
   }
 
-  const flags = await getEffectiveFlags(workspaceId, userId);
+  const { flags, debug: flagDebug } = await getEffectiveFlagsWithDebug(workspaceId);
 
   // Check if AI is enabled
   if (!flags.ai_enabled) {
@@ -350,46 +477,67 @@ export async function canUseAI(
     };
   }
 
-  // Check for superadmin or admin bypass
+  // Check for superadmin + admin bypass
   const isSuperadmin = await checkIsSuperadmin(userId);
   const hasAdminBypass = flags.ai_admin_bypass === true;
-  
-  if (isSuperadmin || hasAdminBypass) {
+  const bypass = isSuperadmin && hasAdminBypass;
+
+  // Get usage info
+  const used = await getTodayAIUsage(workspaceId, userId);
+  const limit = flagDebug.limit;
+  const remaining = bypass ? 999 : Math.max(0, limit - used);
+
+  const debug: AIDebugInfo = {
+    limit,
+    used,
+    remaining: Math.max(0, limit - used),
+    plan_used: flagDebug.plan_used,
+    limit_source: flagDebug.limit_source,
+    bypass,
+    is_superadmin: isSuperadmin,
+    ai_admin_bypass_flag: hasAdminBypass,
+  };
+
+  // If bypass is active, always allow
+  if (bypass) {
     console.log('[Entitlements] AI quota bypassed - superadmin:', isSuperadmin, 'admin_bypass:', hasAdminBypass);
     return {
       allowed: true,
       reason: 'ok',
       remaining: 999,
-      dailyLimit: 999,
+      dailyLimit: limit,
+      bypass: true,
+      debug: isSuperadmin ? debug : undefined,
     };
   }
 
   // Check quota
-  const quota = await getRemainingAIQuota(workspaceId, userId);
-
-  if (quota.limit === 0) {
+  if (limit === 0) {
     return {
       allowed: false,
       reason: 'plan_limit',
       remaining: 0,
       dailyLimit: 0,
+      debug: isSuperadmin ? debug : undefined,
     };
   }
 
-  if (quota.remaining <= 0) {
+  if (remaining <= 0) {
     return {
       allowed: false,
       reason: 'quota_exceeded',
       remaining: 0,
-      dailyLimit: quota.limit,
+      dailyLimit: limit,
+      debug: isSuperadmin ? debug : undefined,
     };
   }
 
   return {
     allowed: true,
     reason: 'ok',
-    remaining: quota.remaining,
-    dailyLimit: quota.limit,
+    remaining,
+    dailyLimit: limit,
+    debug: isSuperadmin ? debug : undefined,
   };
 }
 
@@ -445,6 +593,7 @@ export async function hasRespondeAgro(workspaceId: string | null): Promise<boole
 
 /**
  * Increment AI usage (client-side helper that calls the edge function)
+ * This should only be called ONCE per user question
  */
 export async function incrementAIUsage(
   workspaceId: string,
