@@ -1,4 +1,4 @@
-import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList, LayoutDashboard, Flag, Megaphone, Plug, Building2 } from 'lucide-react';
+import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList, LayoutDashboard, Flag, Megaphone, Plug, Building2, Bot } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
@@ -26,6 +26,7 @@ const menuItems = [
   { title: 'Preços', url: '/precos', icon: TrendingUp },
   { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
   { title: 'Relatórios', url: '/relatorios', icon: FileText },
+  { title: 'Fala IAgrônomo', url: '/ai', icon: Bot },
   { title: 'Fala Agrônomo', url: '/fala-agronomo', icon: MessageSquare },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
