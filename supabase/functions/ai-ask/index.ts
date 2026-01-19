@@ -94,23 +94,37 @@ interface AIRequest {
   user_message: string;
   photo_url?: string;
   conversation_id?: string;
+  action_draft_id?: string; // For continuing an action flow
 }
 
 interface AIAction {
-  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content';
+  type: 'open_report' | 'open_pop' | 'create_task' | 'escalate_agronomist' | 'view_content' | 'start_action' | 'confirm_action' | 'edit_draft' | 'cancel_draft' | 'send_to_agronomist';
   id?: string;
   payload?: Record<string, unknown>;
   label?: string;
+  action_type?: string; // For start_action
+}
+
+interface ActionFlow {
+  mode: 'none' | 'collecting' | 'confirming' | 'awaiting_review';
+  draft_id?: string;
+  action_type?: string;
+  next_question?: string;
+  missing_fields?: string[];
+  summary_preview?: string;
+  ui_buttons?: string[]; // 'confirm' | 'edit' | 'cancel' | 'open_full_form' | 'send_to_agronomist'
 }
 
 interface AIResponse {
   assistant_text: string;
   actions: AIAction[];
+  action_flow?: ActionFlow;
   flags: {
     show_escalate_to_agronomist?: boolean;
     blocked_reason?: string;
     decision_route?: string;
     sources_used?: string[];
+    ai_actions_enabled?: boolean;
   };
 }
 
@@ -153,6 +167,8 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
     respondeagro_enabled: true,
     agritec_enabled: false,
     satveg_enabled: false,
+    ai_actions_enabled: false,
+    ai_actions_enabled_premium: true,
   };
 
   // Get global flags
@@ -162,8 +178,15 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
 
   if (globalFlags) {
     for (const flag of globalFlags) {
-      const val = flag.value_json as Record<string, unknown>;
-      flags[flag.key] = val?.enabled ?? val?.value ?? false;
+      const val = flag.value_json;
+      // Handle both boolean and object formats
+      if (typeof val === 'boolean') {
+        flags[flag.key] = val;
+      } else if (typeof val === 'object' && val !== null) {
+        flags[flag.key] = (val as Record<string, unknown>)?.enabled ?? (val as Record<string, unknown>)?.value ?? false;
+      } else {
+        flags[flag.key] = val === 'true';
+      }
     }
   }
 
@@ -172,6 +195,11 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
     const plan = await getWorkspacePlan(supabase, workspaceId);
     flags.plan = plan;
     flags.ai_daily_quota = plan === 'enterprise' ? 500 : plan === 'premium' ? 150 : 10;
+    
+    // Enable AI actions for premium plans if flag is set
+    if ((plan === 'premium' || plan === 'enterprise') && flags.ai_actions_enabled_premium) {
+      flags.ai_actions_enabled = true;
+    }
 
     // Get workspace-specific flags
     const { data: wsFlags } = await supabase
@@ -181,13 +209,53 @@ async function getEffectiveFlags(supabase: any, workspaceId: string | null): Pro
 
     if (wsFlags) {
       for (const flag of wsFlags) {
-        const val = flag.value_json as Record<string, unknown>;
-        flags[flag.key] = val?.enabled ?? val?.value ?? false;
+        const val = flag.value_json;
+        if (typeof val === 'boolean') {
+          flags[flag.key] = val;
+        } else if (typeof val === 'object' && val !== null) {
+          flags[flag.key] = (val as Record<string, unknown>)?.enabled ?? (val as Record<string, unknown>)?.value ?? false;
+        } else {
+          flags[flag.key] = val === 'true';
+        }
       }
     }
   }
 
   return flags;
+}
+
+// Check if user can perform an action based on role and flags
+// deno-lint-ignore no-explicit-any
+async function canPerformAction(
+  supabase: any,
+  workspaceId: string | null,
+  userId: string,
+  _actionType: string
+): Promise<boolean> {
+  // Get effective flags
+  const flags = await getEffectiveFlags(supabase, workspaceId);
+  
+  if (!flags.ai_actions_enabled) {
+    return false;
+  }
+
+  // Check workspace role if workspace exists
+  if (workspaceId) {
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    // Only owner, manager, and operator can perform actions
+    const allowedRoles = ['owner', 'manager', 'operator'];
+    if (membership && !allowedRoles.includes(membership.role)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -604,13 +672,70 @@ Se a pergunta for muito específica sobre prescrição técnica, explique que vo
         });
       }
 
+      // Check if AI actions are enabled and add action buttons
+      const canDoActions = await canPerformAction(supabase, workspace_id || null, user.id, 'any');
+      if (canDoActions) {
+        // Detect action intents in the message
+        if (/criar\s+(plantio|cultivo)|plantar/i.test(user_message)) {
+          actions.push({
+            type: 'start_action',
+            action_type: 'create_planting',
+            label: '➕ Criar Plantio',
+          });
+        }
+        if (/registrar\s+atividade|criar\s+atividade|nova\s+atividade/i.test(user_message)) {
+          actions.push({
+            type: 'start_action',
+            action_type: 'create_activity',
+            label: '➕ Registrar Atividade',
+          });
+        }
+        if (/agendar|programar|marcar/i.test(user_message)) {
+          actions.push({
+            type: 'start_action',
+            action_type: 'schedule_task',
+            label: '📅 Agendar Tarefa',
+          });
+        }
+      }
+
+      // Determine action_flow if there's a pending draft
+      let actionFlow: ActionFlow | undefined;
+      if (body.action_draft_id) {
+        const { data: draft } = await supabase
+          .from('action_drafts')
+          .select('*')
+          .eq('id', body.action_draft_id)
+          .single();
+
+        if (draft) {
+          const missingFields = draft.missing_fields || [];
+          actionFlow = {
+            mode: draft.status === 'awaiting_review' 
+              ? 'awaiting_review' 
+              : missingFields.length > 0 ? 'collecting' : 'confirming',
+            draft_id: draft.id,
+            action_type: draft.action_type,
+            missing_fields: missingFields,
+            summary_preview: `${draft.action_type}: ${JSON.stringify(draft.draft_json).substring(0, 100)}...`,
+            ui_buttons: draft.status === 'awaiting_review'
+              ? ['cancel']
+              : missingFields.length > 0 
+                ? ['cancel', 'open_full_form']
+                : ['confirm', 'edit', 'cancel', 'send_to_agronomist'],
+          };
+        }
+      }
+
       finalResponse = {
         assistant_text: text,
         actions,
+        action_flow: actionFlow,
         flags: {
           show_escalate_to_agronomist: intent === 'agronomic' || !!photo_url,
           decision_route: decisionRoute,
           sources_used: sourcesUsed,
+          ai_actions_enabled: canDoActions,
         },
       };
 
