@@ -25,29 +25,35 @@ interface SafetyInfo {
 interface ActionFlowField {
   key: string;
   label: string;
-  type: 'text' | 'select' | 'date' | 'number';
+  type: 'text' | 'select' | 'date' | 'number' | 'textarea';
   value?: unknown;
   options?: Array<{ value: string; label: string }>;
   required?: boolean;
 }
 
 interface ActionFlowData {
-  type: string;
+  id: string;
   title: string;
+  entity: string;
   fields: ActionFlowField[];
   confirm_label: string;
   cancel_label: string;
+  on_confirm: {
+    endpoint: string;
+    method: 'POST';
+    body_map: Record<string, string>;
+  };
 }
 
 interface AIResponse {
   assistant_text: string;
   actions: AIAction[];
+  action_flow_data?: ActionFlowData;
   flags: {
     show_escalate_to_agronomist?: boolean;
     blocked_reason?: string;
     decision_route?: string;
     sources_used?: string[];
-    action_flow_data?: ActionFlowData;
   };
   safety?: SafetyInfo;
 }
@@ -232,7 +238,7 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
         actions: data.actions,
         flags: data.flags,
         safety: data.safety,
-        actionFlowData: data.flags?.action_flow_data,
+        actionFlowData: data.action_flow_data,
         createdAt: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
