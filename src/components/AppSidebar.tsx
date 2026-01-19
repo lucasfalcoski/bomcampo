@@ -1,6 +1,6 @@
 import { Home, Cloud, Sprout, DollarSign, Settings, LogOut, MapPin, FileText, TrendingUp, MessageSquare, Users, ClipboardList, LayoutDashboard, Flag, Megaphone, Plug, Building2, Bot, Inbox } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +18,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
-const menuItems = [
+type MenuItem = {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  visibility?: 'all' | 'b2b_admin' | 'agronomist' | 'ai_enabled';
+};
+
+const menuItems: MenuItem[] = [
   { title: 'Dashboard', url: '/', icon: Home },
   { title: 'Fazendas', url: '/fazendas', icon: MapPin },
   { title: 'Clima', url: '/clima', icon: Cloud },
@@ -26,14 +33,14 @@ const menuItems = [
   { title: 'Preços', url: '/precos', icon: TrendingUp },
   { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
   { title: 'Relatórios', url: '/relatorios', icon: FileText },
-  { title: 'Fala IAgrônomo', url: '/ai', icon: Bot },
+  { title: 'Fala IAgrônomo', url: '/ai', icon: Bot, visibility: 'ai_enabled' },
   { title: 'Fala Agrônomo', url: '/fala-agronomo', icon: MessageSquare },
-  { title: 'Meu Workspace', url: '/org', icon: Building2 },
-  { title: 'Caixa do Agrônomo', url: '/agronomist/inbox', icon: Inbox },
+  { title: 'Painel', url: '/org', icon: Building2, visibility: 'b2b_admin' },
+  { title: 'Caixa do Agrônomo', url: '/agronomist/inbox', icon: Inbox, visibility: 'agronomist' },
   { title: 'Configurações', url: '/configuracoes', icon: Settings },
 ];
 
-const adminItems = [
+const adminItems: MenuItem[] = [
   { title: 'Visão Geral', url: '/admin', icon: LayoutDashboard },
   { title: 'Workspaces', url: '/admin/workspaces', icon: Building2 },
   { title: 'Usuários', url: '/admin/users', icon: Users },
@@ -43,23 +50,131 @@ const adminItems = [
   { title: 'Auditoria', url: '/admin/audit', icon: ClipboardList },
 ];
 
+interface UserPermissions {
+  isSuperadmin: boolean;
+  isB2BAdmin: boolean; // owner/manager in a b2b workspace
+  isAgronomist: boolean; // has agronomist role or linked to farms
+  aiEnabled: boolean;
+}
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const { signOut, user } = useAuth();
   const collapsed = state === 'collapsed';
-  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+  const [permissions, setPermissions] = useState<UserPermissions>({
+    isSuperadmin: false,
+    isB2BAdmin: false,
+    isAgronomist: false,
+    aiEnabled: true, // default to true, can be controlled by flags
+  });
 
   useEffect(() => {
-    async function checkSystemAdmin() {
+    async function checkPermissions() {
       if (!user) return;
-      const { data } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'system_admin'
-      });
-      setIsSystemAdmin(!!data);
+
+      try {
+        // Check if superadmin
+        const { data: isSuperadmin } = await supabase.rpc('is_superadmin', {
+          _user_id: user.id
+        });
+
+        // Check workspace membership
+        const { data: membership } = await supabase
+          .from('workspace_members')
+          .select('role, workspace_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        let isB2BAdmin = false;
+        if (membership) {
+          // Check if workspace is b2b
+          const { data: workspace } = await supabase
+            .from('workspaces')
+            .select('type')
+            .eq('id', membership.workspace_id)
+            .single();
+
+          isB2BAdmin = 
+            workspace?.type === 'b2b' && 
+            (membership.role === 'owner' || membership.role === 'manager');
+        }
+
+        // Check if agronomist (either by role or linked to farms)
+        const { data: isLinkedAgronomist } = await supabase
+          .from('farm_agronomists')
+          .select('farm_id')
+          .eq('agronomist_user_id', user.id)
+          .limit(1);
+
+        const { data: hasAgronomistRole } = await supabase
+          .from('workspace_members')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'agronomist')
+          .limit(1);
+
+        const isAgronomist = 
+          (isLinkedAgronomist && isLinkedAgronomist.length > 0) ||
+          (hasAgronomistRole && hasAgronomistRole.length > 0);
+
+        // Check if AI is enabled via feature flags (global or workspace)
+        let aiEnabled = true;
+        const { data: globalFlag } = await supabase
+          .from('feature_flags_global')
+          .select('value_json')
+          .eq('key', 'ai_chat_enabled')
+          .maybeSingle();
+
+        if (globalFlag?.value_json !== undefined) {
+          aiEnabled = globalFlag.value_json === true || 
+                     (typeof globalFlag.value_json === 'object' && (globalFlag.value_json as any).enabled === true);
+        }
+
+        // Workspace-specific override
+        if (membership?.workspace_id) {
+          const { data: wsFlag } = await supabase
+            .from('feature_flags_workspace')
+            .select('value_json')
+            .eq('workspace_id', membership.workspace_id)
+            .eq('key', 'ai_chat_enabled')
+            .maybeSingle();
+
+          if (wsFlag?.value_json !== undefined) {
+            aiEnabled = wsFlag.value_json === true || 
+                       (typeof wsFlag.value_json === 'object' && (wsFlag.value_json as any).enabled === true);
+          }
+        }
+
+        setPermissions({
+          isSuperadmin: !!isSuperadmin,
+          isB2BAdmin: isB2BAdmin || !!isSuperadmin, // superadmin sees all
+          isAgronomist: !!isAgronomist || !!isSuperadmin,
+          aiEnabled,
+        });
+      } catch (err) {
+        console.error('[AppSidebar] Error checking permissions:', err);
+      }
     }
-    checkSystemAdmin();
+
+    checkPermissions();
   }, [user]);
+
+  const visibleMenuItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      if (!item.visibility) return true; // no restriction
+
+      switch (item.visibility) {
+        case 'b2b_admin':
+          return permissions.isB2BAdmin;
+        case 'agronomist':
+          return permissions.isAgronomist;
+        case 'ai_enabled':
+          return permissions.aiEnabled;
+        default:
+          return true;
+      }
+    });
+  }, [permissions]);
 
   return (
     <Sidebar collapsible="icon">
@@ -77,7 +192,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -97,7 +212,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {isSystemAdmin && (
+        {permissions.isSuperadmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Administração</SidebarGroupLabel>
             <SidebarGroupContent>
