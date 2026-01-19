@@ -2,12 +2,21 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -16,7 +25,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest
+          bun-version: "latest"
 
       - name: Cache Bun
         uses: actions/cache@v4
@@ -24,30 +33,39 @@ jobs:
           path: |
             ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Lint (if script exists)
+        shell: bash
         run: |
-          node -e "const s=require('./package.json').scripts||{}; process.exit(s.lint?0:1)" \
+          bun -e "const s=require('./package.json').scripts||{};process.exit(s.lint?0:1)" \
             && bun run lint \
-            || echo "skip lint"
+            || echo "skip lint (no script)"
 
       - name: Typecheck (if script exists)
+        shell: bash
         run: |
-          node -e "const s=require('./package.json').scripts||{}; process.exit(s.typecheck?0:1)" \
+          bun -e "const s=require('./package.json').scripts||{};process.exit(s.typecheck?0:1)" \
             && bun run typecheck \
-            || echo "skip typecheck"
+            || echo "skip typecheck (no script)"
 
       - name: Test (if script exists)
+        shell: bash
         run: |
-          node -e "const s=require('./package.json').scripts||{}; process.exit(s.test?0:1)" \
+          bun -e "const s=require('./package.json').scripts||{};process.exit(s.test?0:1)" \
             && bun run test \
-            || echo "skip test"
+            || echo "skip test (no script)"
 
-      - name: Build (if script exists)
-        run: |
-          node -e "const s=require('./package.json').scripts||{}; process.exit(s.build?0:1)" \
-            && bun run build \
-            || echo "skip build"
+      - name: Build
+        run: bun run build
+
+      - name: Upload dist artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          if-no-files-found: ignore
