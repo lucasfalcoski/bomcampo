@@ -529,7 +529,7 @@ async function callLovableAI(
   const requestBody: Record<string, unknown> = {
     model: "openai/gpt-5-mini",
     messages,
-    max_tokens: 1024,
+    max_completion_tokens: 1024,
   };
 
   if (useStructuredOutput) {
