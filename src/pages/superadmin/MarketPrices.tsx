@@ -124,12 +124,12 @@ export default function MarketPrices() {
               
               <div className="space-y-2">
                 <Label htmlFor="state">Estado (filtro)</Label>
-                <Select value={stateFilter} onValueChange={(v) => { setStateFilter(v); setFormPraca(""); }}>
+                <Select value={stateFilter || "__all__"} onValueChange={(v) => { setStateFilter(v === "__all__" ? "" : v); setFormPraca(""); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os estados" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os estados</SelectItem>
+                    <SelectItem value="__all__">Todos os estados</SelectItem>
                     {BRAZILIAN_STATES.map(state => (
                       <SelectItem key={state.value} value={state.value}>
                         {state.label}
@@ -222,12 +222,12 @@ export default function MarketPrices() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
-            <Select value={cropFilter} onValueChange={setCropFilter}>
+            <Select value={cropFilter || "__all__"} onValueChange={(v) => setCropFilter(v === "__all__" ? "" : v)}>
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Todas as culturas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as culturas</SelectItem>
+                <SelectItem value="__all__">Todas as culturas</SelectItem>
                 {MARKET_CROPS.map(crop => (
                   <SelectItem key={crop.value} value={crop.value}>
                     {crop.label}
@@ -236,12 +236,12 @@ export default function MarketPrices() {
               </SelectContent>
             </Select>
             
-            <Select value={pracaFilter} onValueChange={setPracaFilter}>
+            <Select value={pracaFilter || "__all__"} onValueChange={(v) => setPracaFilter(v === "__all__" ? "" : v)}>
               <SelectTrigger className="w-full sm:w-64">
                 <SelectValue placeholder="Todas as praças" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as praças</SelectItem>
+                <SelectItem value="__all__">Todas as praças</SelectItem>
                 {allPracas?.map((praca: MarketPraca) => (
                   <SelectItem key={praca.id} value={praca.id}>
                     {praca.name}/{praca.state}
