@@ -1,7 +1,8 @@
 // =============================================
-// POP ENGINE: Router + AI Fallback
+// POP ENGINE V1: Router + Safety Gate + AI Fallback
 // =============================================
 
+// ========== INTERFACES ==========
 export interface PopMatch {
   match_type: 'pop' | 'category' | 'ai' | 'fallback';
   pop?: {
@@ -21,6 +22,7 @@ export interface PopMatch {
   };
   score: number;
   matched_keywords: string[];
+  is_sensitive: boolean;
 }
 
 export interface AIStructuredResponse {
@@ -42,7 +44,126 @@ export interface PopEngineResult {
   response_time_ms: number;
 }
 
-// Text normalization
+// ========== SAFETY GATE ==========
+// Keywords that indicate sensitive topics requiring RT/agronomist consultation
+const SENSITIVE_KEYWORDS = [
+  // Defensivos gerais
+  'inseticida', 'fungicida', 'herbicida', 'pesticida', 'agrotóxico', 'agrotoxico',
+  'defensivo', 'veneno', 'produto químico', 'produto quimico',
+  
+  // Doses e aplicação
+  'dose', 'dosagem', 'quantidade', 'litros por hectare', 'ml por hectare',
+  'gramas por hectare', 'kg por hectare', 'taxa de aplicação', 'taxa de aplicacao',
+  
+  // Equipamento de aplicação
+  'calda', 'tanque', 'mistura de tanque', 'mistura tanque', 'bico', 'pressao',
+  'adjuvante', 'surfactante', 'espalhante',
+  
+  // Ingredientes ativos e marcas
+  'ingrediente ativo', 'principio ativo', 'princípio ativo',
+  'glifosato', 'roundup', '2,4-d', 'paraquat', 'atrazina',
+  'imidacloprido', 'tiametoxam', 'clorpirifos', 'lambda-cialotrina',
+  'azoxistrobina', 'trifloxistrobina', 'tebuconazol', 'ciproconazol',
+  
+  // Receituário
+  'receita agronomica', 'receituário', 'receituario', 'art', 'crea',
+  
+  // Carência e segurança
+  'carencia', 'carência', 'intervalo de segurança', 'periodo de carencia',
+  'período de carência', 'dias antes da colheita',
+  
+  // Perguntas diretas sobre produtos
+  'qual produto', 'que produto', 'qual veneno', 'que veneno',
+  'melhor produto', 'melhor marca', 'produto mais eficaz',
+  'o que aplicar', 'o que passar', 'o que jogar',
+];
+
+// Strong triggers - single match is enough to flag as sensitive
+const STRONG_SENSITIVE_TRIGGERS = [
+  'dose', 'dosagem', 'calda', 'mistura de tanque', 'receita',
+  'inseticida', 'fungicida', 'herbicida', 'agrotóxico', 'agrotoxico',
+  'ingrediente ativo', 'principio ativo', 'qual produto aplicar',
+];
+
+/**
+ * Safety Gate: Detect if question involves sensitive topics
+ * (pesticides, doses, prescriptions, etc.)
+ */
+export function isSensitive(question: string): boolean {
+  const normalized = normalizeText(question);
+  
+  // Check for strong triggers (single match = sensitive)
+  for (const trigger of STRONG_SENSITIVE_TRIGGERS) {
+    const normalizedTrigger = normalizeText(trigger);
+    if (normalized.includes(normalizedTrigger)) {
+      console.log(`[SafetyGate] Strong trigger detected: "${trigger}"`);
+      return true;
+    }
+  }
+  
+  // Check for weak triggers (need 2+ matches)
+  let sensitiveMatches = 0;
+  const matchedKeywords: string[] = [];
+  
+  for (const keyword of SENSITIVE_KEYWORDS) {
+    const normalizedKeyword = normalizeText(keyword);
+    if (normalized.includes(normalizedKeyword)) {
+      sensitiveMatches++;
+      matchedKeywords.push(keyword);
+    }
+  }
+  
+  if (sensitiveMatches >= 2) {
+    console.log(`[SafetyGate] Multiple sensitive keywords detected: ${matchedKeywords.join(', ')}`);
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Generate safe response for sensitive topics
+ */
+export function getSafeResponse(question: string): AIStructuredResponse {
+  return {
+    title: "Orientação sobre Defensivos e Aplicações",
+    summary: "Este tema envolve produtos regulados que exigem Receituário Agronômico emitido por profissional habilitado (Engenheiro Agrônomo com ART).",
+    possible_causes: [
+      "A escolha do produto depende de diagnóstico preciso da praga/doença",
+      "Doses variam conforme cultura, estágio, volume de calda e equipamento",
+      "Condições climáticas influenciam eficácia e segurança da aplicação"
+    ],
+    do_now_24h: [
+      "**Documente o problema**: tire fotos detalhadas (perto e de longe)",
+      "**Identifique a praga/doença**: use as perguntas abaixo para refinar o diagnóstico",
+      "**Monitore o nível de infestação**: conte indivíduos em pontos amostrais",
+      "**Consulte seu agrônomo RT** para receituário adequado"
+    ],
+    avoid_now: [
+      "Aplicar produtos sem identificação correta do alvo",
+      "Usar doses diferentes das recomendadas em bula",
+      "Misturar produtos sem orientação técnica",
+      "Aplicar em condições climáticas inadequadas (vento, chuva iminente)"
+    ],
+    next_7_days: [
+      "Obtenha Receituário Agronômico com seu RT",
+      "Verifique período de carência antes da colheita",
+      "Considere alternativas de MIP/MID (controle biológico, cultural)",
+      "Registre todas as aplicações no caderno de campo"
+    ],
+    triage_questions: [
+      "Qual cultura e estágio fenológico atual?",
+      "Qual praga ou doença você suspeita? Consegue descrever os sintomas?",
+      "Qual o nível de infestação (leve, moderado, severo)?",
+      "Quanto tempo até a colheita prevista?",
+      "Possui acesso a agrônomo responsável técnico (RT)?"
+    ],
+    risk_level: "alta",
+    disclaimer: "⚠️ **IMPORTANTE**: Recomendações de defensivos agrícolas exigem Receituário Agronômico. Consulte sempre seu agrônomo RT para prescrição adequada conforme legislação vigente (Lei 7.802/89)."
+  };
+}
+
+// ========== TEXT PROCESSING ==========
 export function normalizeText(text: string): string {
   return text
     .toLowerCase()
@@ -53,90 +174,64 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
-// Tokenize text
 export function tokenize(text: string): string[] {
   const normalized = normalizeText(text);
   return normalized.split(' ').filter(t => t.length > 2);
 }
 
-// Calculate keyword match score
-export function calculateScore(
-  queryTokens: string[],
-  targetKeywords: string[]
-): { score: number; matched: string[] } {
-  const normalizedKeywords = targetKeywords.map(k => normalizeText(k));
+// ========== SIMPLIFIED MATCHING V1 ==========
+/**
+ * Simple keyword matching:
+ * - Returns count of matching keywords
+ * - Checks for "strong" triggers (single match is enough)
+ */
+export function matchKeywords(
+  question: string,
+  keywords: string[]
+): { count: number; matched: string[]; hasStrongMatch: boolean } {
+  const normalizedQuestion = normalizeText(question);
   const matched: string[] = [];
-  let score = 0;
+  let hasStrongMatch = false;
   
-  // Join query tokens to check for phrase matches
-  const queryText = queryTokens.join(' ');
-  
-  for (let i = 0; i < normalizedKeywords.length; i++) {
-    const keyword = normalizedKeywords[i];
-    const keywordTokens = keyword.split(' ').filter(t => t.length > 2);
+  for (const keyword of keywords) {
+    const normalizedKeyword = normalizeText(keyword);
     
-    // Check if multi-word keyword matches in query text
-    if (keywordTokens.length > 1) {
-      if (queryText.includes(keyword)) {
-        // Full phrase match - high score
-        score += 5 * keywordTokens.length;
-        matched.push(targetKeywords[i]);
-        continue;
-      }
-      // Check if all tokens of the keyword are present in query
-      const allTokensPresent = keywordTokens.every(kt => 
-        queryTokens.some(qt => qt === kt || qt.includes(kt) || kt.includes(qt))
-      );
-      if (allTokensPresent) {
-        score += 3 * keywordTokens.length;
-        matched.push(targetKeywords[i]);
-        continue;
-      }
-    }
-    
-    // Single-word keyword matching
-    for (const token of queryTokens) {
-      // Exact match
-      if (keyword === token) {
-        score += 3;
-        if (!matched.includes(targetKeywords[i])) {
-          matched.push(targetKeywords[i]);
-        }
-      }
-      // Partial match (token is contained in keyword or vice versa)
-      else if (keyword.includes(token) || token.includes(keyword)) {
-        score += 1.5;
-        if (!matched.includes(targetKeywords[i])) {
-          matched.push(targetKeywords[i]);
-        }
+    // Check if keyword appears in question
+    if (normalizedQuestion.includes(normalizedKeyword)) {
+      matched.push(keyword);
+      
+      // Check if it's a "strong" keyword (usually longer, more specific)
+      if (normalizedKeyword.length >= 6 || keyword.split(' ').length >= 2) {
+        hasStrongMatch = true;
       }
     }
   }
   
-  // Normalize score based on query length (but don't over-penalize long queries)
-  const normalizedScore = queryTokens.length > 0 
-    ? score / Math.max(queryTokens.length, 3) 
-    : 0;
-  
-  return { score: normalizedScore, matched: [...new Set(matched)] };
+  return { count: matched.length, matched, hasStrongMatch };
 }
 
-// Route question to best POP or category
+// ========== ROUTER V1 ==========
+/**
+ * Route question to best POP or category
+ * Flow: POP específico → POP por categoria → AI fallback → fallback padrão
+ */
 // deno-lint-ignore no-explicit-any
 export async function routeQuestion(
   supabase: any,
   question: string,
   selectedCrop?: string
 ): Promise<PopMatch> {
-  const queryTokens = tokenize(question);
   const startTime = Date.now();
+  const sensitive = isSensitive(question);
   
-  // 1. Try to match POPs with triggers
+  console.log(`[Router V1] Question: "${question.substring(0, 60)}..." | Sensitive: ${sensitive}`);
+  
+  // 1. Try to match specific POP by triggers
   const { data: pops } = await supabase
     .from('pops')
     .select(`
       id, slug, title, category, content_markdown, 
-      triage_questions, actions, triggers, crops, keywords
+      triage_questions, actions, triggers, crops, keywords, category_id
     `)
     .eq('is_active', true)
     .is('workspace_id', null);
@@ -145,30 +240,25 @@ export async function routeQuestion(
   let bestPopScore = 0;
   let bestPopMatched: string[] = [];
   
-  console.log('[popEngine] Query tokens:', queryTokens);
-  
   for (const pop of pops || []) {
     // Combine triggers and keywords for matching
     const allKeywords = [...(pop.triggers || []), ...(pop.keywords || [])];
-    const { score, matched } = calculateScore(queryTokens, allKeywords);
+    const { count, matched, hasStrongMatch } = matchKeywords(question, allKeywords);
     
-    // Bonus if crop matches
+    // Crop bonus
     let cropBonus = 0;
     if (selectedCrop && pop.crops?.includes(selectedCrop.toLowerCase())) {
-      cropBonus = 0.5;
+      cropBonus = 1;
     }
     
-    // Bonus for category mention in query
-    const categoryBonus = queryTokens.some(t => pop.category?.toLowerCase().includes(t)) ? 0.5 : 0;
+    // Score calculation
+    const score = count + cropBonus;
     
-    const totalScore = score + cropBonus + categoryBonus;
+    // Threshold: >= 2 matches OR 1 strong match
+    const meetsThreshold = count >= 2 || (hasStrongMatch && count >= 1);
     
-    if (totalScore > 0.5) {
-      console.log(`[popEngine] POP ${pop.slug}: score=${score.toFixed(2)}, total=${totalScore.toFixed(2)}, matched=${matched.join(',')}`);
-    }
-    
-    if (totalScore > bestPopScore && totalScore >= 1.5) {
-      bestPopScore = totalScore;
+    if (meetsThreshold && score > bestPopScore) {
+      bestPopScore = score;
       bestPopMatched = matched;
       bestPop = {
         id: pop.id,
@@ -179,66 +269,97 @@ export async function routeQuestion(
         triage_questions: pop.triage_questions || [],
         actions: pop.actions || [],
       };
+      
+      console.log(`[Router V1] POP match: ${pop.slug} (score: ${score}, matched: ${matched.join(', ')})`);
     }
   }
   
-  // Threshold for POP match - lowered to catch more specific matches
-  if (bestPop && bestPopScore >= 1.5) {
-    console.log(`[popEngine] Matched POP: ${bestPop.slug} with score ${bestPopScore.toFixed(2)}`);
+  // If we found a specific POP, return it
+  if (bestPop) {
     return {
       match_type: 'pop',
       pop: bestPop,
       score: bestPopScore,
       matched_keywords: bestPopMatched,
+      is_sensitive: sensitive,
     };
   }
   
-  // 2. Try to match categories
+  // 2. Try to match category
   const { data: categories } = await supabase
     .from('pop_categories')
     .select('id, name, description, keywords, icon')
     .order('priority');
   
   let bestCategory: PopMatch['category'] | undefined;
-  let bestCategoryScore = 0;
   let bestCategoryMatched: string[] = [];
   
   for (const cat of categories || []) {
-    const { score, matched } = calculateScore(queryTokens, cat.keywords || []);
+    const { count, matched } = matchKeywords(question, cat.keywords || []);
     
-    if (score > bestCategoryScore) {
-      bestCategoryScore = score;
-      bestCategoryMatched = matched;
+    // Threshold: >= 1 match for category
+    if (count >= 1 && !bestCategory) {
       bestCategory = {
         id: cat.id,
         name: cat.name,
         description: cat.description,
         icon: cat.icon,
       };
+      bestCategoryMatched = matched;
+      
+      console.log(`[Router V1] Category match: ${cat.name} (matched: ${matched.join(', ')})`);
     }
   }
   
-  // Threshold for category match
-  if (bestCategory && bestCategoryScore >= 1.0) {
-    // If we have a weak POP match, include it too
+  // If we found a category, try to find a generic POP for it
+  if (bestCategory) {
+    // Look for a generic POP in this category
+    const categoryPops = (pops || []).filter((p: { category: string }) => 
+      p.category?.toLowerCase() === bestCategory!.name.toLowerCase()
+    );
+    
+    if (categoryPops.length > 0) {
+      // Return the first POP from this category as a generic response
+      const genericPop = categoryPops[0];
+      return {
+        match_type: 'category',
+        pop: {
+          id: genericPop.id,
+          slug: genericPop.slug,
+          title: genericPop.title,
+          category: genericPop.category,
+          content_markdown: genericPop.content_markdown,
+          triage_questions: genericPop.triage_questions || [],
+          actions: genericPop.actions || [],
+        },
+        category: bestCategory,
+        score: 1,
+        matched_keywords: bestCategoryMatched,
+        is_sensitive: sensitive,
+      };
+    }
+    
+    // Category found but no POP - will use AI with category context
     return {
-      match_type: bestPop ? 'pop' : 'category',
-      pop: bestPop,
+      match_type: 'category',
       category: bestCategory,
-      score: bestPop ? bestPopScore : bestCategoryScore,
-      matched_keywords: bestPop ? bestPopMatched : bestCategoryMatched,
+      score: 1,
+      matched_keywords: bestCategoryMatched,
+      is_sensitive: sensitive,
     };
   }
   
   // 3. No match - will use AI
+  console.log('[Router V1] No POP or category match, will use AI fallback');
   return {
     match_type: 'ai',
     score: 0,
     matched_keywords: [],
+    is_sensitive: sensitive,
   };
 }
 
-// AI Structured Response Schema
+// ========== AI FALLBACK ==========
 const AI_RESPONSE_SCHEMA = `{
   "title": "string (título curto do problema)",
   "summary": "string (2-3 linhas resumindo a situação)",
@@ -251,15 +372,34 @@ const AI_RESPONSE_SCHEMA = `{
   "disclaimer": "Consulte o agrônomo RT para decisões de aplicação."
 }`;
 
-// Call AI with structured output
+/**
+ * Call AI with structured output
+ * - Forces JSON return
+ * - Validates response
+ * - Retries once if invalid
+ * - If sensitive, adds extra guardrails
+ */
 export async function callAIStructured(
   question: string,
   category?: string,
-  apiKey?: string
+  apiKey?: string,
+  isSensitiveQuestion?: boolean
 ): Promise<{ response: AIStructuredResponse | null; status: 'success' | 'retry' | 'failed' }> {
   if (!apiKey) {
+    console.log('[AI Fallback] No API key provided');
     return { response: null, status: 'failed' };
   }
+  
+  // Extra guardrails for sensitive questions
+  const sensitiveGuardrail = isSensitiveQuestion ? `
+ATENÇÃO - REGRAS DE SEGURANÇA OBRIGATÓRIAS:
+- NÃO mencione nomes de produtos comerciais
+- NÃO indique doses ou concentrações
+- NÃO sugira misturas de tanque
+- NÃO prescreva frequência de aplicação
+- SEMPRE recomende consultar agrônomo RT para receituário
+- Foque em MIP/MID: monitoramento, nível de dano, controle cultural/biológico
+` : '';
   
   const systemPrompt = `Você é um assistente agronômico experiente do BomCampo.
 Responda SEMPRE em JSON válido seguindo EXATAMENTE este schema:
@@ -271,19 +411,22 @@ REGRAS IMPORTANTES:
 3. Para tratamentos químicos, oriente "consulte o agrônomo RT"
 4. Mantenha tom profissional mas acessível
 ${category ? `5. Foco na categoria: ${category}` : ''}
+${sensitiveGuardrail}
 
 Retorne APENAS o JSON, sem markdown, sem explicações.`;
 
   // First attempt
+  console.log('[AI Fallback] Calling AI...');
   let aiResponse = await fetchAI(apiKey, systemPrompt, question);
   let parsed = tryParseJSON(aiResponse);
   
   if (parsed) {
+    console.log('[AI Fallback] Success on first attempt');
     return { response: parsed, status: 'success' };
   }
   
   // Retry with correction prompt
-  console.log('[popEngine] First AI attempt failed, retrying with correction...');
+  console.log('[AI Fallback] First attempt failed, retrying...');
   const retryPrompt = `Sua resposta anterior não era JSON válido. 
 Responda APENAS com JSON válido seguindo este schema:
 ${AI_RESPONSE_SCHEMA}
@@ -296,10 +439,11 @@ Retorne APENAS o JSON, nada mais.`;
   parsed = tryParseJSON(aiResponse);
   
   if (parsed) {
+    console.log('[AI Fallback] Success on retry');
     return { response: parsed, status: 'retry' };
   }
   
-  console.log('[popEngine] AI retry also failed');
+  console.log('[AI Fallback] Both attempts failed');
   return { response: null, status: 'failed' };
 }
 
@@ -312,24 +456,26 @@ async function fetchAI(apiKey: string, systemPrompt: string, userMessage: string
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-mini",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
-        max_completion_tokens: 800,
-        temperature: 0.3, // Lower for more consistent JSON
+        max_completion_tokens: 1000,
+        temperature: 0.3,
       }),
     });
     
     if (!response.ok) {
-      throw new Error(`AI response not ok: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[AI Fallback] API error ${response.status}: ${errorText}`);
+      return '';
     }
     
     const data = await response.json();
     return data.choices?.[0]?.message?.content || '';
   } catch (error) {
-    console.error('[popEngine] AI fetch error:', error);
+    console.error('[AI Fallback] Fetch error:', error);
     return '';
   }
 }
@@ -369,28 +515,32 @@ function isValidAIResponse(obj: unknown): obj is AIStructuredResponse {
   );
 }
 
-// Default fallback response (when everything fails)
-export function getDefaultFallback(question: string): AIStructuredResponse {
+// ========== DEFAULT FALLBACK ==========
+/**
+ * Default fallback when everything fails
+ * NEVER shows error messages - always provides useful guidance
+ */
+export function getDefaultFallback(_question: string): AIStructuredResponse {
   return {
     title: "Orientação Geral de Campo",
-    summary: "Não consegui acessar a resposta completa agora, mas aqui vai um checklist seguro para sua situação.",
+    summary: "Vamos analisar sua situação com um checklist seguro de diagnóstico e próximos passos.",
     possible_causes: [
-      "Condições climáticas desfavoráveis",
-      "Problema nutricional ou hídrico",
-      "Possível ataque de praga ou doença"
+      "Condições climáticas desfavoráveis (temperatura, umidade, chuvas)",
+      "Problema nutricional ou hídrico no solo/planta",
+      "Possível ataque de praga ou início de doença"
     ],
     do_now_24h: [
-      "Tire fotos detalhadas (perto e longe) para documentar",
-      "Verifique se o problema é localizado ou espalhado"
+      "Tire fotos detalhadas: de perto (sintoma) e de longe (área afetada)",
+      "Verifique se o problema é localizado ou espalhado pelo talhão"
     ],
     avoid_now: [
       "Não aplique produtos sem diagnóstico confirmado",
-      "Evite irrigação excessiva se não souber a causa"
+      "Evite operações que possam agravar (irrigação excessiva, máquinas em solo úmido)"
     ],
     next_7_days: [
-      "Monitore a evolução dos sintomas",
-      "Consulte o agrônomo responsável técnico",
-      "Registre a ocorrência para histórico"
+      "Monitore a evolução dos sintomas diariamente",
+      "Consulte o agrônomo responsável técnico (RT)",
+      "Registre a ocorrência para histórico do talhão"
     ],
     triage_questions: [
       "O problema é localizado em uma área ou está espalhado?",
@@ -402,7 +552,7 @@ export function getDefaultFallback(question: string): AIStructuredResponse {
   };
 }
 
-// Format AI response to markdown
+// ========== FORMATTERS ==========
 export function formatAIResponseToMarkdown(response: AIStructuredResponse): string {
   const lines: string[] = [];
   
@@ -446,18 +596,15 @@ export function formatAIResponseToMarkdown(response: AIStructuredResponse): stri
   return lines.join('\n');
 }
 
-// Format POP content to chat response
 export function formatPopToMarkdown(pop: NonNullable<PopMatch['pop']>): string {
-  // If content_markdown exists, use it directly
   if (pop.content_markdown) {
     return pop.content_markdown;
   }
   
-  // Otherwise, create a simple placeholder
   return `## ${pop.title}\n\nConsulte este POP para orientações detalhadas.`;
 }
 
-// Log usage
+// ========== LOGGING ==========
 // deno-lint-ignore no-explicit-any
 export async function logPopUsage(
   supabase: any,
@@ -486,7 +633,8 @@ export async function logPopUsage(
       ai_status: aiStatus,
       response_time_ms: responseTimeMs,
     });
+    console.log(`[Log] Saved: type=${match.match_type}, sensitive=${match.is_sensitive}, ai=${usedAI}`);
   } catch (error) {
-    console.error('[popEngine] Error logging usage:', error);
+    console.error('[Log] Error saving usage:', error);
   }
 }
