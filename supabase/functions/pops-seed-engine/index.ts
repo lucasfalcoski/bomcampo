@@ -1188,6 +1188,102 @@ const MICRO_POPS: MicroPop[] = [
       { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
     ]
   },
+  {
+    category_name: "doencas",
+    slug: "alta-umidade-risco-doenca",
+    title: "Alta umidade + risco de doença",
+    triggers: ["umidade alta", "muito umido", "orvalho", "chuva frequente", "risco doenca"],
+    crops: ["cafe", "soja", "milho", "feijao", "hortifruti"],
+    severity_levels: ["baixa", "media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Condições favoráveis a doenças fúngicas
+- Período prolongado de molhamento foliar
+- Temperatura + umidade ideais para patógenos
+- Orvalho persistente
+
+## Risco se não agir
+- Surto de doenças fúngicas
+- Manchas foliares generalizadas
+- Perda de produtividade
+
+## O que fazer agora (0-24h)
+1. Monitore áreas sombreadas e baixadas
+2. Verifique sintomas iniciais de doenças
+3. Registre condições climáticas
+4. Planeje monitoramento intensivo
+
+## O que evitar
+- Irrigar por aspersão em períodos úmidos
+- Aplicar fungicida preventivo sem necessidade
+- Ignorar focos iniciais
+
+## Próximos 7 dias
+- Intensifique monitoramento
+- Prepare equipamento para aplicação rápida
+- Consulte agrônomo sobre manejo preventivo
+
+## Perguntas rápidas para confirmar
+1. Há quanto tempo está úmido?
+2. Já vê sintomas de doenças?
+3. Qual a previsão para os próximos dias?`,
+    triage_questions: [
+      "Há quanto tempo está úmido?",
+      "Já vê sintomas de doenças?",
+      "Qual a previsão para os próximos dias?"
+    ],
+    actions: [
+      { type: "open_screen", label: "Ver clima" },
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+  {
+    category_name: "doencas",
+    slug: "doenca-final-ciclo",
+    title: "Doença de final de ciclo (grãos)",
+    triggers: ["dfc", "doenca final ciclo", "antracnose soja", "mancha parda"],
+    crops: ["soja", "feijao"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Complexo de doenças de final de ciclo (DFC)
+- Antracnose
+- Mancha-parda
+- Crestamento bacteriano
+
+## Risco se não agir
+- Desfolha precoce
+- Redução de peso de grãos
+- Perda de qualidade
+
+## O que fazer agora (0-24h)
+1. Avalie % de área foliar afetada
+2. Colete amostras das principais doenças
+3. Verifique estágio da cultura
+4. Registre a situação
+
+## O que evitar
+- Aplicar fungicida muito tarde (R6+)
+- Ignorar se estiver próximo da colheita
+- Confundir com senescência natural
+
+## Próximos 7 dias
+- Se antes de R5.5: considerar aplicação
+- Se após R6: geralmente não compensa
+- Planejar próxima safra (variedades, manejo)
+
+## Perguntas rápidas para confirmar
+1. Qual estágio da soja (R5, R6, R7)?
+2. Qual % de desfolha?
+3. Quantos dias até a colheita?`,
+    triage_questions: [
+      "Qual estágio da soja (R5, R6, R7)?",
+      "Qual % de desfolha?",
+      "Quantos dias até a colheita?"
+    ],
+    actions: [
+      { type: "create_occurrence", label: "Registrar ocorrência" },
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
 
   // ========== PLANTAS DANINHAS ==========
   {
@@ -1285,6 +1381,587 @@ const MICRO_POPS: MicroPop[] = [
     actions: [
       { type: "open_screen", label: "Ver previsão do tempo" },
       { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+
+  // ========== SOLO (adicionais) ==========
+  {
+    category_name: "solo",
+    slug: "baixa-infiltracao",
+    title: "Baixa infiltração de água",
+    triggers: ["agua nao infiltra", "solo selado", "crosta", "infiltracao lenta"],
+    crops: ["cafe", "soja", "milho", "feijao"],
+    severity_levels: ["baixa", "media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Selamento superficial (crosta)
+- Solo compactado
+- Baixa matéria orgânica
+- Estrutura degradada
+
+## Risco se não agir
+- Erosão superficial
+- Escorrimento de água útil
+- Plantas com déficit hídrico
+
+## O que fazer agora (0-24h)
+1. Observe se há crosta superficial
+2. Faça teste de infiltração simples
+3. Verifique se há sinais de erosão
+4. Registre a situação
+
+## O que evitar
+- Gradear superficialmente (piora estrutura)
+- Ignorar e plantar normalmente
+- Tráfego excessivo
+
+## Próximos 7 dias
+- Considere uso de plantas de cobertura
+- Planeje manejo de matéria orgânica
+- Consulte agrônomo para diagnóstico
+
+## Perguntas rápidas para confirmar
+1. Há crosta na superfície do solo?
+2. A água empoça antes de infiltrar?
+3. Qual a cor do solo (claro = pouca MO)?`,
+    triage_questions: [
+      "Há crosta na superfície do solo?",
+      "A água empoça antes de infiltrar?",
+      "Qual a cor do solo (claro = pouca MO)?"
+    ],
+    actions: [
+      { type: "create_occurrence", label: "Registrar ocorrência" },
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+  {
+    category_name: "solo",
+    slug: "baixa-materia-organica",
+    title: "Baixa matéria orgânica",
+    triggers: ["solo pobre", "materia organica baixa", "solo claro", "solo degradado"],
+    crops: ["cafe", "soja", "milho", "feijao", "hortifruti"],
+    severity_levels: ["baixa", "media"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Manejo inadequado por muitos anos
+- Ausência de plantas de cobertura
+- Queima de restos culturais
+- Solo arenoso com pouca retenção
+
+## Risco se não agir
+- Baixa CTC e retenção de nutrientes
+- Erosão acelerada
+- Menor eficiência de adubação
+
+## O que fazer agora (0-24h)
+1. Faça análise de solo se não tiver recente
+2. Observe cor e estrutura do solo
+3. Verifique histórico de manejo
+4. Registre a situação
+
+## O que evitar
+- Queimar restos culturais
+- Solo descoberto por longos períodos
+- Revolver excessivamente o solo
+
+## Próximos 7 dias
+- Planeje rotação com plantas de cobertura
+- Considere aplicação de compostagem
+- Consulte agrônomo para plano de longo prazo
+
+## Perguntas rápidas para confirmar
+1. Qual o teor de MO na análise?
+2. Usa plantas de cobertura?
+3. Há queima de restos na área?`,
+    triage_questions: [
+      "Qual o teor de MO na análise?",
+      "Usa plantas de cobertura?",
+      "Há queima de restos na área?"
+    ],
+    actions: [
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+
+  // ========== NUTRIÇÃO (adicionais) ==========
+  {
+    category_name: "nutricao",
+    slug: "calagem-gessagem-duvida",
+    title: "Calagem/gessagem – dúvida de aplicação",
+    triggers: ["calcario", "gesso", "calagem", "gessagem", "saturacao bases"],
+    crops: ["cafe", "soja", "milho", "feijao", "hortifruti"],
+    severity_levels: ["baixa", "media"],
+    content_markdown: `## O que pode ser (hipóteses)
+- pH baixo necessitando correção
+- Baixa saturação de bases (V%)
+- Deficiência de Ca/Mg em profundidade
+- Dúvida sobre dose ou época
+
+## Risco se não agir
+- Toxidez por alumínio
+- Baixa eficiência de adubação
+- Raízes superficiais
+
+## O que fazer agora (0-24h)
+1. Verifique resultado da análise de solo
+2. Anote pH, V%, Ca, Mg, Al
+3. Defina meta de V% para sua cultura
+4. Calcule necessidade de calcário
+
+## O que evitar
+- Aplicar sem análise de solo
+- Misturar calcário com adubos fosfatados
+- Doses excessivas de uma vez
+
+## Próximos 7 dias
+- Aplique com antecedência (60-90 dias antes do plantio)
+- Incorpore se possível
+- Considere gesso para perfil profundo
+
+## Perguntas rápidas para confirmar
+1. Qual o pH e V% atuais?
+2. Qual cultura vai plantar?
+3. Quando pretende plantar?`,
+    triage_questions: [
+      "Qual o pH e V% atuais?",
+      "Qual cultura vai plantar?",
+      "Quando pretende plantar?"
+    ],
+    actions: [
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+  {
+    category_name: "nutricao",
+    slug: "adubacao-foliar-vale-pena",
+    title: "Adubação foliar – vale a pena?",
+    triggers: ["foliar", "adubo foliar", "micronutriente", "nutricao foliar"],
+    crops: ["cafe", "soja", "milho", "feijao", "hortifruti"],
+    severity_levels: ["baixa"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Deficiência específica de micronutriente
+- Complemento em fases críticas
+- Correção rápida de sintomas
+- Dúvida se compensa o investimento
+
+## Risco se não agir
+- Deficiência pode limitar produtividade
+- Sintomas podem agravar
+- Perda de janela de aplicação
+
+## O que fazer agora (0-24h)
+1. Identifique sintomas visuais de deficiência
+2. Consulte análise foliar se disponível
+3. Avalie fase da cultura
+4. Registre sintomas
+
+## O que evitar
+- Aplicar sem diagnóstico
+- Usar como substituto de adubação de base
+- Aplicar em plantas estressadas
+
+## Próximos 7 dias
+- Defina nutriente-alvo
+- Planeje aplicação para horário adequado
+- Consulte doses recomendadas
+
+## Perguntas rápidas para confirmar
+1. Quais sintomas está observando?
+2. Tem análise foliar recente?
+3. Qual fase da cultura?`,
+    triage_questions: [
+      "Quais sintomas está observando?",
+      "Tem análise foliar recente?",
+      "Qual fase da cultura?"
+    ],
+    actions: [
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+
+  // ========== OPERAÇÃO (adicionais) ==========
+  {
+    category_name: "pulverizacao",
+    slug: "temperatura-alta-aplicacao",
+    title: "Temperatura alta na aplicação",
+    triggers: ["calor", "temperatura alta", "muito quente", "evaporacao"],
+    crops: ["cafe", "soja", "milho", "feijao", "hortifruti"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Temperatura acima de 30°C
+- Alta evaporação da calda
+- Umidade relativa baixa
+- Perda de eficácia do produto
+
+## Risco se não agir
+- Gotas evaporam antes de atingir alvo
+- Eficácia reduzida do tratamento
+- Desperdício de produto
+
+## O que fazer agora (0-24h)
+1. Verifique temperatura e umidade atual
+2. PARE aplicação se >30°C e UR <55%
+3. Aguarde janela mais adequada
+4. Prefira início da manhã ou fim de tarde
+
+## O que evitar
+- Aplicar entre 10h e 15h em dias quentes
+- Usar gotas muito finas
+- Ignorar condições climáticas
+
+## Próximos 7 dias
+- Monitore previsão para janelas
+- Planeje operações para horários frescos
+- Considere adjuvantes antievaporantes
+
+## Perguntas rápidas para confirmar
+1. Qual a temperatura atual?
+2. Qual a umidade relativa?
+3. Qual horário pretende aplicar?`,
+    triage_questions: [
+      "Qual a temperatura atual?",
+      "Qual a umidade relativa?",
+      "Qual horário pretende aplicar?"
+    ],
+    actions: [
+      { type: "open_screen", label: "Ver clima" },
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+  {
+    category_name: "pulverizacao",
+    slug: "falha-controle-aplicacao",
+    title: "Falha de controle após aplicação",
+    triggers: ["nao funcionou", "falha controle", "praga voltou", "doenca voltou", "resistencia"],
+    crops: ["cafe", "soja", "milho", "feijao", "hortifruti"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Condições climáticas inadequadas
+- Dose ou produto incorreto
+- Resistência do alvo
+- Tecnologia de aplicação inadequada
+
+## Risco se não agir
+- Prejuízo econômico
+- Aumento da população-alvo
+- Seleção de resistência
+
+## O que fazer agora (0-24h)
+1. Avalie condições no momento da aplicação
+2. Verifique se atingiu o alvo (cobertura)
+3. Confirme dose e produto aplicados
+4. Registre a situação detalhadamente
+
+## O que evitar
+- Reaplicar imediatamente o mesmo produto
+- Aumentar dose sem orientação
+- Ignorar a causa raiz
+
+## Próximos 7 dias
+- Analise possíveis causas da falha
+- Consulte agrônomo para nova estratégia
+- Considere rotação de modo de ação
+
+## Perguntas rápidas para confirmar
+1. Qual produto foi aplicado e em qual dose?
+2. Quais as condições no momento (vento, temperatura)?
+3. É a primeira falha com este produto?`,
+    triage_questions: [
+      "Qual produto foi aplicado e em qual dose?",
+      "Quais as condições no momento (vento, temperatura)?",
+      "É a primeira falha com este produto?"
+    ],
+    actions: [
+      { type: "create_occurrence", label: "Registrar ocorrência" },
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo RT" }
+    ]
+  },
+
+  // ========== PLANTIO (adicionais) ==========
+  {
+    category_name: "plantio_emergencia",
+    slug: "germinacao-irregular",
+    title: "Germinação irregular",
+    triggers: ["germinacao ruim", "nascer desigual", "emergencia irregular", "algumas nao nasceram"],
+    crops: ["soja", "milho", "feijao", "hortifruti"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Profundidade de plantio variável
+- Umidade irregular do solo
+- Qualidade de sementes
+- Temperatura do solo inadequada
+
+## Risco se não agir
+- Stand desuniforme
+- Competição entre plantas
+- Perda de produtividade
+
+## O que fazer agora (0-24h)
+1. Verifique profundidade das sementes
+2. Observe umidade do solo na linha
+3. Verifique se há pragas de solo
+4. Registre padrão das falhas
+
+## O que evitar
+- Replantar sem avaliar causa
+- Irrigar excessivamente
+- Ignorar se for localizado
+
+## Próximos 7 dias
+- Aguarde para avaliar stand final
+- Avalie viabilidade de replantio
+- Consulte agrônomo
+
+## Perguntas rápidas para confirmar
+1. Qual a profundidade das sementes?
+2. O solo estava úmido no plantio?
+3. Há sementes podres ou danificadas?`,
+    triage_questions: [
+      "Qual a profundidade das sementes?",
+      "O solo estava úmido no plantio?",
+      "Há sementes podres ou danificadas?"
+    ],
+    actions: [
+      { type: "create_occurrence", label: "Registrar ocorrência" },
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+  {
+    category_name: "plantio_emergencia",
+    slug: "replantio-vale-pena",
+    title: "Replantio – vale a pena?",
+    triggers: ["replantar", "replantio", "plantar de novo", "perdi stand"],
+    crops: ["soja", "milho", "feijao"],
+    severity_levels: ["alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Falha superior a 20-30% do stand
+- Perda total por geada/seca/granizo
+- Falha localizada em reboleiras
+- Decisão econômica complexa
+
+## Risco se não agir
+- Perda de produtividade proporcional
+- Janela de plantio perdida
+- Custo de replantio vs benefício
+
+## O que fazer agora (0-24h)
+1. Faça contagem real de plantas/ha
+2. Compare com stand ideal da cultivar
+3. Calcule % de falha
+4. Avalie uniformidade das falhas
+
+## O que evitar
+- Decidir precipitadamente
+- Ignorar custos adicionais
+- Replantar fora da janela
+
+## Próximos 7 dias
+- Faça cálculo econômico
+- Considere produtividade esperada com falha
+- Consulte agrônomo para decisão
+
+## Perguntas rápidas para confirmar
+1. Qual o % real de falha?
+2. Ainda está na janela de plantio?
+3. Qual o custo de replantio?`,
+    triage_questions: [
+      "Qual o % real de falha?",
+      "Ainda está na janela de plantio?",
+      "Qual o custo de replantio?"
+    ],
+    actions: [
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+  {
+    category_name: "plantio_emergencia",
+    slug: "plantio-fora-janela",
+    title: "Plantio fora da janela ideal",
+    triggers: ["plantio atrasado", "fora da janela", "plantar tarde", "epoca errada"],
+    crops: ["soja", "milho", "feijao"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Atraso por condições climáticas
+- Problemas operacionais
+- Decisão de cultivar diferentes
+- Safrinha após soja atrasada
+
+## Risco se não agir
+- Menor potencial produtivo
+- Maior pressão de pragas/doenças
+- Risco de perda por clima
+
+## O que fazer agora (0-24h)
+1. Verifique ZARC para sua região
+2. Avalie opções de cultivares precoces
+3. Considere riscos climáticos
+4. Registre a decisão
+
+## O que evitar
+- Plantar cultivares tardias fora da janela
+- Ignorar seguro agrícola (ZARC)
+- Plantar sem planejamento de colheita
+
+## Próximos 7 dias
+- Escolha cultivar adequada
+- Ajuste população se necessário
+- Planeje manejo intensivo
+
+## Perguntas rápidas para confirmar
+1. Quantos dias fora da janela?
+2. Qual cultivar pretende usar?
+3. Vai fazer segunda safra depois?`,
+    triage_questions: [
+      "Quantos dias fora da janela?",
+      "Qual cultivar pretende usar?",
+      "Vai fazer segunda safra depois?"
+    ],
+    actions: [
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+
+  // ========== HORTIFRUTI (adicionais) ==========
+  {
+    category_name: "hortifruti",
+    slug: "colheita-fora-ponto",
+    title: "Colheita fora do ponto",
+    triggers: ["colheu cedo", "colheu tarde", "ponto colheita hf", "fruto verde", "fruto passado"],
+    crops: ["hortifruti"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Colheita antes do ponto ideal (imaturo)
+- Colheita após ponto ideal (passado)
+- Dúvida sobre maturação
+- Pressão de mercado/logística
+
+## Risco se não agir
+- Qualidade inferior
+- Menor vida útil
+- Perda comercial
+
+## O que fazer agora (0-24h)
+1. Avalie estágio de maturação
+2. Verifique padrões de mercado
+3. Observe coloração, firmeza, tamanho
+4. Registre lote e data
+
+## O que evitar
+- Colher tudo de uma vez sem avaliar
+- Ignorar padrões de comprador
+- Armazenar produtos em estágios diferentes
+
+## Próximos 7 dias
+- Ajuste frequência de colheita
+- Separe por estágio de maturação
+- Planeje escoamento adequado
+
+## Perguntas rápidas para confirmar
+1. Qual o produto e estágio atual?
+2. Para qual mercado vai (CEASA, supermercado)?
+3. Qual a distância até o consumidor?`,
+    triage_questions: [
+      "Qual o produto e estágio atual?",
+      "Para qual mercado vai (CEASA, supermercado)?",
+      "Qual a distância até o consumidor?"
+    ],
+    actions: [
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+  {
+    category_name: "hortifruti",
+    slug: "pos-colheita-hf",
+    title: "Pós-colheita em HF",
+    triggers: ["pos colheita", "armazenamento", "conservar", "refrigeracao", "perda pos"],
+    crops: ["hortifruti"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Temperatura inadequada de armazenamento
+- Manuseio excessivo
+- Embalagem inapropriada
+- Contaminação pós-colheita
+
+## Risco se não agir
+- Perdas elevadas
+- Qualidade comprometida
+- Problemas sanitários
+
+## O que fazer agora (0-24h)
+1. Verifique temperatura de armazenamento
+2. Observe sinais de deterioração
+3. Avalie embalagens e manuseio
+4. Registre perdas
+
+## O que evitar
+- Misturar produtos de diferentes estágios
+- Armazenar em temperatura incorreta
+- Excesso de manipulação
+
+## Próximos 7 dias
+- Ajuste cadeia de frio se necessário
+- Melhore processo de manuseio
+- Considere tratamentos pós-colheita
+
+## Perguntas rápidas para confirmar
+1. Qual a temperatura de armazenamento?
+2. Quanto tempo entre colheita e venda?
+3. Qual % de perdas estimado?`,
+    triage_questions: [
+      "Qual a temperatura de armazenamento?",
+      "Quanto tempo entre colheita e venda?",
+      "Qual % de perdas estimado?"
+    ],
+    actions: [
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo" }
+    ]
+  },
+
+  // ========== PRAGAS (adicionais) ==========
+  {
+    category_name: "pragas",
+    slug: "acaros-tempo-seco",
+    title: "Ácaros em tempo seco",
+    triggers: ["acaro", "ácaro", "folha bronzeada", "teia aranha", "tempo seco praga"],
+    crops: ["cafe", "soja", "hortifruti"],
+    severity_levels: ["media", "alta"],
+    content_markdown: `## O que pode ser (hipóteses)
+- Ácaro-rajado (Tetranychus urticae)
+- Ácaro-vermelho
+- Ácaro-branco
+- Favorecidos por tempo quente e seco
+
+## Risco se não agir
+- Bronzeamento e queda de folhas
+- Redução de fotossíntese
+- Perda de qualidade/produtividade
+
+## O que fazer agora (0-24h)
+1. Observe face inferior das folhas com lupa
+2. Procure por teias finas
+3. Verifique bronzeamento/amarelecimento
+4. Faça amostragem de 30 folhas
+
+## O que evitar
+- Usar apenas piretróides (aumenta população)
+- Ignorar focos iniciais
+- Aplicar em horário muito quente
+
+## Próximos 7 dias
+- Monitore evolução da infestação
+- Planeje controle com acaricidas específicos
+- Consulte agrônomo para rotação de produtos
+
+## Perguntas rápidas para confirmar
+1. Há teias finas na face inferior?
+2. Está seco há quantos dias?
+3. Qual % de folhas afetadas?`,
+    triage_questions: [
+      "Há teias finas na face inferior?",
+      "Está seco há quantos dias?",
+      "Qual % de folhas afetadas?"
+    ],
+    actions: [
+      { type: "create_occurrence", label: "Registrar ocorrência" },
+      { type: "escalate_to_agronomist", label: "Consultar agrônomo RT" }
     ]
   }
 ];
