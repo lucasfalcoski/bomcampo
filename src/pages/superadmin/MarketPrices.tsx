@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LoadingSpinner } from "@/components/ui/loading-state";
-import { Plus, TrendingUp, Trash2, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, TrendingUp, Trash2, AlertCircle, CheckCircle, Upload } from "lucide-react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -17,16 +17,19 @@ import {
   useMarketPracas, 
   useMarketPriceMutation,
   useBestPrice,
+  useBulkImportPrices,
   MARKET_CROPS,
   BRAZILIAN_STATES,
   type MarketPraca 
 } from "@/hooks/useMarket";
+import { BulkImportDialog, type ParsedRow } from "@/components/market/BulkImportDialog";
 
 export default function MarketPrices() {
   const [cropFilter, setCropFilter] = useState<string>("");
   const [stateFilter, setStateFilter] = useState<string>("");
   const [pracaFilter, setPracaFilter] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   
   // Form state
   const [formCrop, setFormCrop] = useState("");
@@ -37,6 +40,7 @@ export default function MarketPrices() {
   const { data: prices, isLoading } = useMarketPrices(cropFilter || undefined, pracaFilter || undefined, 200);
   const { data: allPracas } = useMarketPracas(stateFilter || undefined, true);
   const { create, remove } = useMarketPriceMutation();
+  const bulkImport = useBulkImportPrices();
   
   // Para preview do preço
   const { data: bestPrice, isLoading: isLoadingBestPrice } = useBestPrice(
@@ -76,6 +80,10 @@ export default function MarketPrices() {
 
   const isExpired = (validUntil: string) => isPast(new Date(validUntil));
 
+  const handleBulkImport = async (rows: ParsedRow[], createMissingPracas: boolean) => {
+    return await bulkImport.mutateAsync({ rows, createMissingPracas });
+  };
+
   if (isLoading) {
     return <LoadingSpinner message="Carregando preços..." />;
   }
@@ -91,13 +99,19 @@ export default function MarketPrices() {
           <p className="text-muted-foreground">Registre e acompanhe preços de commodities por praça</p>
         </div>
         
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={handleOpenDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Registrar Preço
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setBulkImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar em massa
+          </Button>
+          
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleOpenDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Registrar Preço
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Registrar Novo Preço</DialogTitle>
@@ -214,6 +228,15 @@ export default function MarketPrices() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
+
+        <BulkImportDialog
+          open={bulkImportOpen}
+          onOpenChange={setBulkImportOpen}
+          pracas={allPracas || []}
+          onImport={handleBulkImport}
+          isImporting={bulkImport.isPending}
+        />
       </div>
 
       <Card>
