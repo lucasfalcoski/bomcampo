@@ -54,6 +54,12 @@ interface AIResponse {
     blocked_reason?: string;
     decision_route?: string;
     sources_used?: string[];
+    // POP Engine flags
+    match_type?: 'pop' | 'category' | 'ai' | 'fallback';
+    matched_pop_slug?: string;
+    matched_category?: string;
+    ai_status?: 'success' | 'retry' | 'failed' | 'skipped';
+    triage_questions?: string[];
   };
   safety?: SafetyInfo;
 }
