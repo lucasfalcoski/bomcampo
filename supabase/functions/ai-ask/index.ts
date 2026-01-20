@@ -1,6 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getTodayBRT, AI_USAGE_SOURCE } from "../_shared/date.ts";
+import {
+  routeQuestion,
+  callAIStructured,
+  getDefaultFallback,
+  formatAIResponseToMarkdown,
+  formatPopToMarkdown,
+  logPopUsage,
+  type PopMatch,
+  type AIStructuredResponse,
+} from "../_shared/popEngine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -304,6 +314,12 @@ interface AIResponse {
     sources_used?: string[];
     show_escalate_to_agronomist?: boolean;
     blocked_reason?: string;
+    // POP Engine flags
+    match_type?: 'pop' | 'category' | 'ai' | 'fallback';
+    matched_pop_slug?: string;
+    matched_category?: string;
+    ai_status?: 'success' | 'retry' | 'failed' | 'skipped';
+    triage_questions?: string[];
   };
   safety?: {
     blocked: boolean;
@@ -1341,52 +1357,148 @@ serve(async (req) => {
       }
     }
 
-    // I) GENERAL - Fallback com IA
+    // I) GENERAL - Use POP Engine first, then AI fallback
     else {
+      const startTime = Date.now();
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      
       try {
-        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-        if (!LOVABLE_API_KEY) throw new Error("No API key");
-
-        const systemPrompt = `Você é o assistente agronômico do BomCampo. Responda de forma curta e objetiva.
-REGRAS: Nunca prescreva doses, misturas, ou produtos. Para tratamentos, oriente "consulte o agrônomo RT".
-Use emojis. Termine com próximos passos.`;
-
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "openai/gpt-5-mini",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: user_message },
-            ],
-            max_completion_tokens: 512,
-          }),
-        });
-
-        if (aiResponse.ok) {
-          const data = await aiResponse.json();
-          const text = data.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua pergunta.";
+        // 1. Route question through POP Engine
+        const popMatch = await routeQuestion(supabase, user_message);
+        console.log('[ai-ask] POP Engine match:', popMatch.match_type, 'score:', popMatch.score);
+        
+        // 2. Handle based on match type
+        if (popMatch.match_type === 'pop' && popMatch.pop) {
+          // Direct POP match - use POP content
+          const popContent = formatPopToMarkdown(popMatch.pop);
+          const actions: AIAction[] = [
+            { type: 'open_pop', label: `📋 Ver POP: ${popMatch.pop.title}`, payload: { pop_id: popMatch.pop.id } },
+            { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
+          ];
+          
+          // Add triage questions as collapsible
+          const triageSection = popMatch.pop.triage_questions?.length 
+            ? `\n\n---\n**❓ Perguntas para confirmar:**\n${popMatch.pop.triage_questions.map((q, i) => `${i+1}. ${q}`).join('\n')}`
+            : '';
           
           response = {
-            assistant_text: text,
-            actions: [
-              { type: 'escalate_to_agronomist', label: 'Perguntar ao Agrônomo' },
-            ],
-            flags: { decision_route: 'general_ai', sources_used: ['openai/gpt-5-mini'] },
+            assistant_text: `📋 **POP Encontrado:** ${popMatch.pop.title}\n\n${popContent}${triageSection}\n\n---\n⚠️ Consulte o agrônomo RT para decisões de aplicação.`,
+            actions,
+            flags: { 
+              decision_route: 'pop_match',
+              match_type: 'pop',
+              matched_pop_slug: popMatch.pop.slug,
+              matched_category: popMatch.pop.category,
+              triage_questions: popMatch.pop.triage_questions,
+            },
             safety: { blocked: false, suggest_escalate: true },
           };
-        } else {
-          throw new Error("AI call failed");
+          
+          // Log usage
+          await logPopUsage(
+            supabase, user.id, effectiveWorkspaceId, farm_id || null, plot_id || null,
+            user_message, popMatch, false, 'skipped', Date.now() - startTime
+          );
+        } 
+        else if (popMatch.match_type === 'category' && popMatch.category) {
+          // Category match - use AI with category context
+          const aiResult = await callAIStructured(user_message, popMatch.category.name, LOVABLE_API_KEY);
+          
+          let assistantText: string;
+          let aiResponse: AIStructuredResponse;
+          
+          if (aiResult.response) {
+            aiResponse = aiResult.response;
+            assistantText = formatAIResponseToMarkdown(aiResponse);
+          } else {
+            aiResponse = getDefaultFallback(user_message);
+            assistantText = formatAIResponseToMarkdown(aiResponse);
+          }
+          
+          const actions: AIAction[] = [
+            { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
+          ];
+          
+          // Add related POPs from category if available
+          if (popMatch.pop) {
+            actions.unshift({
+              type: 'open_pop',
+              label: `📋 ${popMatch.pop.title}`,
+              payload: { pop_id: popMatch.pop.id },
+            });
+          }
+          
+          response = {
+            assistant_text: `${popMatch.category.icon} **${popMatch.category.description}**\n\n${assistantText}`,
+            actions,
+            flags: {
+              decision_route: 'category_ai',
+              match_type: 'category',
+              matched_category: popMatch.category.name,
+              ai_status: aiResult.status,
+              triage_questions: aiResponse.triage_questions,
+              sources_used: ['openai/gpt-5-mini'],
+            },
+            safety: { blocked: false, suggest_escalate: true },
+          };
+          
+          await logPopUsage(
+            supabase, user.id, effectiveWorkspaceId, farm_id || null, plot_id || null,
+            user_message, popMatch, true, aiResult.status, Date.now() - startTime
+          );
+        }
+        else {
+          // No POP match - use AI directly
+          const aiResult = await callAIStructured(user_message, undefined, LOVABLE_API_KEY);
+          
+          let assistantText: string;
+          let triageQuestions: string[] = [];
+          
+          if (aiResult.response) {
+            assistantText = formatAIResponseToMarkdown(aiResult.response);
+            triageQuestions = aiResult.response.triage_questions || [];
+          } else {
+            const fallback = getDefaultFallback(user_message);
+            assistantText = formatAIResponseToMarkdown(fallback);
+            triageQuestions = fallback.triage_questions;
+          }
+          
+          response = {
+            assistant_text: `🤖 **Resposta IA**\n\n${assistantText}`,
+            actions: [
+              { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
+            ],
+            flags: {
+              decision_route: 'ai_direct',
+              match_type: 'ai',
+              ai_status: aiResult.status,
+              triage_questions: triageQuestions,
+              sources_used: ['openai/gpt-5-mini'],
+            },
+            safety: { blocked: false, suggest_escalate: true },
+          };
+          
+          await logPopUsage(
+            supabase, user.id, effectiveWorkspaceId, farm_id || null, plot_id || null,
+            user_message, popMatch, true, aiResult.status, Date.now() - startTime
+          );
         }
       } catch (error) {
-        console.error('[ai-ask] AI fallback error:', error);
+        console.error('[ai-ask] POP Engine error:', error);
+        
+        // Ultimate fallback - never show "não consegui processar"
+        const fallback = getDefaultFallback(user_message);
         response = {
-          assistant_text: `🤔 Não consegui entender completamente sua pergunta.\n\n**Posso ajudar com:**\n- 📋 Registrar atividades\n- 📝 Criar tarefas\n- 🔍 Identificar pragas/doenças\n- ☁️ Consultar clima\n- 💰 Lançar financeiro\n\n👨‍🌾 Ou envie sua dúvida para um agrônomo.`,
+          assistant_text: `🛡️ **Orientação de Segurança**\n\n${formatAIResponseToMarkdown(fallback)}`,
           actions: [
-            { type: 'escalate_to_agronomist', label: 'Perguntar ao Agrônomo' },
+            { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
           ],
-          flags: { decision_route: 'fallback' },
+          flags: { 
+            decision_route: 'safe_fallback',
+            match_type: 'fallback',
+            ai_status: 'failed',
+            triage_questions: fallback.triage_questions,
+          },
           safety: { blocked: false, suggest_escalate: true },
         };
       }

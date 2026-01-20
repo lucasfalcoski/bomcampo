@@ -152,12 +152,29 @@ function ActionButton({ action, onEscalate }: ActionButtonProps) {
 
       // Task creation (handled by ActionFlowCard usually)
       case 'create_task':
-        console.log('Create task action:', action);
+        navigate('/talhoes');
         toast({
-          title: 'Criação de tarefa',
-          description: 'Use o fluxo de ação acima para criar tarefas.',
+          title: 'Criar Tarefa',
+          description: 'Acesse a área de talhões para criar tarefas.',
         });
         break;
+
+      // Occurrence creation
+      case 'create_occurrence':
+        navigate('/talhoes');
+        toast({
+          title: 'Registrar Ocorrência',
+          description: 'Acesse a área de talhões para registrar ocorrências.',
+        });
+        break;
+
+      // Share on WhatsApp
+      case 'share_whatsapp': {
+        const text = action.payload?.text as string || 'Consulta no BomCampo';
+        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+        break;
+      }
 
       // Start action flow (handled by ActionFlowCard)
       case 'start_action':
@@ -496,6 +513,41 @@ export default function IAgronomoChat() {
                       : "bg-muted"
                   )}
                 >
+                  {/* POP/IA Badge for assistant messages */}
+                  {msg.role === 'assistant' && msg.flags?.match_type && (
+                    <div className="flex items-center gap-2 mb-2">
+                      {msg.flags.match_type === 'pop' && (
+                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px] h-5">
+                          <FileText className="h-3 w-3 mr-1" />
+                          POP
+                        </Badge>
+                      )}
+                      {msg.flags.match_type === 'category' && (
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-[10px] h-5">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          IA + Categoria
+                        </Badge>
+                      )}
+                      {msg.flags.match_type === 'ai' && (
+                        <Badge variant="secondary" className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300 text-[10px] h-5">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          IA
+                        </Badge>
+                      )}
+                      {msg.flags.match_type === 'fallback' && (
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] h-5">
+                          <Info className="h-3 w-3 mr-1" />
+                          Orientação
+                        </Badge>
+                      )}
+                      {msg.flags.matched_category && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {msg.flags.matched_category}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {msg.flags?.blocked_reason && (
                     <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 mb-1.5 text-[11px]">
                       <AlertTriangle className="h-3 w-3" />
@@ -506,6 +558,30 @@ export default function IAgronomoChat() {
                   <div className="whitespace-pre-wrap text-sm">
                     {msg.content}
                   </div>
+
+                  {/* Triage Questions Collapsible */}
+                  {msg.flags?.triage_questions && msg.flags.triage_questions.length > 0 && (
+                    <Collapsible className="mt-3">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs w-full justify-between">
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" />
+                            Perguntas para confirmar ({msg.flags.triage_questions.length})
+                          </span>
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 p-2 bg-background/50 rounded-md border border-border/50">
+                          <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+                            {msg.flags.triage_questions.map((q: string, i: number) => (
+                              <li key={i}>{q}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
 
                   {/* Generic Action Flow Card */}
                   {msg.actionFlowData && (
