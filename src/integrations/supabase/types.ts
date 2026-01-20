@@ -1172,6 +1172,39 @@ export type Database = {
           },
         ]
       }
+      pop_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          keywords: string[]
+          name: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          keywords?: string[]
+          name: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          keywords?: string[]
+          name?: string
+          priority?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pop_steps: {
         Row: {
           created_at: string
@@ -1207,44 +1240,162 @@ export type Database = {
           },
         ]
       }
-      pops: {
+      pop_usage_logs: {
         Row: {
-          category: string
+          ai_status: string | null
           created_at: string
+          farm_id: string | null
+          field_id: string | null
           id: string
-          is_active: boolean
-          keywords: string[] | null
-          slug: string
-          summary: string | null
-          title: string
-          updated_at: string
+          match_score: number | null
+          match_type: string
+          matched_category_id: string | null
+          matched_pop_id: string | null
+          question: string
+          response_time_ms: number | null
+          used_ai: boolean
+          user_id: string
           workspace_id: string | null
         }
         Insert: {
-          category: string
+          ai_status?: string | null
           created_at?: string
+          farm_id?: string | null
+          field_id?: string | null
           id?: string
-          is_active?: boolean
-          keywords?: string[] | null
-          slug: string
-          summary?: string | null
-          title: string
-          updated_at?: string
+          match_score?: number | null
+          match_type: string
+          matched_category_id?: string | null
+          matched_pop_id?: string | null
+          question: string
+          response_time_ms?: number | null
+          used_ai?: boolean
+          user_id: string
           workspace_id?: string | null
         }
         Update: {
-          category?: string
+          ai_status?: string | null
           created_at?: string
+          farm_id?: string | null
+          field_id?: string | null
           id?: string
-          is_active?: boolean
-          keywords?: string[] | null
-          slug?: string
-          summary?: string | null
-          title?: string
-          updated_at?: string
+          match_score?: number | null
+          match_type?: string
+          matched_category_id?: string | null
+          matched_pop_id?: string | null
+          question?: string
+          response_time_ms?: number | null
+          used_ai?: boolean
+          user_id?: string
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pop_usage_logs_farm_id_fkey"
+            columns: ["farm_id"]
+            isOneToOne: false
+            referencedRelation: "farms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_usage_logs_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "plots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_usage_logs_matched_category_id_fkey"
+            columns: ["matched_category_id"]
+            isOneToOne: false
+            referencedRelation: "pop_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_usage_logs_matched_pop_id_fkey"
+            columns: ["matched_pop_id"]
+            isOneToOne: false
+            referencedRelation: "pops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pop_usage_logs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pops: {
+        Row: {
+          actions: Json
+          category: string
+          category_id: string | null
+          content_markdown: string | null
+          created_at: string
+          crops: string[]
+          id: string
+          is_active: boolean
+          keywords: string[] | null
+          severity_levels: string[]
+          slug: string
+          summary: string | null
+          title: string
+          triage_questions: string[]
+          triggers: string[]
+          updated_at: string
+          version: number
+          workspace_id: string | null
+        }
+        Insert: {
+          actions?: Json
+          category: string
+          category_id?: string | null
+          content_markdown?: string | null
+          created_at?: string
+          crops?: string[]
+          id?: string
+          is_active?: boolean
+          keywords?: string[] | null
+          severity_levels?: string[]
+          slug: string
+          summary?: string | null
+          title: string
+          triage_questions?: string[]
+          triggers?: string[]
+          updated_at?: string
+          version?: number
+          workspace_id?: string | null
+        }
+        Update: {
+          actions?: Json
+          category?: string
+          category_id?: string | null
+          content_markdown?: string | null
+          created_at?: string
+          crops?: string[]
+          id?: string
+          is_active?: boolean
+          keywords?: string[] | null
+          severity_levels?: string[]
+          slug?: string
+          summary?: string | null
+          title?: string
+          triage_questions?: string[]
+          triggers?: string[]
+          updated_at?: string
+          version?: number
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pops_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "pop_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pops_workspace_id_fkey"
             columns: ["workspace_id"]
