@@ -52,6 +52,8 @@ import SuperadminFlags from "./pages/superadmin/Flags";
 import SuperadminCampaigns from "./pages/superadmin/Campaigns";
 import SuperadminIntegrations from "./pages/superadmin/Integrations";
 import SuperadminAudit from "./pages/superadmin/Audit";
+import SuperadminMarketPracas from "./pages/superadmin/MarketPracas";
+import SuperadminMarketPrices from "./pages/superadmin/MarketPrices";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
@@ -408,6 +410,26 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <SuperadminAudit />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/market/pracas"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminMarketPracas />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/market/prices"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SuperadminMarketPrices />
                   </AppLayout>
                 </ProtectedRoute>
               }

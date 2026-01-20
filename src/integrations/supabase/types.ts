@@ -1011,6 +1011,107 @@ export type Database = {
         }
         Relationships: []
       }
+      market_pracas: {
+        Row: {
+          country: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          state: string
+        }
+        Insert: {
+          country?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          state: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          state?: string
+        }
+        Relationships: []
+      }
+      market_prices: {
+        Row: {
+          captured_at: string
+          created_at: string
+          crop: string
+          id: string
+          is_reference: boolean
+          note: string | null
+          praca_id: string
+          price: number
+          source: string
+          unit: string
+          valid_until: string
+        }
+        Insert: {
+          captured_at?: string
+          created_at?: string
+          crop: string
+          id?: string
+          is_reference?: boolean
+          note?: string | null
+          praca_id: string
+          price: number
+          source?: string
+          unit?: string
+          valid_until: string
+        }
+        Update: {
+          captured_at?: string
+          created_at?: string
+          crop?: string
+          id?: string
+          is_reference?: boolean
+          note?: string | null
+          praca_id?: string
+          price?: number
+          source?: string
+          unit?: string
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_prices_praca_id_fkey"
+            columns: ["praca_id"]
+            isOneToOne: false
+            referencedRelation: "market_pracas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      market_reference_rules: {
+        Row: {
+          created_at: string
+          crop: string
+          reference_window_days: number
+          ttl_hours: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          crop: string
+          reference_window_days?: number
+          ttl_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          crop?: string
+          reference_window_days?: number
+          ttl_hours?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications_log: {
         Row: {
           created_at: string
@@ -1865,6 +1966,19 @@ export type Database = {
     }
     Functions: {
       find_user_by_email: { Args: { _email: string }; Returns: string }
+      get_best_price: {
+        Args: { p_crop: string; p_praca_id: string }
+        Returns: {
+          captured_at: string
+          is_reference: boolean
+          note: string
+          price: number
+          source: string
+          status: string
+          unit: string
+          valid_until: string
+        }[]
+      }
       get_farm_workspace_id: { Args: { _farm_id: string }; Returns: string }
       get_partner_users: {
         Args: { _partner_id: string }
@@ -1921,6 +2035,15 @@ export type Database = {
         Returns: boolean
       }
       jsonb_merge: { Args: { a: Json; b: Json }; Returns: Json }
+      search_pracas: {
+        Args: { p_query?: string; p_state?: string }
+        Returns: {
+          full_name: string
+          id: string
+          name: string
+          state: string
+        }[]
+      }
     }
     Enums: {
       action_draft_status:

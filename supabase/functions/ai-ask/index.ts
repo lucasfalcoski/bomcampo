@@ -590,16 +590,16 @@ interface CommodityInfo {
   name: string;
   nameDisplay: string;
   unit: string;
-  markets: string[];
   defaultMarket: string;
 }
 
 const COMMODITIES: Record<string, CommodityInfo> = {
-  soja: { code: 'soja', name: 'Soja', nameDisplay: 'Soja', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB MT', 'CONAB PR', 'CBOT'], defaultMarket: 'CONAB SP' },
-  milho: { code: 'milho', name: 'Milho', nameDisplay: 'Milho', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB MT', 'CONAB PR', 'CBOT'], defaultMarket: 'CONAB SP' },
-  cafe: { code: 'cafe', name: 'Café', nameDisplay: 'Café Arábica', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB MG', 'CEPEA'], defaultMarket: 'CONAB SP' },
-  trigo: { code: 'trigo', name: 'Trigo', nameDisplay: 'Trigo', unit: 'saca 60kg', markets: ['CONAB PR', 'CONAB RS'], defaultMarket: 'CONAB PR' },
-  feijao: { code: 'feijao', name: 'Feijão', nameDisplay: 'Feijão Carioca', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB PR'], defaultMarket: 'CONAB SP' },
+  soja: { code: 'soja', name: 'Soja', nameDisplay: 'Soja', unit: 'saca 60kg', defaultMarket: 'SP' },
+  milho: { code: 'milho', name: 'Milho', nameDisplay: 'Milho', unit: 'saca 60kg', defaultMarket: 'SP' },
+  cafe: { code: 'cafe', name: 'Café', nameDisplay: 'Café Arábica', unit: 'saca 60kg', defaultMarket: 'MG' },
+  trigo: { code: 'trigo', name: 'Trigo', nameDisplay: 'Trigo', unit: 'saca 60kg', defaultMarket: 'PR' },
+  feijao: { code: 'feijao', name: 'Feijão', nameDisplay: 'Feijão Carioca', unit: 'saca 60kg', defaultMarket: 'SP' },
+  sorgo: { code: 'sorgo', name: 'Sorgo', nameDisplay: 'Sorgo', unit: 'saca 60kg', defaultMarket: 'GO' },
 };
 
 function extractCommodityFromMessage(message: string): CommodityInfo | null {
@@ -609,20 +609,96 @@ function extractCommodityFromMessage(message: string): CommodityInfo | null {
   if (/caf[ée]/i.test(msg)) return COMMODITIES.cafe;
   if (/trigo/i.test(msg)) return COMMODITIES.trigo;
   if (/feij[ãa]o/i.test(msg)) return COMMODITIES.feijao;
+  if (/sorgo/i.test(msg)) return COMMODITIES.sorgo;
   return null;
 }
 
 function extractRegionFromMessage(message: string): string | null {
   const msg = message.toLowerCase();
-  if (/s[ãa]o\s+paulo|sp/i.test(msg)) return 'SP';
-  if (/mato\s+grosso|mt/i.test(msg)) return 'MT';
-  if (/paran[áa]|pr/i.test(msg)) return 'PR';
-  if (/minas\s+gerais|mg/i.test(msg)) return 'MG';
-  if (/goi[áa]s|go/i.test(msg)) return 'GO';
-  if (/rio\s+grande\s+do\s+sul|rs/i.test(msg)) return 'RS';
+  if (/ribeir[ãa]o\s+preto/i.test(msg)) return 'Ribeirão Preto';
+  if (/campinas/i.test(msg)) return 'Campinas';
+  if (/londrina/i.test(msg)) return 'Londrina';
+  if (/uberl[âa]ndia/i.test(msg)) return 'Uberlândia';
+  if (/rio\s+verde/i.test(msg)) return 'Rio Verde';
+  if (/sorriso/i.test(msg)) return 'Sorriso';
+  if (/dourados/i.test(msg)) return 'Dourados';
+  // States
+  if (/s[ãa]o\s+paulo|(\s|^)sp(\s|$|,)/i.test(msg)) return 'SP';
+  if (/mato\s+grosso(\s+do\s+sul)?|(\s|^)mt(\s|$|,)/i.test(msg)) return 'MT';
+  if (/paran[áa]|(\s|^)pr(\s|$|,)/i.test(msg)) return 'PR';
+  if (/minas\s+gerais|(\s|^)mg(\s|$|,)/i.test(msg)) return 'MG';
+  if (/goi[áa]s|(\s|^)go(\s|$|,)/i.test(msg)) return 'GO';
+  if (/rio\s+grande\s+do\s+sul|(\s|^)rs(\s|$|,)/i.test(msg)) return 'RS';
   return null;
 }
 
+// deno-lint-ignore no-explicit-any
+async function findPracaByName(supabase: any, query: string): Promise<{ id: string; name: string; state: string } | null> {
+  try {
+    // Try exact name match first
+    let { data } = await supabase
+      .from('market_pracas')
+      .select('id, name, state')
+      .eq('is_active', true)
+      .ilike('name', query)
+      .limit(1);
+    
+    if (data && data.length > 0) return data[0];
+    
+    // Try state match
+    if (query.length === 2) {
+      const { data: stateData } = await supabase
+        .from('market_pracas')
+        .select('id, name, state')
+        .eq('is_active', true)
+        .eq('state', query.toUpperCase())
+        .limit(1);
+      if (stateData && stateData.length > 0) return stateData[0];
+    }
+    
+    // Try partial match
+    const { data: partialData } = await supabase
+      .from('market_pracas')
+      .select('id, name, state')
+      .eq('is_active', true)
+      .ilike('name', `%${query}%`)
+      .limit(1);
+    
+    if (partialData && partialData.length > 0) return partialData[0];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function getBestPriceFromPraca(supabase: any, crop: string, pracaId: string): Promise<{ price: number; date: string; source: string; unit: string; status: string; pracaName: string } | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_best_price', {
+      p_crop: crop,
+      p_praca_id: pracaId,
+    });
+    
+    if (error || !data || data.length === 0 || data[0].status === 'indisponivel') {
+      return null;
+    }
+    
+    const result = data[0];
+    return {
+      price: result.price,
+      date: result.captured_at,
+      source: result.source,
+      unit: result.unit || 'R$/saca',
+      status: result.status,
+      pracaName: '',
+    };
+  } catch (err) {
+    console.error('[ai-ask] Error fetching best price:', err);
+    return null;
+  }
+}
+
+// Legacy fallback
 // deno-lint-ignore no-explicit-any
 async function getPriceData(supabase: any, product: string, market: string): Promise<{ price: number; date: string; source: string; unit: string } | null> {
   try {
@@ -633,11 +709,9 @@ async function getPriceData(supabase: any, product: string, market: string): Pro
     });
     
     if (error || !data || data.length === 0) {
-      console.log('[ai-ask] No price data for', product, market);
       return null;
     }
     
-    // Get most recent price
     const latest = data[data.length - 1];
     return {
       price: latest.price,
@@ -645,8 +719,7 @@ async function getPriceData(supabase: any, product: string, market: string): Pro
       source: latest.source,
       unit: latest.unit || 'saca 60kg'
     };
-  } catch (err) {
-    console.error('[ai-ask] Error fetching price:', err);
+  } catch {
     return null;
   }
 }
