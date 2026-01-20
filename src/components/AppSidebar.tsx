@@ -48,6 +48,8 @@ const adminItems: MenuItem[] = [
   { title: 'Feature Flags', url: '/admin/flags', icon: Flag },
   { title: 'Campanhas', url: '/admin/campaigns', icon: Megaphone },
   { title: 'Integrações', url: '/admin/integrations', icon: Plug },
+  { title: 'Praças de Mercado', url: '/admin/market/pracas', icon: MapPin },
+  { title: 'Preços de Mercado', url: '/admin/market/prices', icon: TrendingUp },
   { title: 'Auditoria', url: '/admin/audit', icon: ClipboardList },
 ];
 
