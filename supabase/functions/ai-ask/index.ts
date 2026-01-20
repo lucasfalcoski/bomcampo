@@ -511,21 +511,25 @@ type DomainIntent = 'mercado' | 'clima' | 'defensivos' | 'manejo';
 const DOMAIN_PATTERNS: Record<Exclude<DomainIntent, 'manejo'>, RegExp[]> = {
   // MERCADO - preços, cotações, valores de commodities
   mercado: [
-    /pre[çc]o\s+(da|do|de)?\s*(saca|soja|milho|caf[ée]|trigo|feij[ãa]o|boi|arroz)/i,
-    /cota[çc][ãa]o\s+(da|do|de)?\s*(soja|milho|caf[ée]|trigo|feij[ãa]o|boi|arroz)/i,
-    /quanto\s+(t[áa]|custa|est[áa])\s*(a\s+)?(saca|soja|milho|caf[ée])/i,
-    /valor\s+(da|do)\s+(saca|soja|milho|caf[ée]|trigo|feij[ãa]o)/i,
-    /mercado\s+(de\s+)?(soja|milho|caf[ée]|trigo|commodit)/i,
-    /(soja|milho|caf[ée]|trigo|feij[ãa]o)\s+(t[áa]|est[áa])\s+(quanto|a\s+quanto)/i,
+    /pre[çc]o\s+(da|do|de)?\s*(saca|soja|milho|caf[ée]|trigo|feij[ãa]o|boi|arroz|sorgo)/i,
+    /cota[çc][ãa]o\s+(da|do|de)?\s*(soja|milho|caf[ée]|trigo|feij[ãa]o|boi|arroz|sorgo)/i,
+    /quanto\s+(t[áa]|custa|est[áa])\s*(a\s+)?(saca|soja|milho|caf[ée]|trigo|feij[ãa]o|sorgo)/i,
+    /quanto\s+(t[áa]|custa|est[áa])\s*(o\s+)?(caf[ée]|milho|trigo|sorgo|feij[ãa]o)/i,
+    /valor\s+(da|do)\s+(saca|soja|milho|caf[ée]|trigo|feij[ãa]o|sorgo)/i,
+    /mercado\s+(de\s+)?(soja|milho|caf[ée]|trigo|commodit|sorgo)/i,
+    /(soja|milho|caf[ée]|trigo|feij[ãa]o|sorgo)\s+(t[áa]|est[áa])\s+(quanto|a\s+quanto)/i,
     /pre[çc]o\s+hoje/i,
     /cota[çc][ãa]o\s+hoje/i,
     /b3\s+(soja|milho|caf[ée])/i,
     /cepea/i,
     /quanto\s+(est[áa]|t[áa])\s+(o\s+)?(pre[çc]o|a\s+saca)/i,
-    /saca\s+de\s+(soja|milho|caf[ée]|trigo|feij[ãa]o)\s+(t[áa]|est[áa]|quanto)/i,
+    /saca\s+de\s+(soja|milho|caf[ée]|trigo|feij[ãa]o|sorgo)\s+(t[áa]|est[áa]|quanto)/i,
     /pre[çc]o\s+(atual|atualizado|do\s+dia)/i,
     /r\$.*saca/i,
     /saca.*r\$/i,
+    // Novas patterns mais flexíveis - commodity + praça
+    /(soja|milho|caf[ée]|trigo|feij[ãa]o|sorgo)\s+(em|de|na|no)\s+\w+/i,
+    /quanto.*\s+(soja|milho|caf[ée]|trigo|feij[ãa]o|sorgo)/i,
   ],
   // CLIMA - previsão do tempo (redirect ao módulo Clima)
   clima: [
@@ -615,20 +619,98 @@ function extractCommodityFromMessage(message: string): CommodityInfo | null {
 
 function extractRegionFromMessage(message: string): string | null {
   const msg = message.toLowerCase();
-  if (/ribeir[ãa]o\s+preto/i.test(msg)) return 'Ribeirão Preto';
-  if (/campinas/i.test(msg)) return 'Campinas';
-  if (/londrina/i.test(msg)) return 'Londrina';
-  if (/uberl[âa]ndia/i.test(msg)) return 'Uberlândia';
-  if (/rio\s+verde/i.test(msg)) return 'Rio Verde';
-  if (/sorriso/i.test(msg)) return 'Sorriso';
-  if (/dourados/i.test(msg)) return 'Dourados';
-  // States
-  if (/s[ãa]o\s+paulo|(\s|^)sp(\s|$|,)/i.test(msg)) return 'SP';
-  if (/mato\s+grosso(\s+do\s+sul)?|(\s|^)mt(\s|$|,)/i.test(msg)) return 'MT';
-  if (/paran[áa]|(\s|^)pr(\s|$|,)/i.test(msg)) return 'PR';
-  if (/minas\s+gerais|(\s|^)mg(\s|$|,)/i.test(msg)) return 'MG';
-  if (/goi[áa]s|(\s|^)go(\s|$|,)/i.test(msg)) return 'GO';
-  if (/rio\s+grande\s+do\s+sul|(\s|^)rs(\s|$|,)/i.test(msg)) return 'RS';
+  // Normalize accents for matching
+  const normalized = msg.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  // City patterns - return city name for praça lookup
+  const cityPatterns: Array<{ pattern: RegExp; city: string }> = [
+    { pattern: /ribeir[aã]o\s*preto/i, city: 'Ribeirão Preto' },
+    { pattern: /ribeirao\s*preto/i, city: 'Ribeirão Preto' },
+    { pattern: /campinas/i, city: 'Campinas' },
+    { pattern: /londrina/i, city: 'Londrina' },
+    { pattern: /maringa/i, city: 'Maringá' },
+    { pattern: /cascavel/i, city: 'Cascavel' },
+    { pattern: /ponta\s*grossa/i, city: 'Ponta Grossa' },
+    { pattern: /uberl[aâ]ndia/i, city: 'Uberlândia' },
+    { pattern: /uberlandia/i, city: 'Uberlândia' },
+    { pattern: /uberaba/i, city: 'Uberaba' },
+    { pattern: /patos\s*de\s*minas/i, city: 'Patos de Minas' },
+    { pattern: /varginha/i, city: 'Varginha' },
+    { pattern: /guaxup[eé]/i, city: 'Guaxupé' },
+    { pattern: /rio\s*verde/i, city: 'Rio Verde' },
+    { pattern: /jata[ií]/i, city: 'Jataí' },
+    { pattern: /goiania/i, city: 'Goiânia' },
+    { pattern: /rondon[oó]polis/i, city: 'Rondonópolis' },
+    { pattern: /sorriso/i, city: 'Sorriso' },
+    { pattern: /sinop/i, city: 'Sinop' },
+    { pattern: /lucas\s*(do\s*)?rio\s*verde/i, city: 'Lucas do Rio Verde' },
+    { pattern: /cuiab[aá]/i, city: 'Cuiabá' },
+    { pattern: /dourados/i, city: 'Dourados' },
+    { pattern: /campo\s*grande/i, city: 'Campo Grande' },
+    { pattern: /passo\s*fundo/i, city: 'Passo Fundo' },
+    { pattern: /iju[ií]/i, city: 'Ijuí' },
+    { pattern: /santa\s*maria/i, city: 'Santa Maria' },
+    { pattern: /chapec[oó]/i, city: 'Chapecó' },
+    { pattern: /lu[ií]s\s*eduardo/i, city: 'Luís Eduardo Magalhães' },
+    { pattern: /barreiras/i, city: 'Barreiras' },
+    { pattern: /balsas/i, city: 'Balsas' },
+    { pattern: /palmas/i, city: 'Palmas' },
+    { pattern: /uru[çc]u[ií]/i, city: 'Uruçuí' },
+    { pattern: /sorocaba/i, city: 'Sorocaba' },
+    { pattern: /piracicaba/i, city: 'Piracicaba' },
+    { pattern: /bauru/i, city: 'Bauru' },
+    { pattern: /ara[çc]atuba/i, city: 'Araçatuba' },
+    { pattern: /presidente\s*prudente/i, city: 'Presidente Prudente' },
+    { pattern: /mar[ií]lia/i, city: 'Marília' },
+    { pattern: /s[aã]o\s*jos[eé]\s*do\s*rio\s*preto/i, city: 'São José do Rio Preto' },
+    { pattern: /brasilia/i, city: 'Brasília' },
+    { pattern: /santos/i, city: 'Santos' },
+    { pattern: /alfenas/i, city: 'Alfenas' },
+    { pattern: /una[ií]/i, city: 'Unaí' },
+  ];
+  
+  for (const { pattern, city } of cityPatterns) {
+    if (pattern.test(msg) || pattern.test(normalized)) {
+      return city;
+    }
+  }
+  
+  // State-only patterns - return state code
+  const statePatterns: Array<{ pattern: RegExp; state: string }> = [
+    { pattern: /(\s|^)sp(\s|$|,|\.)/i, state: 'SP' },
+    { pattern: /s[aã]o\s*paulo/i, state: 'SP' },
+    { pattern: /(\s|^)pr(\s|$|,|\.)/i, state: 'PR' },
+    { pattern: /paran[aá]/i, state: 'PR' },
+    { pattern: /(\s|^)mg(\s|$|,|\.)/i, state: 'MG' },
+    { pattern: /minas\s*gerais/i, state: 'MG' },
+    { pattern: /(\s|^)go(\s|$|,|\.)/i, state: 'GO' },
+    { pattern: /goi[aá]s/i, state: 'GO' },
+    { pattern: /(\s|^)mt(\s|$|,|\.)/i, state: 'MT' },
+    { pattern: /mato\s*grosso(?!\s*do\s*sul)/i, state: 'MT' },
+    { pattern: /(\s|^)ms(\s|$|,|\.)/i, state: 'MS' },
+    { pattern: /mato\s*grosso\s*do\s*sul/i, state: 'MS' },
+    { pattern: /(\s|^)rs(\s|$|,|\.)/i, state: 'RS' },
+    { pattern: /rio\s*grande\s*do\s*sul/i, state: 'RS' },
+    { pattern: /(\s|^)sc(\s|$|,|\.)/i, state: 'SC' },
+    { pattern: /santa\s*catarina/i, state: 'SC' },
+    { pattern: /(\s|^)ba(\s|$|,|\.)/i, state: 'BA' },
+    { pattern: /bahia/i, state: 'BA' },
+    { pattern: /(\s|^)df(\s|$|,|\.)/i, state: 'DF' },
+    { pattern: /distrito\s*federal/i, state: 'DF' },
+    { pattern: /(\s|^)to(\s|$|,|\.)/i, state: 'TO' },
+    { pattern: /tocantins/i, state: 'TO' },
+    { pattern: /(\s|^)ma(\s|$|,|\.)/i, state: 'MA' },
+    { pattern: /maranh[aã]o/i, state: 'MA' },
+    { pattern: /(\s|^)pi(\s|$|,|\.)/i, state: 'PI' },
+    { pattern: /piau[ií]/i, state: 'PI' },
+  ];
+  
+  for (const { pattern, state } of statePatterns) {
+    if (pattern.test(msg) || pattern.test(normalized)) {
+      return state;
+    }
+  }
+  
   return null;
 }
 
@@ -1213,10 +1295,12 @@ serve(async (req) => {
       const commodity = extractCommodityFromMessage(user_message);
       const region = extractRegionFromMessage(user_message);
       
+      console.log('[ai-ask] Mercado:', { commodity: commodity?.code, region });
+      
       if (!commodity) {
         // Commodity não identificada - resposta genérica
         response = {
-          assistant_text: `📈 **Cotações de Commodities**\n\nPosso ajudar com preços de:\n- **Soja** (CBOT, CONAB SP/MT/PR)\n- **Milho** (CBOT, CONAB SP/MT/PR)\n- **Café** (CEPEA, CONAB SP/MG)\n- **Trigo** (CONAB PR/RS)\n- **Feijão** (CONAB SP/PR)\n\n💡 **Pergunte assim:**\n"Qual o preço da soja hoje?"\n"Cotação do milho em SP"\n"Quanto está a saca de café?"\n\nOu acesse o módulo completo de preços:`,
+          assistant_text: `📈 **Cotações de Commodities**\n\nPosso ajudar com preços de:\n- **Soja**\n- **Milho**\n- **Café**\n- **Trigo**\n- **Feijão**\n- **Sorgo**\n\n💡 **Pergunte assim:**\n"Qual o preço da soja em Ribeirão Preto?"\n"Cotação do milho em Londrina"\n"Quanto está a saca de café em Varginha?"\n\nOu acesse o módulo completo de preços:`,
           actions: [
             { type: 'open_screen', label: '📈 Ver Módulo de Preços', payload: { route: '/precos' } },
           ],
@@ -1226,48 +1310,100 @@ serve(async (req) => {
           },
           safety: { blocked: false, suggest_escalate: false },
         };
+      } else if (!region) {
+        // Commodity identificada mas sem praça - pedir praça
+        response = {
+          assistant_text: `📈 **Preço da ${commodity.nameDisplay}**\n\n` +
+            `Para qual praça você quer a cotação?\n\n` +
+            `💡 **Exemplos:**\n` +
+            `- "Preço da soja em Ribeirão Preto"\n` +
+            `- "Soja em Londrina"\n` +
+            `- "Cotação em Sorriso/MT"\n\n` +
+            `Ou acesse o módulo de preços para ver todas as praças disponíveis:`,
+          actions: [
+            { type: 'open_screen', label: '📈 Ver Módulo de Preços', payload: { route: '/precos' } },
+          ],
+          flags: { 
+            decision_route: 'mercado_ask_praca',
+            match_type: 'ai' as const,
+          },
+          safety: { blocked: false, suggest_escalate: false },
+        };
       } else {
-        // Buscar preço da commodity
-        const market = region ? `CONAB ${region}` : commodity.defaultMarket;
-        const priceData = await getPriceData(supabase, commodity.code, market);
+        // Buscar praça no banco market_pracas
+        const praca = await findPracaByName(supabase, region);
+        console.log('[ai-ask] Praça encontrada:', praca);
         
-        if (priceData) {
-          const formattedDate = new Date(priceData.date).toLocaleDateString('pt-BR');
-          const formattedPrice = priceData.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-          
+        if (!praca) {
+          // Praça não encontrada
           response = {
-            assistant_text: `📈 **Preço da ${commodity.nameDisplay}** — ${market}\n\n` +
-              `💰 **Valor de referência:** ${formattedPrice} / ${priceData.unit}\n` +
-              `📅 **Data:** ${formattedDate}\n` +
-              `📊 **Fonte:** ${priceData.source}\n\n` +
-              `---\n` +
-              `⚠️ **Importante:** Os preços variam conforme praça, logística, qualidade do grão e negociação local. Este é um valor de referência.\n\n` +
-              `Para mais detalhes e histórico, acesse o módulo de preços:`,
+            assistant_text: `📈 **Preço da ${commodity.nameDisplay}**\n\n` +
+              `Não encontrei a praça "${region}" cadastrada.\n\n` +
+              `💡 **Praças disponíveis:** Ribeirão Preto, Campinas, Londrina, Sorriso, Rio Verde, Uberlândia, e outras.\n\n` +
+              `Acesse o módulo de preços para ver todas as praças e cotações:`,
             actions: [
-              { type: 'open_screen', label: `📈 Ver Histórico de ${commodity.name}`, payload: { route: '/precos' } },
+              { type: 'open_screen', label: '📈 Ver Módulo de Preços', payload: { route: '/precos' } },
             ],
             flags: { 
-              decision_route: 'mercado_price',
+              decision_route: 'mercado_praca_not_found',
               match_type: 'ai' as const,
             },
             safety: { blocked: false, suggest_escalate: false },
           };
         } else {
-          // Sem dados de preço disponíveis
-          response = {
-            assistant_text: `📈 **Preço da ${commodity.nameDisplay}**\n\n` +
-              `No momento, não tenho dados de preço atualizados para ${commodity.nameDisplay} (${market}).\n\n` +
-              `💡 **Dica:** Acesse o módulo de preços para ver as cotações mais recentes de diferentes praças.\n\n` +
-              `⚠️ **Importante:** Os preços variam conforme praça, logística, qualidade do grão e negociação local. Consulte seu comprador ou cooperativa para negociações.`,
-            actions: [
-              { type: 'open_screen', label: '📈 Ver Módulo de Preços', payload: { route: '/precos' } },
-            ],
-            flags: { 
-              decision_route: 'mercado_no_data',
-              match_type: 'ai' as const,
-            },
-            safety: { blocked: false, suggest_escalate: false },
-          };
+          // Buscar preço usando getBestPrice
+          const priceData = await getBestPriceFromPraca(supabase, commodity.code, praca.id);
+          console.log('[ai-ask] Preço encontrado:', priceData);
+          
+          if (priceData) {
+            const formattedDate = new Date(priceData.date).toLocaleDateString('pt-BR', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            const formattedPrice = priceData.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const statusLabel = priceData.status === 'atualizado' ? '✅ Atualizado' : '📊 Referência';
+            const statusNote = priceData.status === 'atualizado' 
+              ? `Capturado em ${formattedDate}`
+              : `Baseado em cotações recentes`;
+            
+            response = {
+              assistant_text: `📈 **Preço da saca de ${commodity.nameDisplay} — ${praca.name}/${praca.state}**\n\n` +
+                `💰 **${formattedPrice}** / saca\n\n` +
+                `📌 **Status:** ${statusLabel}\n` +
+                `📅 ${statusNote}\n` +
+                `📊 **Fonte:** ${priceData.source || 'Mercado físico'}\n\n` +
+                `---\n` +
+                `⚠️ Os preços variam conforme qualidade do grão, logística e negociação local. Este é um valor de referência.\n\n` +
+                `Para mais praças e histórico:`,
+              actions: [
+                { type: 'open_screen', label: `📈 Ver Mais Cotações`, payload: { route: '/precos' } },
+              ],
+              flags: { 
+                decision_route: 'mercado_price',
+                match_type: 'ai' as const,
+              },
+              safety: { blocked: false, suggest_escalate: false },
+            };
+          } else {
+            // Sem dados de preço para esta praça/commodity
+            response = {
+              assistant_text: `📈 **Preço da ${commodity.nameDisplay} — ${praca.name}/${praca.state}**\n\n` +
+                `Ainda não tenho preço registrado para ${commodity.nameDisplay} nesta praça.\n\n` +
+                `💡 **Dica:** Acesse o módulo de preços para ver cotações de outras praças.\n\n` +
+                `⚠️ Os preços variam conforme praça, logística e negociação local. Consulte seu comprador ou cooperativa.`,
+              actions: [
+                { type: 'open_screen', label: '📈 Ver Módulo de Preços', payload: { route: '/precos' } },
+              ],
+              flags: { 
+                decision_route: 'mercado_no_data',
+                match_type: 'ai' as const,
+              },
+              safety: { blocked: false, suggest_escalate: false },
+            };
+          }
         }
       }
     }
