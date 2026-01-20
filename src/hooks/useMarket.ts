@@ -235,6 +235,7 @@ export function useMarketPriceMutation() {
       source?: string;
       note?: string;
       ttl_hours?: number;
+      captured_at?: string;
     }) => {
       // Buscar TTL da cultura
       let ttlHours = priceData.ttl_hours || 24;
@@ -249,8 +250,8 @@ export function useMarketPriceMutation() {
         ttlHours = rule.ttl_hours;
       }
 
-      const now = new Date();
-      const validUntil = new Date(now.getTime() + ttlHours * 60 * 60 * 1000);
+      const capturedAt = priceData.captured_at ? new Date(priceData.captured_at) : new Date();
+      const validUntil = new Date(capturedAt.getTime() + ttlHours * 60 * 60 * 1000);
 
       const { data, error } = await supabase
         .from('market_prices')
@@ -260,7 +261,7 @@ export function useMarketPriceMutation() {
           price: priceData.price,
           source: priceData.source || 'manual_admin',
           note: priceData.note || null,
-          captured_at: now.toISOString(),
+          captured_at: capturedAt.toISOString(),
           valid_until: validUntil.toISOString(),
           is_reference: false,
         })
@@ -300,6 +301,132 @@ export function useMarketPriceMutation() {
   });
 
   return { create, remove };
+}
+
+// Hook para importação em massa
+export function useBulkImportPrices() {
+  const queryClient = useQueryClient();
+  const { create: createPraca } = useMarketPracaMutation();
+
+  const bulkImport = useMutation({
+    mutationFn: async (params: {
+      rows: Array<{
+        cropNormalized: string | null;
+        praca: string;
+        uf: string;
+        price: number | null;
+        capturedAt: string | null;
+        source: string;
+        note: string;
+        pracaId?: string;
+      }>;
+      createMissingPracas: boolean;
+    }) => {
+      const { rows, createMissingPracas } = params;
+      let inserted = 0;
+      let failed = 0;
+
+      // Get TTL rules for all crops
+      const { data: rules } = await supabase
+        .from('market_reference_rules')
+        .select('*');
+      
+      const ttlMap = new Map<string, number>();
+      rules?.forEach(r => ttlMap.set(r.crop, r.ttl_hours));
+
+      for (const row of rows) {
+        try {
+          if (!row.cropNormalized || row.price === null) {
+            failed++;
+            continue;
+          }
+
+          let pracaId = row.pracaId;
+
+          // Create praça if needed
+          if (!pracaId && createMissingPracas && row.praca && row.uf) {
+            const { data: newPraca, error: pracaError } = await supabase
+              .from('market_pracas')
+              .insert({
+                name: row.praca.trim(),
+                state: row.uf.toUpperCase(),
+                country: 'BR',
+                is_active: true,
+              })
+              .select()
+              .single();
+
+            if (pracaError) {
+              // Maybe it was created by another row, try to find it
+              const { data: existingPraca } = await supabase
+                .from('market_pracas')
+                .select('id')
+                .ilike('name', row.praca.trim())
+                .eq('state', row.uf.toUpperCase())
+                .single();
+              
+              if (existingPraca) {
+                pracaId = existingPraca.id;
+              } else {
+                failed++;
+                continue;
+              }
+            } else {
+              pracaId = newPraca.id;
+            }
+          }
+
+          if (!pracaId) {
+            failed++;
+            continue;
+          }
+
+          const ttlHours = ttlMap.get(row.cropNormalized) || 24;
+          const capturedAt = row.capturedAt ? new Date(row.capturedAt) : new Date();
+          const validUntil = new Date(capturedAt.getTime() + ttlHours * 60 * 60 * 1000);
+
+          const { error: priceError } = await supabase
+            .from('market_prices')
+            .insert({
+              crop: row.cropNormalized,
+              praca_id: pracaId,
+              price: row.price,
+              source: row.source || 'manual_admin',
+              note: row.note || null,
+              captured_at: capturedAt.toISOString(),
+              valid_until: validUntil.toISOString(),
+              is_reference: false,
+            });
+
+          if (priceError) {
+            failed++;
+          } else {
+            inserted++;
+          }
+        } catch {
+          failed++;
+        }
+      }
+
+      return { inserted, failed };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['market-prices'] });
+      queryClient.invalidateQueries({ queryKey: ['market-pracas'] });
+      queryClient.invalidateQueries({ queryKey: ['best-price'] });
+      if (result.inserted > 0) {
+        toast.success(`${result.inserted} preço${result.inserted !== 1 ? 's' : ''} importado${result.inserted !== 1 ? 's' : ''} com sucesso!`);
+      }
+      if (result.failed > 0) {
+        toast.warning(`${result.failed} linha${result.failed !== 1 ? 's' : ''} falhou na importação.`);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro na importação: ${error.message}`);
+    },
+  });
+
+  return bulkImport;
 }
 
 // Hook para regras de referência
