@@ -48,8 +48,8 @@ export function normalizeText(text: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Remove accents
-    .replace(/[^\\w\\s]/g, ' ') // Remove punctuation
-    .replace(/\\s+/g, ' ')
+    .replace(/[^\w\s]/g, ' ') // Remove punctuation
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -68,13 +68,40 @@ export function calculateScore(
   const matched: string[] = [];
   let score = 0;
   
-  for (const token of queryTokens) {
-    for (let i = 0; i < normalizedKeywords.length; i++) {
-      const keyword = normalizedKeywords[i];
+  // Join query tokens to check for phrase matches
+  const queryText = queryTokens.join(' ');
+  
+  for (let i = 0; i < normalizedKeywords.length; i++) {
+    const keyword = normalizedKeywords[i];
+    const keywordTokens = keyword.split(' ').filter(t => t.length > 2);
+    
+    // Check if multi-word keyword matches in query text
+    if (keywordTokens.length > 1) {
+      if (queryText.includes(keyword)) {
+        // Full phrase match - high score
+        score += 5 * keywordTokens.length;
+        matched.push(targetKeywords[i]);
+        continue;
+      }
+      // Check if all tokens of the keyword are present in query
+      const allTokensPresent = keywordTokens.every(kt => 
+        queryTokens.some(qt => qt === kt || qt.includes(kt) || kt.includes(qt))
+      );
+      if (allTokensPresent) {
+        score += 3 * keywordTokens.length;
+        matched.push(targetKeywords[i]);
+        continue;
+      }
+    }
+    
+    // Single-word keyword matching
+    for (const token of queryTokens) {
       // Exact match
       if (keyword === token) {
         score += 3;
-        matched.push(targetKeywords[i]);
+        if (!matched.includes(targetKeywords[i])) {
+          matched.push(targetKeywords[i]);
+        }
       }
       // Partial match (token is contained in keyword or vice versa)
       else if (keyword.includes(token) || token.includes(keyword)) {
@@ -86,8 +113,10 @@ export function calculateScore(
     }
   }
   
-  // Normalize score based on query length
-  const normalizedScore = queryTokens.length > 0 ? score / queryTokens.length : 0;
+  // Normalize score based on query length (but don't over-penalize long queries)
+  const normalizedScore = queryTokens.length > 0 
+    ? score / Math.max(queryTokens.length, 3) 
+    : 0;
   
   return { score: normalizedScore, matched: [...new Set(matched)] };
 }
@@ -116,6 +145,8 @@ export async function routeQuestion(
   let bestPopScore = 0;
   let bestPopMatched: string[] = [];
   
+  console.log('[popEngine] Query tokens:', queryTokens);
+  
   for (const pop of pops || []) {
     // Combine triggers and keywords for matching
     const allKeywords = [...(pop.triggers || []), ...(pop.keywords || [])];
@@ -127,7 +158,14 @@ export async function routeQuestion(
       cropBonus = 0.5;
     }
     
-    const totalScore = score + cropBonus;
+    // Bonus for category mention in query
+    const categoryBonus = queryTokens.some(t => pop.category?.toLowerCase().includes(t)) ? 0.5 : 0;
+    
+    const totalScore = score + cropBonus + categoryBonus;
+    
+    if (totalScore > 0.5) {
+      console.log(`[popEngine] POP ${pop.slug}: score=${score.toFixed(2)}, total=${totalScore.toFixed(2)}, matched=${matched.join(',')}`);
+    }
     
     if (totalScore > bestPopScore && totalScore >= 1.5) {
       bestPopScore = totalScore;
@@ -144,8 +182,9 @@ export async function routeQuestion(
     }
   }
   
-  // Threshold for POP match
-  if (bestPop && bestPopScore >= 2.0) {
+  // Threshold for POP match - lowered to catch more specific matches
+  if (bestPop && bestPopScore >= 1.5) {
+    console.log(`[popEngine] Matched POP: ${bestPop.slug} with score ${bestPopScore.toFixed(2)}`);
     return {
       match_type: 'pop',
       pop: bestPop,
