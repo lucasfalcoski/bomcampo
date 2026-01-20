@@ -461,3 +461,28 @@ export function useSearchPracas(query: string, stateFilter?: string) {
     enabled: query.length >= 2 || !!stateFilter,
   });
 }
+
+// Hook para buscar histórico de preços para gráfico (série temporal)
+export function usePriceHistory(crop: string | null, pracaId: string | null, periodDays = 90) {
+  return useQuery({
+    queryKey: ['price-history', crop, pracaId, periodDays],
+    queryFn: async () => {
+      if (!crop || !pracaId) return [];
+
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - periodDays);
+
+      const { data, error } = await supabase
+        .from('market_prices')
+        .select('captured_at, price, source, unit')
+        .eq('crop', crop)
+        .eq('praca_id', pracaId)
+        .gte('captured_at', fromDate.toISOString())
+        .order('captured_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!crop && !!pracaId,
+  });
+}
