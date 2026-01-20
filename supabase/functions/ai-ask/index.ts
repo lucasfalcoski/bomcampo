@@ -5,6 +5,8 @@ import {
   routeQuestion,
   callAIStructured,
   getDefaultFallback,
+  getSafeResponse,
+  isSensitive,
   formatAIResponseToMarkdown,
   formatPopToMarkdown,
   logPopUsage,
@@ -314,17 +316,19 @@ interface AIResponse {
     sources_used?: string[];
     show_escalate_to_agronomist?: boolean;
     blocked_reason?: string;
-    // POP Engine flags
+    // POP Engine V1 flags
     match_type?: 'pop' | 'category' | 'ai' | 'fallback';
     matched_pop_slug?: string;
     matched_category?: string;
     ai_status?: 'success' | 'retry' | 'failed' | 'skipped';
     triage_questions?: string[];
+    is_sensitive?: boolean; // Safety Gate flag
   };
   safety?: {
     blocked: boolean;
     reason?: string;
     suggest_escalate: boolean;
+    is_sensitive?: boolean; // Duplicate for frontend access
   };
   debug?: AIDebugInfo;
 }
@@ -1357,26 +1361,73 @@ serve(async (req) => {
       }
     }
 
-    // I) GENERAL - Use POP Engine first, then AI fallback
+    // I) GENERAL - Use Safety Gate + POP Engine V1
     else {
       const startTime = Date.now();
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       
       try {
-        // 1. Route question through POP Engine
-        const popMatch = await routeQuestion(supabase, user_message);
-        console.log('[ai-ask] POP Engine match:', popMatch.match_type, 'score:', popMatch.score);
+        // 1. SAFETY GATE - Check if question involves sensitive topics
+        const sensitiveQuestion = isSensitive(user_message);
+        console.log('[ai-ask] Safety Gate:', sensitiveQuestion ? 'SENSITIVE' : 'OK');
         
-        // 2. Handle based on match type
-        if (popMatch.match_type === 'pop' && popMatch.pop) {
-          // Direct POP match - use POP content
+        // 2. Route question through POP Engine V1
+        const popMatch = await routeQuestion(supabase, user_message);
+        console.log('[ai-ask] Router V1:', popMatch.match_type, '| Score:', popMatch.score, '| Sensitive:', sensitiveQuestion);
+        
+        // 3. If SENSITIVE, wrap response with safe guardrails
+        if (sensitiveQuestion) {
+          // Get safe response template
+          const safeResponse = getSafeResponse(user_message);
+          const assistantText = formatAIResponseToMarkdown(safeResponse);
+          
+          // Still try to find relevant POP to help
+          const actions: AIAction[] = [
+            { type: 'escalate_to_agronomist', label: '👨‍🌾 Falar com Agrônomo RT' },
+          ];
+          
+          // If we found a relevant POP, include it
+          if (popMatch.pop) {
+            actions.unshift({
+              type: 'open_pop',
+              label: `📋 Ver POP: ${popMatch.pop.title}`,
+              payload: { pop_id: popMatch.pop.id },
+            });
+          }
+          
+          response = {
+            assistant_text: `⚠️ **Tema Regulado - Orientação Segura**\n\n${assistantText}`,
+            actions,
+            flags: {
+              decision_route: 'sensitive_safe_response',
+              match_type: popMatch.match_type,
+              matched_pop_slug: popMatch.pop?.slug,
+              matched_category: popMatch.category?.name || popMatch.pop?.category,
+              is_sensitive: true,
+              triage_questions: safeResponse.triage_questions,
+            },
+            safety: { 
+              blocked: false, 
+              suggest_escalate: true,
+              is_sensitive: true,
+            },
+          };
+          
+          // Log usage
+          await logPopUsage(
+            supabase, user.id, effectiveWorkspaceId, farm_id || null, plot_id || null,
+            user_message, { ...popMatch, is_sensitive: true }, false, 'skipped', Date.now() - startTime
+          );
+        }
+        // 4. POP MATCH - Direct POP content
+        else if (popMatch.match_type === 'pop' && popMatch.pop) {
           const popContent = formatPopToMarkdown(popMatch.pop);
           const actions: AIAction[] = [
             { type: 'open_pop', label: `📋 Ver POP: ${popMatch.pop.title}`, payload: { pop_id: popMatch.pop.id } },
             { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
           ];
           
-          // Add triage questions as collapsible
+          // Add triage questions
           const triageSection = popMatch.pop.triage_questions?.length 
             ? `\n\n---\n**❓ Perguntas para confirmar:**\n${popMatch.pop.triage_questions.map((q, i) => `${i+1}. ${q}`).join('\n')}`
             : '';
@@ -1389,37 +1440,48 @@ serve(async (req) => {
               match_type: 'pop',
               matched_pop_slug: popMatch.pop.slug,
               matched_category: popMatch.pop.category,
+              is_sensitive: false,
               triage_questions: popMatch.pop.triage_questions,
             },
-            safety: { blocked: false, suggest_escalate: true },
+            safety: { blocked: false, suggest_escalate: true, is_sensitive: false },
           };
           
-          // Log usage
           await logPopUsage(
             supabase, user.id, effectiveWorkspaceId, farm_id || null, plot_id || null,
             user_message, popMatch, false, 'skipped', Date.now() - startTime
           );
         } 
+        // 5. CATEGORY MATCH - POP from category or AI with context
         else if (popMatch.match_type === 'category' && popMatch.category) {
-          // Category match - use AI with category context
-          const aiResult = await callAIStructured(user_message, popMatch.category.name, LOVABLE_API_KEY);
-          
           let assistantText: string;
-          let aiResponse: AIStructuredResponse;
+          let triageQuestions: string[] = [];
+          let aiStatus: 'success' | 'retry' | 'failed' | 'skipped' = 'skipped';
           
-          if (aiResult.response) {
-            aiResponse = aiResult.response;
-            assistantText = formatAIResponseToMarkdown(aiResponse);
+          // If we have a POP from this category, use it
+          if (popMatch.pop) {
+            const popContent = formatPopToMarkdown(popMatch.pop);
+            assistantText = `${popMatch.category.icon} **Categoria: ${popMatch.category.description}**\n\n${popContent}`;
+            triageQuestions = popMatch.pop.triage_questions || [];
           } else {
-            aiResponse = getDefaultFallback(user_message);
-            assistantText = formatAIResponseToMarkdown(aiResponse);
+            // No POP - use AI with category context
+            const aiResult = await callAIStructured(user_message, popMatch.category.name, LOVABLE_API_KEY, false);
+            
+            if (aiResult.response) {
+              assistantText = `${popMatch.category.icon} **${popMatch.category.description}**\n\n${formatAIResponseToMarkdown(aiResult.response)}`;
+              triageQuestions = aiResult.response.triage_questions || [];
+              aiStatus = aiResult.status;
+            } else {
+              const fallback = getDefaultFallback(user_message);
+              assistantText = `${popMatch.category.icon} **${popMatch.category.description}**\n\n${formatAIResponseToMarkdown(fallback)}`;
+              triageQuestions = fallback.triage_questions;
+              aiStatus = 'failed';
+            }
           }
           
           const actions: AIAction[] = [
             { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
           ];
           
-          // Add related POPs from category if available
           if (popMatch.pop) {
             actions.unshift({
               type: 'open_pop',
@@ -1429,38 +1491,43 @@ serve(async (req) => {
           }
           
           response = {
-            assistant_text: `${popMatch.category.icon} **${popMatch.category.description}**\n\n${assistantText}`,
+            assistant_text: assistantText,
             actions,
             flags: {
-              decision_route: 'category_ai',
+              decision_route: popMatch.pop ? 'category_pop' : 'category_ai',
               match_type: 'category',
+              matched_pop_slug: popMatch.pop?.slug,
               matched_category: popMatch.category.name,
-              ai_status: aiResult.status,
-              triage_questions: aiResponse.triage_questions,
-              sources_used: ['openai/gpt-5-mini'],
+              ai_status: aiStatus,
+              is_sensitive: false,
+              triage_questions: triageQuestions,
+              sources_used: popMatch.pop ? undefined : ['google/gemini-3-flash-preview'],
             },
-            safety: { blocked: false, suggest_escalate: true },
+            safety: { blocked: false, suggest_escalate: true, is_sensitive: false },
           };
           
           await logPopUsage(
             supabase, user.id, effectiveWorkspaceId, farm_id || null, plot_id || null,
-            user_message, popMatch, true, aiResult.status, Date.now() - startTime
+            user_message, popMatch, !popMatch.pop, aiStatus, Date.now() - startTime
           );
         }
+        // 6. AI FALLBACK - No POP or category match
         else {
-          // No POP match - use AI directly
-          const aiResult = await callAIStructured(user_message, undefined, LOVABLE_API_KEY);
+          const aiResult = await callAIStructured(user_message, undefined, LOVABLE_API_KEY, false);
           
           let assistantText: string;
           let triageQuestions: string[] = [];
+          let aiStatus: 'success' | 'retry' | 'failed' = aiResult.status;
           
           if (aiResult.response) {
             assistantText = formatAIResponseToMarkdown(aiResult.response);
             triageQuestions = aiResult.response.triage_questions || [];
           } else {
+            // 7. DEFAULT FALLBACK - When AI also fails
             const fallback = getDefaultFallback(user_message);
             assistantText = formatAIResponseToMarkdown(fallback);
             triageQuestions = fallback.triage_questions;
+            aiStatus = 'failed';
           }
           
           response = {
@@ -1469,24 +1536,25 @@ serve(async (req) => {
               { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
             ],
             flags: {
-              decision_route: 'ai_direct',
-              match_type: 'ai',
-              ai_status: aiResult.status,
+              decision_route: aiResult.response ? 'ai_direct' : 'fallback',
+              match_type: aiResult.response ? 'ai' : 'fallback',
+              ai_status: aiStatus,
+              is_sensitive: false,
               triage_questions: triageQuestions,
-              sources_used: ['openai/gpt-5-mini'],
+              sources_used: ['google/gemini-3-flash-preview'],
             },
-            safety: { blocked: false, suggest_escalate: true },
+            safety: { blocked: false, suggest_escalate: true, is_sensitive: false },
           };
           
           await logPopUsage(
             supabase, user.id, effectiveWorkspaceId, farm_id || null, plot_id || null,
-            user_message, popMatch, true, aiResult.status, Date.now() - startTime
+            user_message, popMatch, true, aiStatus, Date.now() - startTime
           );
         }
       } catch (error) {
-        console.error('[ai-ask] POP Engine error:', error);
+        console.error('[ai-ask] Router V1 error:', error);
         
-        // Ultimate fallback - never show "não consegui processar"
+        // ULTIMATE FALLBACK - Never show "não consegui processar"
         const fallback = getDefaultFallback(user_message);
         response = {
           assistant_text: `🛡️ **Orientação de Segurança**\n\n${formatAIResponseToMarkdown(fallback)}`,
@@ -1497,9 +1565,10 @@ serve(async (req) => {
             decision_route: 'safe_fallback',
             match_type: 'fallback',
             ai_status: 'failed',
+            is_sensitive: false,
             triage_questions: fallback.triage_questions,
           },
-          safety: { blocked: false, suggest_escalate: true },
+          safety: { blocked: false, suggest_escalate: true, is_sensitive: false },
         };
       }
     }
