@@ -504,6 +504,153 @@ function checkBlockedContent(message: string): string | null {
   return null;
 }
 
+// ========== CAMADA 0 — DOMAIN INTENT ==========
+// Classifica o domínio da pergunta ANTES de qualquer outro processamento
+type DomainIntent = 'mercado' | 'clima' | 'defensivos' | 'manejo';
+
+const DOMAIN_PATTERNS: Record<Exclude<DomainIntent, 'manejo'>, RegExp[]> = {
+  // MERCADO - preços, cotações, valores de commodities
+  mercado: [
+    /pre[çc]o\s+(da|do|de)?\s*(saca|soja|milho|caf[ée]|trigo|feij[ãa]o|boi|arroz)/i,
+    /cota[çc][ãa]o\s+(da|do|de)?\s*(soja|milho|caf[ée]|trigo|feij[ãa]o|boi|arroz)/i,
+    /quanto\s+(t[áa]|custa|est[áa])\s*(a\s+)?(saca|soja|milho|caf[ée])/i,
+    /valor\s+(da|do)\s+(saca|soja|milho|caf[ée]|trigo|feij[ãa]o)/i,
+    /mercado\s+(de\s+)?(soja|milho|caf[ée]|trigo|commodit)/i,
+    /(soja|milho|caf[ée]|trigo|feij[ãa]o)\s+(t[áa]|est[áa])\s+(quanto|a\s+quanto)/i,
+    /pre[çc]o\s+hoje/i,
+    /cota[çc][ãa]o\s+hoje/i,
+    /b3\s+(soja|milho|caf[ée])/i,
+    /cepea/i,
+    /quanto\s+(est[áa]|t[áa])\s+(o\s+)?(pre[çc]o|a\s+saca)/i,
+    /saca\s+de\s+(soja|milho|caf[ée]|trigo|feij[ãa]o)\s+(t[áa]|est[áa]|quanto)/i,
+    /pre[çc]o\s+(atual|atualizado|do\s+dia)/i,
+    /r\$.*saca/i,
+    /saca.*r\$/i,
+  ],
+  // CLIMA - previsão do tempo (redirect ao módulo Clima)
+  clima: [
+    /previs[ãa]o\s+(do\s+)?tempo/i,
+    /vai\s+(chover|fazer\s+sol|esfriar|esquentar)/i,
+    /como\s+(est[áa]|vai\s+estar|fica)\s+o\s+(tempo|clima)/i,
+    /temperatura\s+(amanh[ãa]|hoje|pr[óo]ximos)/i,
+    /chuva\s+(amanh[ãa]|hoje|essa\s+semana|pr[óo]ximos)/i,
+    /alerta\s+(de\s+)?(chuva|tempestade|geada)/i,
+    /clima\s+(amanh[ãa]|hoje|da\s+semana)/i,
+    /quantos\s+mm/i,
+    /previs[ãa]o\s+de\s+chuva/i,
+  ],
+  // DEFENSIVOS - produtos, doses, misturas (Safe Gate)
+  defensivos: [
+    /fungicida/i,
+    /inseticida/i,
+    /herbicida/i,
+    /acaricida/i,
+    /nematicida/i,
+    /agrot[óo]xico/i,
+    /pesticida/i,
+    /veneno/i,
+    /defensivo/i,
+    /dose\s+(de|do|da|para|recomendada)/i,
+    /dosagem/i,
+    /mistura\s+(de\s+)?tanque/i,
+    /calda/i,
+    /adjuvante/i,
+    /taxa\s+de\s+aplica[çc][ãa]o/i,
+    /quanto\s+(aplicar|usar|colocar)/i,
+    /quantos?\s+(litros?|ml|gramas?|kg)/i,
+    /combina[çc][ãa]o\s+de\s+(produtos?|defensivos?)/i,
+    /receita\s+(de|para)/i,
+    /qual\s+(produto|defensivo)\s+(usar|aplicar|comprar)/i,
+    /melhor\s+(produto|defensivo|marca)/i,
+    /nome\s+comercial/i,
+    /ingrediente\s+ativo/i,
+    /bico\s+de\s+pulveriza[çc][ãa]o/i,
+    /press[ãa]o\s+de\s+calda/i,
+  ],
+};
+
+// Classifica o DOMÍNIO da pergunta (Camada 0)
+function classifyDomainIntent(message: string): DomainIntent {
+  // Prioridade: DEFENSIVOS > MERCADO > CLIMA > MANEJO
+  for (const pattern of DOMAIN_PATTERNS.defensivos) {
+    if (pattern.test(message)) return 'defensivos';
+  }
+  for (const pattern of DOMAIN_PATTERNS.mercado) {
+    if (pattern.test(message)) return 'mercado';
+  }
+  for (const pattern of DOMAIN_PATTERNS.clima) {
+    if (pattern.test(message)) return 'clima';
+  }
+  return 'manejo';
+}
+
+// ========== MÓDULO MERCADO — HELPERS ==========
+interface CommodityInfo {
+  code: string;
+  name: string;
+  nameDisplay: string;
+  unit: string;
+  markets: string[];
+  defaultMarket: string;
+}
+
+const COMMODITIES: Record<string, CommodityInfo> = {
+  soja: { code: 'soja', name: 'Soja', nameDisplay: 'Soja', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB MT', 'CONAB PR', 'CBOT'], defaultMarket: 'CONAB SP' },
+  milho: { code: 'milho', name: 'Milho', nameDisplay: 'Milho', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB MT', 'CONAB PR', 'CBOT'], defaultMarket: 'CONAB SP' },
+  cafe: { code: 'cafe', name: 'Café', nameDisplay: 'Café Arábica', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB MG', 'CEPEA'], defaultMarket: 'CONAB SP' },
+  trigo: { code: 'trigo', name: 'Trigo', nameDisplay: 'Trigo', unit: 'saca 60kg', markets: ['CONAB PR', 'CONAB RS'], defaultMarket: 'CONAB PR' },
+  feijao: { code: 'feijao', name: 'Feijão', nameDisplay: 'Feijão Carioca', unit: 'saca 60kg', markets: ['CONAB SP', 'CONAB PR'], defaultMarket: 'CONAB SP' },
+};
+
+function extractCommodityFromMessage(message: string): CommodityInfo | null {
+  const msg = message.toLowerCase();
+  if (/soja/i.test(msg)) return COMMODITIES.soja;
+  if (/milho/i.test(msg)) return COMMODITIES.milho;
+  if (/caf[ée]/i.test(msg)) return COMMODITIES.cafe;
+  if (/trigo/i.test(msg)) return COMMODITIES.trigo;
+  if (/feij[ãa]o/i.test(msg)) return COMMODITIES.feijao;
+  return null;
+}
+
+function extractRegionFromMessage(message: string): string | null {
+  const msg = message.toLowerCase();
+  if (/s[ãa]o\s+paulo|sp/i.test(msg)) return 'SP';
+  if (/mato\s+grosso|mt/i.test(msg)) return 'MT';
+  if (/paran[áa]|pr/i.test(msg)) return 'PR';
+  if (/minas\s+gerais|mg/i.test(msg)) return 'MG';
+  if (/goi[áa]s|go/i.test(msg)) return 'GO';
+  if (/rio\s+grande\s+do\s+sul|rs/i.test(msg)) return 'RS';
+  return null;
+}
+
+// deno-lint-ignore no-explicit-any
+async function getPriceData(supabase: any, product: string, market: string): Promise<{ price: number; date: string; source: string; unit: string } | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_prices_series', {
+      p_product: product,
+      p_market: market,
+      p_days: 7
+    });
+    
+    if (error || !data || data.length === 0) {
+      console.log('[ai-ask] No price data for', product, market);
+      return null;
+    }
+    
+    // Get most recent price
+    const latest = data[data.length - 1];
+    return {
+      price: latest.price,
+      date: latest.date,
+      source: latest.source,
+      unit: latest.unit || 'saca 60kg'
+    };
+  } catch (err) {
+    console.error('[ai-ask] Error fetching price:', err);
+    return null;
+  }
+}
+
 type Intent = 'register_activity' | 'create_task' | 'open_screen' | 'high_risk_today' | 
               'observation_diagnosis' | 'cadastro' | 'financeiro' | 'weather' | 'general';
 
@@ -976,12 +1123,138 @@ serve(async (req) => {
       }
     }
 
-    // 3. Classify intent (deterministic router)
-    const intent = classifyIntent(user_message);
-    console.log('[ai-ask] Intent:', intent);
+    // 3. CAMADA 0 — Classificar domínio da pergunta
+    const domainIntent = classifyDomainIntent(user_message);
+    console.log('[ai-ask] Domain (Camada 0):', domainIntent);
+
+    // 4. Se DEFENSIVOS → Safe Gate (handled by existing guardrails + GENERAL fallback)
+    // 5. Se MERCADO → Módulo Mercado
+    // 6. Se CLIMA → Redirect to Clima module
+    // 7. Se MANEJO → Intent classification + POP Engine
 
     const today = getTodayBRT();
     let response: AIResponse;
+
+    // ========== CAMADA 0: MERCADO ==========
+    if (domainIntent === 'mercado') {
+      const commodity = extractCommodityFromMessage(user_message);
+      const region = extractRegionFromMessage(user_message);
+      
+      if (!commodity) {
+        // Commodity não identificada - resposta genérica
+        response = {
+          assistant_text: `📈 **Cotações de Commodities**\n\nPosso ajudar com preços de:\n- **Soja** (CBOT, CONAB SP/MT/PR)\n- **Milho** (CBOT, CONAB SP/MT/PR)\n- **Café** (CEPEA, CONAB SP/MG)\n- **Trigo** (CONAB PR/RS)\n- **Feijão** (CONAB SP/PR)\n\n💡 **Pergunte assim:**\n"Qual o preço da soja hoje?"\n"Cotação do milho em SP"\n"Quanto está a saca de café?"\n\nOu acesse o módulo completo de preços:`,
+          actions: [
+            { type: 'open_screen', label: '📈 Ver Módulo de Preços', payload: { route: '/precos' } },
+          ],
+          flags: { 
+            decision_route: 'mercado_generic',
+            match_type: 'ai' as const,
+          },
+          safety: { blocked: false, suggest_escalate: false },
+        };
+      } else {
+        // Buscar preço da commodity
+        const market = region ? `CONAB ${region}` : commodity.defaultMarket;
+        const priceData = await getPriceData(supabase, commodity.code, market);
+        
+        if (priceData) {
+          const formattedDate = new Date(priceData.date).toLocaleDateString('pt-BR');
+          const formattedPrice = priceData.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          
+          response = {
+            assistant_text: `📈 **Preço da ${commodity.nameDisplay}** — ${market}\n\n` +
+              `💰 **Valor de referência:** ${formattedPrice} / ${priceData.unit}\n` +
+              `📅 **Data:** ${formattedDate}\n` +
+              `📊 **Fonte:** ${priceData.source}\n\n` +
+              `---\n` +
+              `⚠️ **Importante:** Os preços variam conforme praça, logística, qualidade do grão e negociação local. Este é um valor de referência.\n\n` +
+              `Para mais detalhes e histórico, acesse o módulo de preços:`,
+            actions: [
+              { type: 'open_screen', label: `📈 Ver Histórico de ${commodity.name}`, payload: { route: '/precos' } },
+            ],
+            flags: { 
+              decision_route: 'mercado_price',
+              match_type: 'ai' as const,
+            },
+            safety: { blocked: false, suggest_escalate: false },
+          };
+        } else {
+          // Sem dados de preço disponíveis
+          response = {
+            assistant_text: `📈 **Preço da ${commodity.nameDisplay}**\n\n` +
+              `No momento, não tenho dados de preço atualizados para ${commodity.nameDisplay} (${market}).\n\n` +
+              `💡 **Dica:** Acesse o módulo de preços para ver as cotações mais recentes de diferentes praças.\n\n` +
+              `⚠️ **Importante:** Os preços variam conforme praça, logística, qualidade do grão e negociação local. Consulte seu comprador ou cooperativa para negociações.`,
+            actions: [
+              { type: 'open_screen', label: '📈 Ver Módulo de Preços', payload: { route: '/precos' } },
+            ],
+            flags: { 
+              decision_route: 'mercado_no_data',
+              match_type: 'ai' as const,
+            },
+            safety: { blocked: false, suggest_escalate: false },
+          };
+        }
+      }
+    }
+    
+    // ========== CAMADA 0: CLIMA ==========
+    else if (domainIntent === 'clima') {
+      // Redirect ao módulo Clima
+      const hasFarm = !!farm_id;
+      
+      if (hasFarm) {
+        response = {
+          assistant_text: `🌤️ **Consulte o módulo Clima!**\n\nO módulo Clima oferece:\n📊 Previsão detalhada para sua fazenda\n🌧️ Alertas de chuva\n📈 Histórico climático\n🚜 Janelas de pulverização\n\nClique abaixo para acessar.`,
+          actions: [
+            { type: 'open_screen', label: '☁️ Ver Clima', payload: { route: '/clima' } },
+          ],
+          flags: { decision_route: 'clima_redirect' },
+          safety: { blocked: false, suggest_escalate: false },
+        };
+      } else {
+        response = {
+          assistant_text: `🌤️ **Clima por Fazenda**\n\nEu mostro o clima pelo Bom Campo (por fazenda). Selecione uma fazenda para ver a previsão e alertas.\n\n**Como funciona:**\n1. Selecione ou crie uma fazenda\n2. O clima será baseado na localização da fazenda\n\nClique abaixo para selecionar ou criar uma fazenda.`,
+          actions: [
+            { type: 'open_screen', label: '🌾 Selecionar/Criar Fazenda', payload: { route: '/fazendas' } },
+          ],
+          flags: { decision_route: 'clima_no_farm' },
+          safety: { blocked: false, suggest_escalate: false },
+        };
+      }
+    }
+    
+    // ========== CAMADA 0: DEFENSIVOS → Safe Gate ==========
+    else if (domainIntent === 'defensivos') {
+      // Tema de defensivos - aplicar Safe Gate imediatamente
+      const safeResponse = getSafeResponse(user_message);
+      const assistantText = formatAIResponseToMarkdown(safeResponse);
+      
+      response = {
+        assistant_text: `⚠️ **Tema Regulado - Orientação Segura**\n\n${assistantText}`,
+        actions: [
+          { type: 'escalate_to_agronomist', label: '👨‍🌾 Falar com Agrônomo RT' },
+        ],
+        flags: {
+          decision_route: 'defensivos_safe_gate',
+          match_type: 'fallback' as const,
+          is_sensitive: true,
+          triage_questions: safeResponse.triage_questions,
+        },
+        safety: { 
+          blocked: false, 
+          suggest_escalate: true,
+          is_sensitive: true,
+        },
+      };
+    }
+    
+    // ========== CAMADA 0: MANEJO → Intent Classification ==========
+    else {
+      // 6. Classify intent (deterministic router) - para MANEJO
+      const intent = classifyIntent(user_message);
+      console.log('[ai-ask] Intent:', intent);
 
     // ========== INTENT HANDLERS ==========
 
@@ -1572,6 +1845,7 @@ serve(async (req) => {
         };
       }
     }
+    } // End of CAMADA 0: MANEJO else block
 
     // Save conversation and increment usage ONCE
     if (effectiveWorkspaceId && quotaInfo) {
