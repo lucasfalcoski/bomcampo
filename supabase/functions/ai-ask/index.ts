@@ -1189,6 +1189,32 @@ async function saveConversation(
   return convId || '';
 }
 
+// ========== RELEVANT ACTIONS HELPER ==========
+// Ensures AI responses always include at least 1 contextual action
+function getRelevantActions(message: string): AIAction[] {
+  const actions: AIAction[] = [];
+  
+  if (/solo|terra|drenagem|eros[ãa]o|compacta[çc]|talh[ãa]o/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📍 Ver Talhões', payload: { route: '/talhoes' } });
+  } else if (/praga|doen[çc]a|ferrugem|inseto|lagarta|fungo|mancha|murcha|bicho/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📍 Registrar Ocorrência', payload: { route: '/talhoes' } });
+  } else if (/clima|chuva|temperatura|vento|geada|seca|umidade/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '☁️ Ver Clima', payload: { route: '/clima' } });
+  } else if (/relat[óo]rio|hist[óo]rico|an[áa]lise/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📊 Ver Relatórios', payload: { route: '/relatorios' } });
+  } else if (/pre[çc]o|cota[çc]|mercado|saca/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📈 Ver Preços', payload: { route: '/precos' } });
+  } else if (/financeiro|custo|despesa|receita|gasto/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '💰 Ver Financeiro', payload: { route: '/financeiro' } });
+  } else {
+    actions.push({ type: 'open_screen', label: '📍 Ver Talhões', payload: { route: '/talhoes' } });
+  }
+  
+  actions.push({ type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' });
+  
+  return actions;
+}
+
 // ========== MAIN HANDLER ==========
 serve(async (req) => {
   if (req.method === "OPTIONS") {
