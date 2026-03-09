@@ -261,6 +261,9 @@ export default function IAgronomoChat() {
   const [escalationSent, setEscalationSent] = useState(false);
   const [disclaimerDismissed, setDisclaimerDismissed] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
+  const [adjustingMessages, setAdjustingMessages] = useState<Set<string>>(new Set());
+  const [completedMessages, setCompletedMessages] = useState<Set<string>>(new Set());
+  const [submittingMessages, setSubmittingMessages] = useState<Set<string>>(new Set());
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
