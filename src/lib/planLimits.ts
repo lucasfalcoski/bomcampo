@@ -1,5 +1,4 @@
 // Plan limits for Bom Campo
-// MVP: Plano Produtor gratuito com limite de 3 áreas
 
 export const PLAN_LIMITS = {
   produtor_free: {
@@ -14,9 +13,30 @@ export const PLAN_LIMITS = {
     maxFarms: 3,
     price: 49,
   },
+  premium: {
+    name: 'Premium',
+    maxPlots: 50,
+    maxFarms: 10,
+    price: 99,
+  },
+  enterprise: {
+    name: 'Enterprise',
+    maxPlots: Infinity,
+    maxFarms: Infinity,
+    price: 0,
+  },
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;
+
+/** Map workspace plan string to PlanType */
+export function mapWorkspacePlan(workspacePlan: string | null | undefined): PlanType {
+  if (!workspacePlan) return 'produtor_free';
+  if (workspacePlan === 'enterprise') return 'enterprise';
+  if (workspacePlan === 'premium') return 'premium';
+  if (workspacePlan === 'produtor_plus') return 'produtor_plus';
+  return 'produtor_free';
+}
 
 export function getPlanLimits(plan: PlanType = 'produtor_free') {
   return PLAN_LIMITS[plan];
