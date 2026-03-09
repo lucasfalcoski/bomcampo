@@ -522,7 +522,7 @@ export default function Financeiro() {
 
       {/* Dialog de Transação */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90svh] overflow-y-auto [-webkit-overflow-scrolling:touch]">
           <DialogHeader>
             <DialogTitle>{editingTransaction ? 'Editar' : 'Nova'} Transação</DialogTitle>
             <DialogDescription>Preencha os dados da transação</DialogDescription>
