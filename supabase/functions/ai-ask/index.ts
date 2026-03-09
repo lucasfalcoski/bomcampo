@@ -45,10 +45,13 @@ const BLOCKED_PATTERNS = [
 // ========== INTENT PATTERNS ==========
 const INTENT_PATTERNS = {
   register_activity: [
+    /registr[ea]\s+atividade/i,
+    /registr[ea]\s+(uma?\s*)?(limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|irriga[çc][ãa]o|poda|preparo|drenagem|desbrota|replantio)/i,
+    /registrar\s+atividade/i,
     /fiz(emos)?\s+(uma?\s*)?(limp[ea]?[sz]?[ao]?|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|irriga[çc][ãa]o|poda|preparo|desbrota|replantio)/i,
     /realizei?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina)/i,
     /foi\s+feit[ao]\s+(uma?\s*)?(limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|carreiro|regulagem|revis[ãa]o)/i,
-    /registr(ar?|ei|amos)\s+(uma?\s*)?(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o)/i,
+    /registr(ar?|e|ei|amos)\s+(uma?\s*)?(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o)/i,
     /anota(r)?\s+(a[ií]?|que)?\s*(atividade|limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|hoje|hj)/i,
     /lan[çc]ar\s+(atividade|trabalho)/i,
     /hoje\s+(fiz|fizemos|realizamos)/i,
@@ -64,7 +67,7 @@ const INTENT_PATTERNS = {
     /vistoria\s+(das?\s+)?(mangueira|gotejo|irriga)/i,
     /limpeza\s+(do\s+)?terreiro/i,
     /coleta\s+(de\s+)?(amostra|solo|folha)/i,
-    /registra\s*[.:,]?\s*(ro[çc]a|poda|limpeza|capina|aduba|irriga|colheita)/i,
+    /registr[ea]\s*[.:,]?\s*(ro[çc]a|poda|limpeza|capina|aduba|irriga|colheita|drenagem)/i,
     /anota\s*[.:,]?\s*que\s+(hoje\s+)?(fiz|fizemos|realizamos)/i,
     /(roça|rocada|ro[çc]agem)\s+(feit[ao]|conclu[íi]d[ao])/i,
     /(poda|desbrota|amarr[açã][ãa]o)\s+(feit[ao]|conclu[íi]d[ao]|finalizada)/i,
@@ -843,6 +846,7 @@ function extractActivityType(message: string): string | null {
     { pattern: /preparo\s+(de\s+)?solo/i, tipo: 'preparo_solo' },
     { pattern: /poda|podar|desbrota|amarr[açã][ãa]o/i, tipo: 'poda' },
     { pattern: /carreiro/i, tipo: 'outros' },
+    { pattern: /drenagem/i, tipo: 'outros' },
     { pattern: /coleta\s+(de\s+)?(amostra|solo|folha)/i, tipo: 'outros' },
     { pattern: /controle\s+(de\s+)?formiga/i, tipo: 'outros' },
     { pattern: /cobertura\s+morta/i, tipo: 'outros' },
