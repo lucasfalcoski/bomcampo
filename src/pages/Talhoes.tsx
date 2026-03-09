@@ -20,7 +20,8 @@ import { useAgroRecommendations } from '@/hooks/useAgroRecommendations';
 import { gerarSugestoesAtividades, ActivitySuggestion } from '@/lib/agro/activitySuggestions';
 import { LatLonHintDialog, shouldShowLatLonHint } from '@/components/LatLonHintDialog';
 import { AddActivityDialog } from '@/components/AddActivityDialog';
-import { canAddPlot, getRemainingPlots, PLAN_LIMITS } from '@/lib/planLimits';
+import { canAddPlot, getRemainingPlots, PLAN_LIMITS, PlanType, mapWorkspacePlan } from '@/lib/planLimits';
+import { useEntitlements } from '@/hooks/useEntitlements';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingGrid } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
@@ -28,6 +29,9 @@ import { ErrorState } from '@/components/ui/error-state';
 export default function Talhoes() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { workspacePlan } = useEntitlements();
+  const currentPlan = mapWorkspacePlan(workspacePlan);
+  const planLimits = PLAN_LIMITS[currentPlan];
   const [farms, setFarms] = useState<any[]>([]);
   const [plots, setPlots] = useState<any[]>([]);
   const [plantings, setPlantings] = useState<any[]>([]);
@@ -305,7 +309,7 @@ export default function Talhoes() {
       </div>
 
       <Tabs defaultValue="talhoes" className="w-full">
-        <TabsList className="w-full overflow-x-auto flex-nowrap">
+        <TabsList className="w-full">
           <TabsTrigger value="talhoes" className="min-h-[44px] flex-1">Talhões</TabsTrigger>
           <TabsTrigger value="plantios" disabled={!selectedPlot} className="min-h-[44px] flex-1">Plantios</TabsTrigger>
           <TabsTrigger value="atividades" disabled={!selectedPlot} className="min-h-[44px] flex-1">Atividades</TabsTrigger>
@@ -313,23 +317,23 @@ export default function Talhoes() {
 
         <TabsContent value="talhoes" className="space-y-4">
           {/* Plan limit warning */}
-          {!canAddPlot(plots.length) && (
+          {!canAddPlot(plots.length, currentPlan) && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Você atingiu o limite de {PLAN_LIMITS.produtor_free.maxPlots} áreas do plano gratuito. 
-                Entre em contato para fazer upgrade.
+                Você atingiu o limite de {planLimits.maxPlots} áreas do plano {planLimits.name}. 
+                {currentPlan === 'produtor_free' ? ' Entre em contato para fazer upgrade.' : ''}
               </AlertDescription>
             </Alert>
           )}
 
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">
-              {plots.length} de {PLAN_LIMITS.produtor_free.maxPlots} áreas utilizadas
+              {planLimits.maxPlots === Infinity ? `${plots.length} áreas` : `${plots.length} de ${planLimits.maxPlots} áreas utilizadas`}
             </div>
             <Button 
               onClick={() => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }}
-              disabled={!selectedFarm || !canAddPlot(plots.length)}
+              disabled={!selectedFarm || !canAddPlot(plots.length, currentPlan)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Novo Talhão
@@ -345,7 +349,7 @@ export default function Talhoes() {
               icon={Map}
               title="Nenhum talhão cadastrado"
               description="Cadastre seu primeiro talhão para registrar plantios e receber alertas climáticos."
-              action={canAddPlot(0) ? {
+              action={canAddPlot(0, currentPlan) ? {
                 label: "Cadastrar Primeiro Talhão",
                 onClick: () => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }
               } : undefined}
