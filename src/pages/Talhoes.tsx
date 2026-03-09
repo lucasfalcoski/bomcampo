@@ -653,7 +653,7 @@ export default function Talhoes() {
 
       {/* Planting Dialog */}
       <Dialog open={plantingDialogOpen} onOpenChange={setPlantingDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px] max-h-[90svh] overflow-y-auto [-webkit-overflow-scrolling:touch]">
           <DialogHeader>
             <DialogTitle>{editingPlanting ? 'Editar' : 'Novo'} Plantio</DialogTitle>
             <DialogDescription>Preencha os dados do plantio</DialogDescription>
