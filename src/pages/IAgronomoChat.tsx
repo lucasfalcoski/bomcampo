@@ -358,6 +358,67 @@ export default function IAgronomoChat() {
   // Can escalate only if farm is selected and has linked agronomist
   const canEscalate = !loadingEscalation && hasLinkedAgronomist && !!selectedFarmId;
 
+  const handleDirectSubmit = useCallback(async (msgId: string, flowData: NonNullable<typeof messages[0]['actionFlowData']>) => {
+    setSubmittingMessages(prev => new Set(prev).add(msgId));
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error('Não autenticado');
+
+      // Build body from default field values
+      const body: Record<string, unknown> = {};
+      if (flowData.on_confirm.body_map.workspace_id) body.workspace_id = workspaceId;
+      if (flowData.on_confirm.body_map.farm_id && selectedFarmId) body.farm_id = selectedFarmId;
+
+      for (const [bodyKey, formKey] of Object.entries(flowData.on_confirm.body_map)) {
+        if (bodyKey === 'workspace_id' || bodyKey === 'farm_id') continue;
+        const field = flowData.fields.find(f => f.key === formKey);
+        const value = field?.value;
+        if (value !== undefined && value !== '') {
+          if (field?.type === 'number') {
+            body[bodyKey] = parseFloat(String(value));
+          } else {
+            body[bodyKey] = value;
+          }
+        }
+      }
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}${flowData.on_confirm.endpoint}`,
+        {
+          method: flowData.on_confirm.method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      if (!resp.ok) {
+        const errorData = await resp.json();
+        throw new Error(errorData.error || 'Erro ao salvar');
+      }
+
+      setCompletedMessages(prev => new Set(prev).add(msgId));
+      toast({ title: '✅ Registrado com sucesso!' });
+    } catch (error) {
+      console.error('[DirectSubmit] Error:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: error instanceof Error ? error.message : 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingMessages(prev => {
+        const next = new Set(prev);
+        next.delete(msgId);
+        return next;
+      });
+    }
+  }, [workspaceId, selectedFarmId, toast]);
+
   return (
     <div className="flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100vh-4rem)] max-w-3xl mx-auto">
       {/* Compact Header - Mobile first */}
