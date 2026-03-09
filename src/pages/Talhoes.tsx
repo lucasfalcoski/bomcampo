@@ -329,11 +329,11 @@ export default function Talhoes() {
 
           <div className="flex justify-between items-center">
             <div className="text-sm text-muted-foreground">
-              {plots.length} de {PLAN_LIMITS.produtor_free.maxPlots} áreas utilizadas
+              {planLimits.maxPlots === Infinity ? `${plots.length} áreas` : `${plots.length} de ${planLimits.maxPlots} áreas utilizadas`}
             </div>
             <Button 
               onClick={() => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }}
-              disabled={!selectedFarm || !canAddPlot(plots.length)}
+              disabled={!selectedFarm || !canAddPlot(plots.length, currentPlan)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Novo Talhão
