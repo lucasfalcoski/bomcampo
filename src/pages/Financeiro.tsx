@@ -447,16 +447,16 @@ export default function Financeiro() {
       {/* Lista de Transações */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <CardTitle>Transações</CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportCSV} disabled={transactions.length === 0}>
+              <Button variant="outline" onClick={handleExportCSV} disabled={transactions.length === 0} className="min-h-[44px] flex-1 sm:flex-none">
                 <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
+                Exportar
               </Button>
-              <Button onClick={() => { setEditingTransaction(null); resetForm(); setDialogOpen(true); }}>
+              <Button onClick={() => { setEditingTransaction(null); resetForm(); setDialogOpen(true); }} className="min-h-[44px] flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 mr-2" />
-                Nova Transação
+                Nova
               </Button>
             </div>
           </div>
