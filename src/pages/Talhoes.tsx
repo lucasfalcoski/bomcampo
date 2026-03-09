@@ -309,7 +309,7 @@ export default function Talhoes() {
       </div>
 
       <Tabs defaultValue="talhoes" className="w-full">
-        <TabsList className="w-full overflow-x-auto flex-nowrap">
+        <TabsList className="w-full">
           <TabsTrigger value="talhoes" className="min-h-[44px] flex-1">Talhões</TabsTrigger>
           <TabsTrigger value="plantios" disabled={!selectedPlot} className="min-h-[44px] flex-1">Plantios</TabsTrigger>
           <TabsTrigger value="atividades" disabled={!selectedPlot} className="min-h-[44px] flex-1">Atividades</TabsTrigger>
