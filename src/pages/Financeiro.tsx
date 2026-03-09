@@ -613,9 +613,9 @@ export default function Financeiro() {
                 placeholder="Ex: Fornecedor XYZ"
               />
             </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveTransaction} disabled={loading}>
+            <div className="sticky bottom-0 bg-background pt-4 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="min-h-[44px]">Cancelar</Button>
+              <Button onClick={handleSaveTransaction} disabled={loading} className="min-h-[44px]">
                 {loading ? 'Salvando...' : editingTransaction ? 'Atualizar' : 'Criar'}
               </Button>
             </div>
