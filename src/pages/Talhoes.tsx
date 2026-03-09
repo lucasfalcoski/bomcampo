@@ -564,7 +564,7 @@ export default function Talhoes() {
 
       {/* Plot Dialog */}
       <Dialog open={plotDialogOpen} onOpenChange={setPlotDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px] max-h-[90svh] overflow-y-auto [-webkit-overflow-scrolling:touch]">
           <DialogHeader>
             <DialogTitle>{editingPlot ? 'Editar' : 'Novo'} Talhão</DialogTitle>
             <DialogDescription>Preencha os dados do talhão</DialogDescription>
