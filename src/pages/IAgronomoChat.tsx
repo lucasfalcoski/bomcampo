@@ -206,6 +206,7 @@ function ActionButton({ action, onEscalate }: ActionButtonProps) {
 
 export default function IAgronomoChat() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Context selection (farm/plot)
   const {
