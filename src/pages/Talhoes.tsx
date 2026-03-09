@@ -317,12 +317,12 @@ export default function Talhoes() {
 
         <TabsContent value="talhoes" className="space-y-4">
           {/* Plan limit warning */}
-          {!canAddPlot(plots.length) && (
+          {!canAddPlot(plots.length, currentPlan) && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Você atingiu o limite de {PLAN_LIMITS.produtor_free.maxPlots} áreas do plano gratuito. 
-                Entre em contato para fazer upgrade.
+                Você atingiu o limite de {planLimits.maxPlots} áreas do plano {planLimits.name}. 
+                {currentPlan === 'produtor_free' ? ' Entre em contato para fazer upgrade.' : ''}
               </AlertDescription>
             </Alert>
           )}
