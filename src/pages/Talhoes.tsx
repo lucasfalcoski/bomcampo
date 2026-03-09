@@ -30,6 +30,8 @@ export default function Talhoes() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { workspacePlan } = useEntitlements();
+  const currentPlan = mapWorkspacePlan(workspacePlan);
+  const planLimits = PLAN_LIMITS[currentPlan];
   const [farms, setFarms] = useState<any[]>([]);
   const [plots, setPlots] = useState<any[]>([]);
   const [plantings, setPlantings] = useState<any[]>([]);
