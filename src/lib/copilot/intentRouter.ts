@@ -17,10 +17,13 @@ export type Intent =
 const INTENT_PATTERNS: Record<Intent, RegExp[]> = {
   // A) Registrar atividade - "fiz/foi feito/realizei/registra/anota" + tipo
   register_activity: [
+    /registr[ea]\s+atividade/i,
+    /registr[ea]\s+(uma?\s*)?(limpeza|ro[çc]a(da|gem)?|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|irriga[çc][ãa]o|poda|preparo|drenagem|desbrota|replantio)/i,
+    /registrar\s+atividade/i,
     /fiz(emos)?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina|irriga[çc][ãa]o|poda|preparo)/i,
     /realizei?\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita|manuten[çc][ãa]o|capina)/i,
     /foi\s+feit[ao]\s+(uma?\s*)?(limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o|colheita)/i,
-    /registr(ar?|ei|amos)\s+(uma?\s*)?(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o)/i,
+    /registr(ar?|e|ei|amos)\s+(uma?\s*)?(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o|pulveriza[çc][ãa]o)/i,
     /anota(r)?\s+(a[ií]?|que)?\s*(atividade|limpeza|ro[çc]ada|aduba[çc][ãa]o)/i,
     /lan[çc]ar\s+(atividade|trabalho)/i,
     /hoje\s+(fiz|fizemos|realizamos)/i,

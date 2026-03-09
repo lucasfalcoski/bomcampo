@@ -67,7 +67,7 @@ const INTENT_PATTERNS = {
     /vistoria\s+(das?\s+)?(mangueira|gotejo|irriga)/i,
     /limpeza\s+(do\s+)?terreiro/i,
     /coleta\s+(de\s+)?(amostra|solo|folha)/i,
-    /registra\s*[.:,]?\s*(ro[çc]a|poda|limpeza|capina|aduba|irriga|colheita)/i,
+    /registr[ea]\s*[.:,]?\s*(ro[çc]a|poda|limpeza|capina|aduba|irriga|colheita|drenagem)/i,
     /anota\s*[.:,]?\s*que\s+(hoje\s+)?(fiz|fizemos|realizamos)/i,
     /(roça|rocada|ro[çc]agem)\s+(feit[ao]|conclu[íi]d[ao])/i,
     /(poda|desbrota|amarr[açã][ãa]o)\s+(feit[ao]|conclu[íi]d[ao]|finalizada)/i,
