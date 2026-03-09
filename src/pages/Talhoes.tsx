@@ -729,11 +729,11 @@ export default function Talhoes() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setPlantingDialogOpen(false)}>
+            <div className="sticky bottom-0 bg-background pt-4 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setPlantingDialogOpen(false)} className="min-h-[44px]">
                 Cancelar
               </Button>
-              <Button onClick={handleSavePlanting} disabled={loading || !plantingForm.crop_id}>
+              <Button onClick={handleSavePlanting} disabled={loading || !plantingForm.crop_id} className="min-h-[44px]">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPlanting ? 'Atualizar' : 'Criar'}
               </Button>
             </div>
