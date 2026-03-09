@@ -649,35 +649,83 @@ export default function IAgronomoChat() {
                     </Collapsible>
                   )}
 
-                  {/* Generic Action Flow Card */}
+                  {/* Action Flow Card - Confirmation or Form mode */}
                   {msg.actionFlowData && (
                     <div className="mt-3">
-                      <ActionFlowCard
-                        flowData={msg.actionFlowData}
-                        workspaceId={workspaceId || undefined}
-                        farmId={selectedFarmId || undefined}
-                        onComplete={(result) => {
-                          // Add success message to chat
-                          sendMessage(result.message);
-                        }}
-                        onCancel={() => {
-                          sendMessage('Ação cancelada.');
-                        }}
-                      />
+                      {completedMessages.has(msg.id) ? (
+                        <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                              Registrado com sucesso!
+                            </span>
+                          </div>
+                        </div>
+                      ) : msg.actions?.some(a => a.type === 'confirm_action') && !adjustingMessages.has(msg.id) ? (
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleDirectSubmit(msg.id, msg.actionFlowData!)}
+                            disabled={submittingMessages.has(msg.id)}
+                            className="min-h-[44px]"
+                          >
+                            {submittingMessages.has(msg.id) ? (
+                              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Salvando...</>
+                            ) : (
+                              '✅ Confirmar'
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setAdjustingMessages(prev => new Set(prev).add(msg.id))}
+                            disabled={submittingMessages.has(msg.id)}
+                            className="min-h-[44px]"
+                          >
+                            ✏️ Ajustar detalhes
+                          </Button>
+                        </div>
+                      ) : (
+                        <ActionFlowCard
+                          flowData={msg.actionFlowData}
+                          workspaceId={workspaceId || undefined}
+                          farmId={selectedFarmId || undefined}
+                          onComplete={(result) => {
+                            setCompletedMessages(prev => new Set(prev).add(msg.id));
+                            toast({ title: result.message });
+                          }}
+                          onCancel={() => {
+                            if (adjustingMessages.has(msg.id)) {
+                              setAdjustingMessages(prev => {
+                                const next = new Set(prev);
+                                next.delete(msg.id);
+                                return next;
+                              });
+                            }
+                          }}
+                        />
+                      )}
                     </div>
                   )}
 
-                  {msg.actions && msg.actions.length > 0 && !msg.actionFlowData && (
-                    <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
-                      {msg.actions.map((action, idx) => (
-                        <ActionButton 
-                          key={idx} 
-                          action={action} 
-                          onEscalate={canEscalate ? handleOpenEscalate : undefined}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  {/* Action buttons - show non-confirm/adjust actions */}
+                  {msg.actions && msg.actions.length > 0 && (() => {
+                    const displayActions = msg.actions!.filter(
+                      a => a.type !== 'confirm_action' && a.type !== 'adjust_action'
+                    );
+                    if (displayActions.length === 0) return null;
+                    return (
+                      <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
+                        {displayActions.map((action, idx) => (
+                          <ActionButton 
+                            key={idx} 
+                            action={action} 
+                            onEscalate={canEscalate ? handleOpenEscalate : undefined}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {msg.flags?.sources_used && msg.flags.sources_used.length > 0 && (
                     <div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
