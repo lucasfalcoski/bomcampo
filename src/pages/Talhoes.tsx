@@ -639,11 +639,11 @@ export default function Talhoes() {
             <p className="text-xs text-muted-foreground">
               Coordenadas melhoram a precisão do clima.
             </p>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setPlotDialogOpen(false)}>
+            <div className="sticky bottom-0 bg-background pt-4 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setPlotDialogOpen(false)} className="min-h-[44px]">
                 Cancelar
               </Button>
-              <Button onClick={handleSavePlot} disabled={loading || !plotForm.nome}>
+              <Button onClick={handleSavePlot} disabled={loading || !plotForm.nome} className="min-h-[44px]">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPlot ? 'Atualizar' : 'Criar'}
               </Button>
             </div>
