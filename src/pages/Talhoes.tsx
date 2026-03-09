@@ -20,7 +20,7 @@ import { useAgroRecommendations } from '@/hooks/useAgroRecommendations';
 import { gerarSugestoesAtividades, ActivitySuggestion } from '@/lib/agro/activitySuggestions';
 import { LatLonHintDialog, shouldShowLatLonHint } from '@/components/LatLonHintDialog';
 import { AddActivityDialog } from '@/components/AddActivityDialog';
-import { canAddPlot, getRemainingPlots, PLAN_LIMITS, PlanType } from '@/lib/planLimits';
+import { canAddPlot, getRemainingPlots, PLAN_LIMITS, PlanType, mapWorkspacePlan } from '@/lib/planLimits';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingGrid } from '@/components/ui/loading-state';
