@@ -846,6 +846,7 @@ function extractActivityType(message: string): string | null {
     { pattern: /preparo\s+(de\s+)?solo/i, tipo: 'preparo_solo' },
     { pattern: /poda|podar|desbrota|amarr[açã][ãa]o/i, tipo: 'poda' },
     { pattern: /carreiro/i, tipo: 'outros' },
+    { pattern: /drenagem/i, tipo: 'outros' },
     { pattern: /coleta\s+(de\s+)?(amostra|solo|folha)/i, tipo: 'outros' },
     { pattern: /controle\s+(de\s+)?formiga/i, tipo: 'outros' },
     { pattern: /cobertura\s+morta/i, tipo: 'outros' },
