@@ -2061,9 +2061,7 @@ serve(async (req) => {
           
           response = {
             assistant_text: `🤖 **Resposta IA**\n\n${assistantText}`,
-            actions: [
-              { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
-            ],
+            actions: getRelevantActions(user_message),
             flags: {
               decision_route: aiResult.response ? 'ai_direct' : 'fallback',
               match_type: aiResult.response ? 'ai' : 'fallback',
