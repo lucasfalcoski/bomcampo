@@ -483,7 +483,7 @@ export default function Financeiro() {
                       {t.origem && ` • ${t.origem}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between sm:justify-end gap-3">
                     <span className={`text-lg font-bold ${t.tipo === 'receita' ? 'text-success' : 'text-destructive'}`}>
                       {formatCurrency(t.valor_brl)}
                     </span>
