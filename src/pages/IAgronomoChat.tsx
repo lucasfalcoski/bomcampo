@@ -4,6 +4,7 @@
 
 import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import {
   Bot, 
   Send, 
   Loader2, 
