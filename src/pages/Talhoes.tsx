@@ -349,7 +349,7 @@ export default function Talhoes() {
               icon={Map}
               title="Nenhum talhão cadastrado"
               description="Cadastre seu primeiro talhão para registrar plantios e receber alertas climáticos."
-              action={canAddPlot(0) ? {
+              action={canAddPlot(0, currentPlan) ? {
                 label: "Cadastrar Primeiro Talhão",
                 onClick: () => { setEditingPlot(null); resetPlotForm(); setPlotDialogOpen(true); }
               } : undefined}
