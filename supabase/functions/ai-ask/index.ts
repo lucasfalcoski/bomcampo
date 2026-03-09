@@ -1189,6 +1189,32 @@ async function saveConversation(
   return convId || '';
 }
 
+// ========== RELEVANT ACTIONS HELPER ==========
+// Ensures AI responses always include at least 1 contextual action
+function getRelevantActions(message: string): AIAction[] {
+  const actions: AIAction[] = [];
+  
+  if (/solo|terra|drenagem|eros[ãa]o|compacta[çc]|talh[ãa]o/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📍 Ver Talhões', payload: { route: '/talhoes' } });
+  } else if (/praga|doen[çc]a|ferrugem|inseto|lagarta|fungo|mancha|murcha|bicho/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📍 Registrar Ocorrência', payload: { route: '/talhoes' } });
+  } else if (/clima|chuva|temperatura|vento|geada|seca|umidade/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '☁️ Ver Clima', payload: { route: '/clima' } });
+  } else if (/relat[óo]rio|hist[óo]rico|an[áa]lise/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📊 Ver Relatórios', payload: { route: '/relatorios' } });
+  } else if (/pre[çc]o|cota[çc]|mercado|saca/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '📈 Ver Preços', payload: { route: '/precos' } });
+  } else if (/financeiro|custo|despesa|receita|gasto/i.test(message)) {
+    actions.push({ type: 'open_screen', label: '💰 Ver Financeiro', payload: { route: '/financeiro' } });
+  } else {
+    actions.push({ type: 'open_screen', label: '📍 Ver Talhões', payload: { route: '/talhoes' } });
+  }
+  
+  actions.push({ type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' });
+  
+  return actions;
+}
+
 // ========== MAIN HANDLER ==========
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -1470,16 +1496,37 @@ serve(async (req) => {
     // A) REGISTER_ACTIVITY
     if (intent === 'register_activity') {
       const activityType = extractActivityType(user_message);
-      const tipoLabel = ACTIVITY_TYPES.find(t => t.value === activityType)?.label || 'atividade';
+      const tipoLabel = ACTIVITY_TYPES.find(t => t.value === activityType)?.label || 'Atividade';
       
       let plots: Array<{ id: string; nome: string }> = [];
+      let plotName = '';
+      let farmName = '';
+      
       if (farm_id) {
         plots = await getFarmPlots(supabase, farm_id);
+        const { data: farmData } = await supabase.from('farms').select('nome').eq('id', farm_id).single();
+        farmName = farmData?.nome || '';
       }
+      
+      if (plot_id && plots.length > 0) {
+        const plot = plots.find((p: { id: string; nome: string }) => p.id === plot_id);
+        plotName = plot?.nome || '';
+      }
+      
+      // Build short confirmation text
+      const locationParts: string[] = [];
+      if (plotName) locationParts.push(plotName);
+      if (farmName) locationParts.push(`Fazenda ${farmName}`);
+      const locationText = locationParts.length > 0 
+        ? ` no ${locationParts.join(' — ')}` 
+        : '';
 
       response = {
-        assistant_text: `📋 **Vamos registrar a ${tipoLabel}!**\n\nConfira os dados abaixo e confirme para salvar.`,
-        actions: [],
+        assistant_text: `📋 Registrar **${tipoLabel}**${locationText} em ${today}. Confirma?`,
+        actions: [
+          { type: 'confirm_action', label: '✅ Confirmar' },
+          { type: 'adjust_action', label: '✏️ Ajustar detalhes' },
+        ],
         action_flow_data: {
           id: `activity_${Date.now()}`,
           title: 'Registrar Atividade',
@@ -2014,9 +2061,7 @@ serve(async (req) => {
           
           response = {
             assistant_text: `🤖 **Resposta IA**\n\n${assistantText}`,
-            actions: [
-              { type: 'escalate_to_agronomist', label: 'Consultar Agrônomo' },
-            ],
+            actions: getRelevantActions(user_message),
             flags: {
               decision_route: aiResult.response ? 'ai_direct' : 'fallback',
               match_type: aiResult.response ? 'ai' : 'fallback',
