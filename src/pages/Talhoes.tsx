@@ -278,7 +278,7 @@ export default function Talhoes() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Talhões & Plantio</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Talhões & Plantio</h1>
         <p className="text-muted-foreground">Gerencie suas áreas de cultivo</p>
       </div>
 
@@ -305,10 +305,10 @@ export default function Talhoes() {
       </div>
 
       <Tabs defaultValue="talhoes" className="w-full">
-        <TabsList>
-          <TabsTrigger value="talhoes">Talhões</TabsTrigger>
-          <TabsTrigger value="plantios" disabled={!selectedPlot}>Plantios</TabsTrigger>
-          <TabsTrigger value="atividades" disabled={!selectedPlot}>Atividades</TabsTrigger>
+        <TabsList className="w-full overflow-x-auto flex-nowrap">
+          <TabsTrigger value="talhoes" className="min-h-[44px] flex-1">Talhões</TabsTrigger>
+          <TabsTrigger value="plantios" disabled={!selectedPlot} className="min-h-[44px] flex-1">Plantios</TabsTrigger>
+          <TabsTrigger value="atividades" disabled={!selectedPlot} className="min-h-[44px] flex-1">Atividades</TabsTrigger>
         </TabsList>
 
         <TabsContent value="talhoes" className="space-y-4">
@@ -564,7 +564,7 @@ export default function Talhoes() {
 
       {/* Plot Dialog */}
       <Dialog open={plotDialogOpen} onOpenChange={setPlotDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px] max-h-[90svh] overflow-y-auto [-webkit-overflow-scrolling:touch]">
           <DialogHeader>
             <DialogTitle>{editingPlot ? 'Editar' : 'Novo'} Talhão</DialogTitle>
             <DialogDescription>Preencha os dados do talhão</DialogDescription>
@@ -639,11 +639,11 @@ export default function Talhoes() {
             <p className="text-xs text-muted-foreground">
               Coordenadas melhoram a precisão do clima.
             </p>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setPlotDialogOpen(false)}>
+            <div className="sticky bottom-0 bg-background pt-4 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setPlotDialogOpen(false)} className="min-h-[44px]">
                 Cancelar
               </Button>
-              <Button onClick={handleSavePlot} disabled={loading || !plotForm.nome}>
+              <Button onClick={handleSavePlot} disabled={loading || !plotForm.nome} className="min-h-[44px]">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPlot ? 'Atualizar' : 'Criar'}
               </Button>
             </div>
@@ -653,7 +653,7 @@ export default function Talhoes() {
 
       {/* Planting Dialog */}
       <Dialog open={plantingDialogOpen} onOpenChange={setPlantingDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px] max-h-[90svh] overflow-y-auto [-webkit-overflow-scrolling:touch]">
           <DialogHeader>
             <DialogTitle>{editingPlanting ? 'Editar' : 'Novo'} Plantio</DialogTitle>
             <DialogDescription>Preencha os dados do plantio</DialogDescription>
@@ -729,11 +729,11 @@ export default function Talhoes() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setPlantingDialogOpen(false)}>
+            <div className="sticky bottom-0 bg-background pt-4 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setPlantingDialogOpen(false)} className="min-h-[44px]">
                 Cancelar
               </Button>
-              <Button onClick={handleSavePlanting} disabled={loading || !plantingForm.crop_id}>
+              <Button onClick={handleSavePlanting} disabled={loading || !plantingForm.crop_id} className="min-h-[44px]">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : editingPlanting ? 'Atualizar' : 'Criar'}
               </Button>
             </div>

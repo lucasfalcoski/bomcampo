@@ -253,7 +253,7 @@ export default function Financeiro() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Financeiro</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Financeiro</h1>
         <p className="text-muted-foreground">Controle de custos e receitas</p>
       </div>
 
@@ -447,16 +447,16 @@ export default function Financeiro() {
       {/* Lista de Transações */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <CardTitle>Transações</CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleExportCSV} disabled={transactions.length === 0}>
+              <Button variant="outline" onClick={handleExportCSV} disabled={transactions.length === 0} className="min-h-[44px] flex-1 sm:flex-none">
                 <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
+                Exportar
               </Button>
-              <Button onClick={() => { setEditingTransaction(null); resetForm(); setDialogOpen(true); }}>
+              <Button onClick={() => { setEditingTransaction(null); resetForm(); setDialogOpen(true); }} className="min-h-[44px] flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 mr-2" />
-                Nova Transação
+                Nova
               </Button>
             </div>
           </div>
@@ -467,7 +467,7 @@ export default function Financeiro() {
           ) : (
             <div className="space-y-3">
               {transactions.map(t => (
-                <div key={t.id} className="flex items-center justify-between border rounded-lg p-4">
+                <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-4 gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant={t.tipo === 'receita' ? 'default' : 'destructive'}>
@@ -483,7 +483,7 @@ export default function Financeiro() {
                       {t.origem && ` • ${t.origem}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between sm:justify-end gap-3">
                     <span className={`text-lg font-bold ${t.tipo === 'receita' ? 'text-success' : 'text-destructive'}`}>
                       {formatCurrency(t.valor_brl)}
                     </span>
@@ -522,13 +522,13 @@ export default function Financeiro() {
 
       {/* Dialog de Transação */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90svh] overflow-y-auto [-webkit-overflow-scrolling:touch]">
           <DialogHeader>
             <DialogTitle>{editingTransaction ? 'Editar' : 'Nova'} Transação</DialogTitle>
             <DialogDescription>Preencha os dados da transação</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo *</Label>
                 <Select value={transactionForm.tipo} onValueChange={(v: any) => setTransactionForm({ ...transactionForm, tipo: v })}>
@@ -560,7 +560,7 @@ export default function Financeiro() {
                 placeholder="Ex: Compra de fertilizante"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor (R$) *</Label>
                 <Input
@@ -613,9 +613,9 @@ export default function Financeiro() {
                 placeholder="Ex: Fornecedor XYZ"
               />
             </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSaveTransaction} disabled={loading}>
+            <div className="sticky bottom-0 bg-background pt-4 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="min-h-[44px]">Cancelar</Button>
+              <Button onClick={handleSaveTransaction} disabled={loading} className="min-h-[44px]">
                 {loading ? 'Salvando...' : editingTransaction ? 'Atualizar' : 'Criar'}
               </Button>
             </div>
