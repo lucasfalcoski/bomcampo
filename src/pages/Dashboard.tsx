@@ -78,12 +78,18 @@ export default function Dashboard() {
   };
 
   const loadPlantings = async () => {
-    const { data } = await supabase
-      .from('plantings')
-      .select('*, crop:crops(*), plot:plots(*)')
-      .eq('plot.farm_id', selectedFarm)
-      .in('status', ['planejado', 'em_andamento']);
-    setPlantings(data || []);
+    const { data: plotsData } = await supabase.from('plots').select('id').eq('farm_id', selectedFarm);
+    if (plotsData && plotsData.length > 0) {
+      const plotIds = plotsData.map(p => p.id);
+      const { data } = await supabase
+        .from('plantings')
+        .select('*, crop:crops(*), plot:plots(*)')
+        .in('plot_id', plotIds)
+        .in('status', ['planejado', 'em_andamento']);
+      setPlantings(data || []);
+    } else {
+      setPlantings([]);
+    }
   };
 
   const loadTransactions = async () => {
