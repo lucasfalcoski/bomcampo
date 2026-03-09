@@ -29,6 +29,7 @@ import { ErrorState } from '@/components/ui/error-state';
 export default function Talhoes() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { workspacePlan } = useEntitlements();
   const [farms, setFarms] = useState<any[]>([]);
   const [plots, setPlots] = useState<any[]>([]);
   const [plantings, setPlantings] = useState<any[]>([]);
