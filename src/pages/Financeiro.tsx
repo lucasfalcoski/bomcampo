@@ -65,24 +65,25 @@ export default function Financeiro() {
     origem: '',
   });
 
+  // Initialization: load farms once on mount
   useEffect(() => {
-    loadFarms();
+    const initFarms = async () => {
+      const { data } = await supabase.from('farms').select('*').order('nome');
+      setFarms(data || []);
+      if (data && data.length > 0 && !filters.farm_id) {
+        setFilters(prev => ({ ...prev, farm_id: data[0].id }));
+      }
+    };
+    initFarms();
   }, [user]);
 
+  // React to filter changes: load plots + transactions
   useEffect(() => {
     if (filters.farm_id) {
       loadPlots();
       loadTransactions();
     }
-  }, [filters]);
-
-  const loadFarms = async () => {
-    const { data } = await supabase.from('farms').select('*').order('nome');
-    setFarms(data || []);
-    if (data && data.length > 0 && !filters.farm_id) {
-      setFilters(prev => ({ ...prev, farm_id: data[0].id }));
-    }
-  };
+  }, [filters.farm_id, filters.plot_id, filters.categoria, filters.tipo, filters.periodo, filters.data_inicio, filters.data_fim]);
 
   const loadPlots = async () => {
     const { data } = await supabase.from('plots').select('*').eq('farm_id', filters.farm_id).order('nome');
