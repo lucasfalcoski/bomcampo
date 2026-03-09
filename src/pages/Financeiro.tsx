@@ -528,7 +528,7 @@ export default function Financeiro() {
             <DialogDescription>Preencha os dados da transação</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Tipo *</Label>
                 <Select value={transactionForm.tipo} onValueChange={(v: any) => setTransactionForm({ ...transactionForm, tipo: v })}>
