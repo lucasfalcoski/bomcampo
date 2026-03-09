@@ -467,7 +467,7 @@ export default function Financeiro() {
           ) : (
             <div className="space-y-3">
               {transactions.map(t => (
-                <div key={t.id} className="flex items-center justify-between border rounded-lg p-4">
+                <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between border rounded-lg p-4 gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant={t.tipo === 'receita' ? 'default' : 'destructive'}>
