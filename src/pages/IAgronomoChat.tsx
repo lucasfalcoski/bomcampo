@@ -2,8 +2,8 @@
  * Fala AI Agrônomo - AI-powered agronomist assistant
  */
 
-import { useState, useRef, useEffect, ChangeEvent } from 'react';
-import { 
+import { useState, useRef, useEffect, useCallback, ChangeEvent } from 'react';
+import { supabase } from '@/integrations/supabase/client';
   Bot, 
   Send, 
   Loader2, 
