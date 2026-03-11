@@ -178,8 +178,8 @@ export function AppSidebar() {
   }, [permissions]);
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-border p-4">
+    <Sidebar collapsible="icon" className="h-full overflow-hidden">
+      <SidebarHeader className="border-b border-border p-4 shrink-0">
         <div className="flex items-center gap-2">
           <div className="bg-primary/10 p-2 rounded-lg">
             <Sprout className="h-6 w-6 text-primary" />
@@ -188,7 +188,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="h-full overflow-y-auto">
         <SidebarGroup>
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>

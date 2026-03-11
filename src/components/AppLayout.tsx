@@ -10,10 +10,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Mobile: no sidebar at all, just header + bottom nav
   if (isMobile) {
     return (
-      <div className="h-[100svh] flex flex-col w-full bg-background overflow-hidden">
+      <div className="h-screen overflow-hidden flex flex-col w-full bg-background">
         <ImpersonationBanner />
         <MobileHeader />
-        <main className="flex-1 w-full px-4 py-4 pb-24 bg-background overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+        <main className="h-full flex-1 min-h-0 w-full px-4 py-4 pb-24 bg-background overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
           {children}
         </main>
         <MobileBottomNav />
@@ -23,16 +23,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Desktop/Tablet: sidebar layout
   return (
-    <SidebarProvider>
-      <div className="h-[100svh] flex flex-col w-full overflow-hidden">
+    <SidebarProvider className="h-full overflow-hidden">
+      <div className="h-screen overflow-hidden flex flex-col w-full">
         <ImpersonationBanner />
-        <div className="flex flex-1">
+        <div className="flex flex-1 min-h-0">
           <AppSidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            <header className="sticky top-0 z-40 h-14 border-b border-border bg-card flex items-center px-4">
+          <div className="flex-1 h-full min-h-0 flex flex-col min-w-0">
+            <header className="sticky top-0 z-40 h-14 shrink-0 border-b border-border bg-card flex items-center px-4">
               <SidebarTrigger />
             </header>
-            <main className="flex-1 p-6 bg-background overflow-y-auto overscroll-y-contain pb-[calc(1.5rem+env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch]">
+            <main className="h-full flex-1 min-h-0 p-6 bg-background overflow-y-auto overscroll-y-contain pb-[calc(1.5rem+env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch]">
               {children}
             </main>
           </div>
