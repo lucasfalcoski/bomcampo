@@ -1505,6 +1505,7 @@ serve(async (req) => {
       let plots: Array<{ id: string; nome: string }> = [];
       let plotName = '';
       let farmName = '';
+      let resolvedPlotId = plot_id || '';
       
       if (farm_id) {
         plots = await getFarmPlots(supabase, farm_id);
@@ -1512,9 +1513,24 @@ serve(async (req) => {
         farmName = farmData?.nome || '';
       }
       
-      if (plot_id && plots.length > 0) {
-        const plot = plots.find((p: { id: string; nome: string }) => p.id === plot_id);
+      // Priority: plot_id from selector > extract from text > ask user
+      if (resolvedPlotId && plots.length > 0) {
+        const plot = plots.find((p: { id: string; nome: string }) => p.id === resolvedPlotId);
         plotName = plot?.nome || '';
+      } else if (!resolvedPlotId && plots.length > 0) {
+        // Try to extract plot from message text (e.g., "talhão 1", "T2")
+        const plotMatch = user_message.match(/(?:talh[ãa]o|t)\s*(\d+)/i);
+        if (plotMatch) {
+          const plotNum = plotMatch[1];
+          const matchedPlot = plots.find((p: { id: string; nome: string }) => {
+            const nameNum = p.nome.match(/\d+/);
+            return nameNum && nameNum[0] === plotNum;
+          });
+          if (matchedPlot) {
+            resolvedPlotId = matchedPlot.id;
+            plotName = matchedPlot.nome;
+          }
+        }
       }
       
       // Build short confirmation text
@@ -1540,7 +1556,7 @@ serve(async (req) => {
               key: 'plot_id',
               label: 'Talhão',
               type: 'select',
-              value: plot_id || '',
+              value: resolvedPlotId || '',
               options: plots.length > 0 ? plots.map(p => ({ value: p.id, label: p.nome })) : [],
               required: true,
             },

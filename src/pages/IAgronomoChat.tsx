@@ -239,8 +239,8 @@ export default function IAgronomoChat() {
     uploadPhoto,
     clearHistory,
   } = useIAgronomo({
-    farmId: selectedFarmId,
-    plotId: selectedPlotId,
+    farmId: selectedFarmId || undefined,
+    plotId: (selectedPlotId && selectedPlotId !== '_all') ? selectedPlotId : undefined,
   });
 
   // Superadmin check for debug panel
