@@ -10,7 +10,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Mobile: no sidebar at all, just header + bottom nav
   if (isMobile) {
     return (
-      <div className="min-h-[100svh] flex flex-col w-full bg-background">
+      <div className="h-[100svh] flex flex-col w-full bg-background overflow-hidden">
         <ImpersonationBanner />
         <MobileHeader />
         <main className="flex-1 w-full px-4 py-4 pb-24 bg-background overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
@@ -24,7 +24,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Desktop/Tablet: sidebar layout
   return (
     <SidebarProvider>
-      <div className="min-h-[100svh] flex flex-col w-full">
+      <div className="h-[100svh] flex flex-col w-full overflow-hidden">
         <ImpersonationBanner />
         <div className="flex flex-1">
           <AppSidebar />
