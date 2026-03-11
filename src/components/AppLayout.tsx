@@ -24,7 +24,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Desktop/Tablet: sidebar layout
   return (
     <SidebarProvider>
-      <div className="min-h-[100svh] flex flex-col w-full">
+      <div className="h-[100svh] flex flex-col w-full overflow-hidden">
         <ImpersonationBanner />
         <div className="flex flex-1">
           <AppSidebar />
