@@ -1556,7 +1556,7 @@ serve(async (req) => {
               key: 'plot_id',
               label: 'Talhão',
               type: 'select',
-              value: plot_id || '',
+              value: resolvedPlotId || '',
               options: plots.length > 0 ? plots.map(p => ({ value: p.id, label: p.nome })) : [],
               required: true,
             },
