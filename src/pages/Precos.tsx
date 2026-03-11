@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, TrendingUp, Search, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { 
-  useMarketPracas, 
   useBestPrice, 
   usePriceHistory,
+  usePracasWithPrices,
   MARKET_CROPS,
   type MarketPraca 
 } from "@/hooks/useMarket";
