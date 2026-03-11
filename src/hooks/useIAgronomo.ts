@@ -268,7 +268,7 @@ export function useIAgronomo(options: UseIAgronomoOptions = {}) {
     } finally {
       setSending(false);
     }
-  }, [user, effectiveWorkspaceId, options.farmId, conversationId, canUseAIFeature, toast]);
+  }, [user, effectiveWorkspaceId, options.farmId, options.plotId, conversationId, canUseAIFeature, toast]);
 
   const uploadPhoto = useCallback(async (file: File): Promise<string | null> => {
     if (!user) return null;
