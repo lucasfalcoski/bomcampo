@@ -445,6 +445,36 @@ export function useMarketReferenceRules() {
   });
 }
 
+// Hook para buscar praças que têm preços para uma cultura específica
+export function usePracasWithPrices(crop: string | null) {
+  return useQuery({
+    queryKey: ['pracas-with-prices', crop],
+    queryFn: async () => {
+      if (!crop) return [];
+
+      const { data, error } = await supabase
+        .from('market_prices')
+        .select('praca_id, praca:market_pracas(id, name, state)')
+        .eq('crop', crop);
+
+      if (error) throw error;
+
+      // Deduplicate by praca_id
+      const seen = new Set<string>();
+      const result: MarketPraca[] = [];
+      for (const row of data || []) {
+        const p = row.praca as unknown as MarketPraca;
+        if (p && !seen.has(p.id)) {
+          seen.add(p.id);
+          result.push(p);
+        }
+      }
+      return result.sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: !!crop,
+  });
+}
+
 // Hook para buscar praças por texto (para o chat)
 export function useSearchPracas(query: string, stateFilter?: string) {
   return useQuery({

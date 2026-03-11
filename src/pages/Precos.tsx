@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, TrendingUp, Search, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { 
-  useMarketPracas, 
   useBestPrice, 
   usePriceHistory,
+  usePracasWithPrices,
   MARKET_CROPS,
   type MarketPraca 
 } from "@/hooks/useMarket";
@@ -32,8 +32,21 @@ export default function PrecosPage() {
   const [pracaSearch, setPracaSearch] = useState("");
   const [pracaPopoverOpen, setPracaPopoverOpen] = useState(false);
 
-  // Fetch pracas
-  const { data: allPracas, isLoading: loadingPracas } = useMarketPracas();
+  // Fetch pracas that have prices for the selected crop
+  const { data: allPracas, isLoading: loadingPracas } = usePracasWithPrices(crop);
+
+  // Auto-select first praça when crop changes or praças load
+  useEffect(() => {
+    if (!allPracas || allPracas.length === 0) {
+      setPracaId("");
+      return;
+    }
+    // If current praça is not in the list, select the first one
+    const currentExists = allPracas.some(p => p.id === pracaId);
+    if (!currentExists) {
+      setPracaId(allPracas[0].id);
+    }
+  }, [allPracas]);
   
   // Fetch best price
   const { data: bestPrice, isLoading: loadingPrice, refetch: refetchPrice } = useBestPrice(
