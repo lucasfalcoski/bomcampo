@@ -2,11 +2,11 @@ name: Agente Fala AI Agrônomo
 
 on:
   schedule:
-    - cron: "0 9 * * 1,4"   # Segunda e quinta às 9h (horário UTC = 6h BRT)
+    - cron: "0 9 * * 1,4"   # Segunda e quinta às 9h UTC = 6h BRT
   push:
     paths:
-      - "supabase/functions/ai-ask/index.ts"  # Roda também quando o ai-ask muda
-  workflow_dispatch:                           # Permite rodar manualmente pelo GitHub
+      - "supabase/functions/ai-ask/index.ts"
+  workflow_dispatch:
 
 jobs:
   agent:
@@ -19,17 +19,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configurar git
+        run: |
+          git config --global user.name "agente-ai-agronomo[bot]"
+          git config --global user.email "agente@bomcampo.app.br"
+          git config --global --add safe.directory /home/runner/work/bomcampo/bomcampo
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Instalar dependências
         run: npm install --save-dev tsx typescript @types/node
 
       - name: Criar pastas necessárias
         run: mkdir -p reports patches
+
+      - name: Gerar novas perguntas
+        id: generate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx scripts/generate-questions.ts --count=20 2>&1 | tee reports/generate-run.txt
+        continue-on-error: true
 
       - name: Rodar banco de testes sintéticos
         id: test
@@ -52,54 +66,50 @@ jobs:
 
       - name: Aplicar patches no ai-ask
         if: steps.check_gaps.outputs.has_gaps == 'true'
+        run: npx tsx scripts/agent.ts 2>&1 | tee reports/agent-run.txt
+
+      - name: Verificar mudanças
+        id: check_changes
         run: |
-          npx tsx scripts/agent.ts 2>&1 | tee reports/agent-run.txt
+          git diff --quiet && git diff --staged --quiet && echo "has_changes=false" >> $GITHUB_OUTPUT || echo "has_changes=true" >> $GITHUB_OUTPUT
 
       - name: Commitar mudanças
-        if: steps.check_gaps.outputs.has_gaps == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           git config user.name "agente-ai-agronomo[bot]"
           git config user.email "agente@bomcampo.app.br"
-          git checkout -b "fix/ai-agronomo-intents-$(date +%Y%m%d)"
-          git add supabase/functions/ai-ask/index.ts reports/
-          git commit -m "feat(ai-ask): ${{ steps.check_gaps.outputs.gap_count }} gap(s) corrigido(s) pelo agente sintético
-
-          Score anterior: verificar reports/ci-run.txt
-          Detalhes: reports/agent-run.txt
-          
-          [agente-automatico]"
+          git add scripts/test-intents.ts supabase/functions/ai-ask/index.ts reports/
+          git commit -m "feat(ai-ask): agente — score ${{ steps.test.outputs.score }}, ${{ steps.check_gaps.outputs.gap_count }} gap(s)"
 
       - name: Abrir Pull Request
-        if: steps.check_gaps.outputs.has_gaps == 'true'
+        if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: "fix/ai-agronomo-intents-${{ github.run_number }}"
-          title: "🤖 [${{ steps.test.outputs.score }}] Agente: ${{ steps.check_gaps.outputs.gap_count }} gap(s) corrigido(s) no Fala AI Agrônomo"
+          branch: "fix/ai-agronomo-${{ github.run_number }}"
+          title: "🤖 [${{ steps.test.outputs.score }}] Agente: novas perguntas + ${{ steps.check_gaps.outputs.gap_count }} gap(s)"
           body: |
-            ## Correções automáticas — Fala AI Agrônomo
+            ## Ciclo automático — Fala AI Agrônomo
 
-            **Score detectado:** ${{ steps.test.outputs.score }}
+            **Score:** ${{ steps.test.outputs.score }}
             **Gaps corrigidos:** ${{ steps.check_gaps.outputs.gap_count }}
 
             ### O que foi feito
-            O agente sintético rodou o banco de perguntas, detectou gaps de roteamento e aplicou os novos padrões de regex no `ai-ask/index.ts`.
+            1. Gerou novas perguntas via Claude API (POPs + logs reais do Supabase)
+            2. Rodou banco de testes completo
+            3. Detectou e corrigiu gaps de roteamento no ai-ask
 
             ### Antes de fazer merge
-            - [ ] Revisar os regex adicionados em `supabase/functions/ai-ask/index.ts`
+            - [ ] Revisar perguntas em `scripts/test-intents.ts`
+            - [ ] Revisar regex em `supabase/functions/ai-ask/index.ts`
             - [ ] Confirmar que nenhum padrão de defensivos foi alterado
-            - [ ] Rodar `npx ts-node scripts/agent.ts --only=test` localmente e confirmar score >= 90%
-
-            ### Arquivos alterados
-            - `supabase/functions/ai-ask/index.ts` — novos padrões de intent
-            - `reports/` — relatório detalhado
+            - [ ] Score >= 90%
 
             ---
-            *Aberto automaticamente pelo Agente de Melhoria Contínua*
-          labels: "ai-agronomo,automated,intent-patterns"
+            *Agente de Melhoria Contínua — Bom Campo*
+          labels: "ai-agronomo,automated"
           draft: false
 
-      - name: Notificar se tudo OK (sem gaps)
-        if: steps.check_gaps.outputs.has_gaps == 'false'
-        run: |
-          echo "✅ Score: ${{ steps.test.outputs.score }} — nenhum gap detectado. Nenhum PR necessário."
+      - name: Tudo OK
+        if: steps.check_changes.outputs.has_changes == 'false'
+        run: echo "✅ Score ${{ steps.test.outputs.score }} — nenhuma mudança necessária."
