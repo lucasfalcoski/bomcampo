@@ -1,0 +1,108 @@
+name: Agente Fala AI Agrônomo
+
+on:
+  schedule:
+    - cron: "0 9 * * 1,4"   # Segunda e quinta às 9h (horário UTC = 6h BRT)
+  push:
+    paths:
+      - "supabase/functions/ai-ask/index.ts"  # Roda também quando o ai-ask muda
+  workflow_dispatch:                           # Permite rodar manualmente pelo GitHub
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependências
+        run: npm install --save-dev ts-node typescript @types/node
+
+      - name: Rodar banco de testes sintéticos
+        id: test
+        run: |
+          npx ts-node scripts/test-intents.ts 2>&1 | tee reports/ci-run.txt
+          # Capturar score para usar no PR
+          SCORE=$(grep "Score" reports/ci-run.txt | grep -o '[0-9]*%' | head -1 || echo "0%")
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+
+      - name: Verificar se há gaps
+        id: check_gaps
+        run: |
+          if grep -q "GAPS DETECTADOS" reports/ci-run.txt; then
+            echo "has_gaps=true" >> $GITHUB_OUTPUT
+            GAP_COUNT=$(grep -c "^\[" reports/ci-run.txt || echo "0")
+            echo "gap_count=$GAP_COUNT" >> $GITHUB_OUTPUT
+          else
+            echo "has_gaps=false" >> $GITHUB_OUTPUT
+            echo "gap_count=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Gerar patches (se houver gaps)
+        if: steps.check_gaps.outputs.has_gaps == 'true'
+        run: |
+          npx ts-node scripts/agent.ts --dry-run 2>&1 | tee reports/patch-preview.txt
+
+      - name: Aplicar patches no ai-ask
+        if: steps.check_gaps.outputs.has_gaps == 'true'
+        run: |
+          npx ts-node scripts/agent.ts 2>&1 | tee reports/agent-run.txt
+
+      - name: Commitar mudanças
+        if: steps.check_gaps.outputs.has_gaps == 'true'
+        run: |
+          git config user.name "agente-ai-agronomo[bot]"
+          git config user.email "agente@bomcampo.app.br"
+          git checkout -b "fix/ai-agronomo-intents-$(date +%Y%m%d)"
+          git add supabase/functions/ai-ask/index.ts reports/
+          git commit -m "feat(ai-ask): ${{ steps.check_gaps.outputs.gap_count }} gap(s) corrigido(s) pelo agente sintético
+
+          Score anterior: verificar reports/ci-run.txt
+          Detalhes: reports/agent-run.txt
+          
+          [agente-automatico]"
+
+      - name: Abrir Pull Request
+        if: steps.check_gaps.outputs.has_gaps == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: "fix/ai-agronomo-intents-${{ github.run_number }}"
+          title: "🤖 [${{ steps.test.outputs.score }}] Agente: ${{ steps.check_gaps.outputs.gap_count }} gap(s) corrigido(s) no Fala AI Agrônomo"
+          body: |
+            ## Correções automáticas — Fala AI Agrônomo
+
+            **Score detectado:** ${{ steps.test.outputs.score }}
+            **Gaps corrigidos:** ${{ steps.check_gaps.outputs.gap_count }}
+
+            ### O que foi feito
+            O agente sintético rodou o banco de perguntas, detectou gaps de roteamento e aplicou os novos padrões de regex no `ai-ask/index.ts`.
+
+            ### Antes de fazer merge
+            - [ ] Revisar os regex adicionados em `supabase/functions/ai-ask/index.ts`
+            - [ ] Confirmar que nenhum padrão de defensivos foi alterado
+            - [ ] Rodar `npx ts-node scripts/agent.ts --only=test` localmente e confirmar score >= 90%
+
+            ### Arquivos alterados
+            - `supabase/functions/ai-ask/index.ts` — novos padrões de intent
+            - `reports/` — relatório detalhado
+
+            ---
+            *Aberto automaticamente pelo Agente de Melhoria Contínua*
+          labels: "ai-agronomo,automated,intent-patterns"
+          draft: false
+
+      - name: Notificar se tudo OK (sem gaps)
+        if: steps.check_gaps.outputs.has_gaps == 'false'
+        run: |
+          echo "✅ Score: ${{ steps.test.outputs.score }} — nenhum gap detectado. Nenhum PR necessário."
