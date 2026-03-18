@@ -26,14 +26,16 @@ jobs:
           cache: "npm"
 
       - name: Instalar dependências
-        run: npm install --save-dev ts-node typescript @types/node
+        run: npm install --save-dev tsx typescript @types/node
+
+      - name: Criar pastas necessárias
+        run: mkdir -p reports patches
 
       - name: Rodar banco de testes sintéticos
         id: test
         run: |
-          npx ts-node scripts/test-intents.ts 2>&1 | tee reports/ci-run.txt
-          # Capturar score para usar no PR
-          SCORE=$(grep "Score" reports/ci-run.txt | grep -o '[0-9]*%' | head -1 || echo "0%")
+          npx tsx scripts/test-intents.ts 2>&1 | tee reports/ci-run.txt
+          SCORE=$(grep -o '[0-9]*%' reports/ci-run.txt | head -1 || echo "0%")
           echo "score=$SCORE" >> $GITHUB_OUTPUT
 
       - name: Verificar se há gaps
@@ -48,15 +50,10 @@ jobs:
             echo "gap_count=0" >> $GITHUB_OUTPUT
           fi
 
-      - name: Gerar patches (se houver gaps)
-        if: steps.check_gaps.outputs.has_gaps == 'true'
-        run: |
-          npx ts-node scripts/agent.ts --dry-run 2>&1 | tee reports/patch-preview.txt
-
       - name: Aplicar patches no ai-ask
         if: steps.check_gaps.outputs.has_gaps == 'true'
         run: |
-          npx ts-node scripts/agent.ts 2>&1 | tee reports/agent-run.txt
+          npx tsx scripts/agent.ts 2>&1 | tee reports/agent-run.txt
 
       - name: Commitar mudanças
         if: steps.check_gaps.outputs.has_gaps == 'true'
