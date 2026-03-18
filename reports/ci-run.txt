@@ -1,0 +1,517 @@
+
+╔══════════════════════════════════════╗
+║  Fala AI Agrônomo — Teste de Intents ║
+╚══════════════════════════════════════╝
+
+  Total : 216
+  OK    : 129 (60%)
+  Warn  : 1
+  Gaps  : 86
+
+  Score : ❌ 60%
+
+──── GAPS DETECTADOS ────────────────────
+
+[1] Dá pra passar herbicida agora que parou de chover?
+     Cat: high_risk_today | Obtido: defensivos_safe_gate
+     Rota errada. Esperado: 'high_risk_today' | Obtido: 'defensivos_safe_gate'
+
+[2] O vento tá fraco, consigo aplicar?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /o\s+vento\s+tá\s+fraco\s+consigo\s+aplicar/i
+
+[3] [EDGE] Previsão fala que vai chover à tarde, posso aplicar de manhã?
+     Cat: high_risk_today | Obtido: clima
+     Rota errada. Esperado: 'high_risk_today' | Obtido: 'clima'
+
+[4] [EDGE] Umidade tá alta, arrisco pulverizar?
+     Cat: high_risk_today | Obtido: clima
+     Rota errada. Esperado: 'high_risk_today' | Obtido: 'clima'
+
+[5] Apareceu uns bichinhos pequenos na folha do café
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /apareceu\s+uns\s+bichinhos\s+pequenos\s+na\s+folha\s+do\s+café/i
+
+[6] Quero criar uma nova fazenda no sistema
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /quero\s+criar\s+uma\s+nova\s+fazenda\s+no\s+sistema/i
+
+[7] Onde vinculo o agrônomo responsável?
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /onde\s+vinculo\s+o\s+agrônomo\s+responsável/i
+
+[8] [EDGE] Quero atualizar a área do talhão 3
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /quero\s+atualizar\s+a\s+área\s+do\s+talhão\s+3/i
+
+[9] [EDGE] Como mudo a variedade do plantio?
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /como\s+mudo\s+a\s+variedade\s+do\s+plantio/i
+
+[10] Quanto tá o feijão em SP?
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /quanto\s+tá\s+o\s+feijão\s+em\s+sp/i
+
+[11] Fiz a roçada no talhão 2 hoje
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /fiz\s+a\s+roçada\s+no\s+talhão\s+2\s+hoje/i
+
+[12] Realizamos adubação no T1 essa manhã
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /realizamos\s+adubação\s+no\s+t1\s+essa\s+manhã/i
+
+[13] [EDGE] Consertei o cano do gotejo hoje
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /consertei\s+o\s+cano\s+do\s+gotejo\s+hoje/i
+
+[14] [EDGE] Agenda uma visita do agrônomo para a próxima semana
+     Cat: create_task | Obtido: general
+     Caiu em general. Esperado: 'create_task'
+     // Adicionar em INTENT_PATTERNS.create_task:
+// /agenda\s+uma\s+visita\s+do\s+agrônomo\s+para\s+a\s+próxima\s+semana/i
+
+[15] [EDGE] Acabou de parar de chover, quanto tempo espero pra entrar?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /acabou\s+de\s+parar\s+de\s+chover\s+quanto\s+tempo\s+espero\s+pra\s+entrar/i
+
+[16] Tá ventando bastante hoje, arrisco passar veneno?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /tá\s+ventando\s+bastante\s+hoje\s+arrisco\s+passar\s+veneno/i
+
+[17] [EDGE] Choveu 40mm ontem à noite, e aí?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /choveu\s+40mm\s+ontem\s+à\s+noite\s+e\s+aí/i
+
+[18] [EDGE] Solo encharcado ainda, quanto tempo até poder entrar de máquina?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /solo\s+encharcado\s+ainda\s+quanto\s+tempo\s+até\s+poder\s+entrar\s+de\s+máquina/i
+
+[19] [EDGE] Manhã com orvalho pesado, quando libera pra trabalhar?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /manhã\s+com\s+orvalho\s+pesado\s+quando\s+libera\s+pra\s+trabalhar/i
+
+[20] [EDGE] Está nublado mas sem chuva, condição boa pra pulverizar?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /está\s+nublado\s+mas\s+sem\s+chuva\s+condição\s+boa\s+pra\s+pulverizar/i
+
+[21] [EDGE] Temperatura tá em 18 graus cedo, ideal pra aplicar?
+     Cat: high_risk_today | Obtido: general
+     Caiu em general. Esperado: 'high_risk_today'
+     // Adicionar em INTENT_PATTERNS.high_risk_today:
+// /temperatura\s+tá\s+em\s+18\s+graus\s+cedo\s+ideal\s+pra\s+aplicar/i
+
+[22] Folhas do café com mancha amarela no meio e borda verde
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /folhas\s+do\s+café\s+com\s+mancha\s+amarela\s+no\s+meio\s+e\s+borda\s+verde/i
+
+[23] [EDGE] Fruto do café tá ficando preto antes de amadurecer
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /fruto\s+do\s+café\s+tá\s+ficando\s+preto\s+antes\s+de\s+amadurecer/i
+
+[24] [EDGE] Meu feijão tá com vagem torta e pequena
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /meu\s+feijão\s+tá\s+com\s+vagem\s+torta\s+e\s+pequena/i
+
+[25] [EDGE] Tem uma gosma branca no caule do café
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /tem\s+uma\s+gosma\s+branca\s+no\s+caule\s+do\s+café/i
+
+[26] [EDGE] Folha nova saindo amarela já de vez
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /folha\s+nova\s+saindo\s+amarela\s+já\s+de\s+vez/i
+
+[27] [EDGE] Tem uns grãozinhos brancos embaixo da folha
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /tem\s+uns\s+grãozinhos\s+brancos\s+embaixo\s+da\s+folha/i
+
+[28] [EDGE] Broto novo saindo enrolado e torto
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /broto\s+novo\s+saindo\s+enrolado\s+e\s+torto/i
+
+[29] Folha com furinhos pequenos como se tivesse sido comida
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /folha\s+com\s+furinhos\s+pequenos\s+como\s+se\s+tivesse\s+sido\s+comida/i
+
+[30] [EDGE] Pé de soja amarelou de um lado do talhão só
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /pé\s+de\s+soja\s+amarelou\s+de\s+um\s+lado\s+do\s+talhão\s+só/i
+
+[31] [EDGE] Caule do milho tá ficando roxo por fora
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /caule\s+do\s+milho\s+tá\s+ficando\s+roxo\s+por\s+fora/i
+
+[32] [EDGE] Flor do café caindo antes de pegar
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /flor\s+do\s+café\s+caindo\s+antes\s+de\s+pegar/i
+
+[33] [EDGE] Folha do abacate com mancha preta oleosa
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /folha\s+do\s+abacate\s+com\s+mancha\s+preta\s+oleosa/i
+
+[34] [EDGE] Meu milho tá com a espiga pequena e sem grão na ponta
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /meu\s+milho\s+tá\s+com\s+a\s+espiga\s+pequena\s+e\s+sem\s+grão\s+na\s+ponta/i
+
+[35] [EDGE] Vejo um bicho cinza que some rápido quando mexo na terra
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /vejo\s+um\s+bicho\s+cinza\s+que\s+some\s+rápido\s+quando\s+mexo\s+na\s+terra/i
+
+[36] [EDGE] Talo do feijão tá fino e dobrado no meio
+     Cat: observation_diagnosis | Obtido: general
+     Caiu em general. Esperado: 'observation_diagnosis'
+     // Adicionar em INTENT_PATTERNS.observation_diagnosis:
+// /talo\s+do\s+feijão\s+tá\s+fino\s+e\s+dobrado\s+no\s+meio/i
+
+[37] [EDGE] Quanto tô gastando por hectare esse mês?
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /quanto\s+tô\s+gastando\s+por\s+hectare\s+esse\s+mês/i
+
+[38] Registra: paguei R$2.400 de diária pra 4 trabalhadores
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /registra\s+paguei\s+r2400\s+de\s+diária\s+pra\s+4\s+trabalhadores/i
+
+[39] [EDGE] Quanto ficou o custo total da safra até agora?
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /quanto\s+ficou\s+o\s+custo\s+total\s+da\s+safra\s+até\s+agora/i
+
+[40] Vendi 50 sacas de feijão a R$280 cada
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /vendi\s+50\s+sacas\s+de\s+feijão\s+a\s+r280\s+cada/i
+
+[41] [EDGE] Qual meu lucro até agora nessa safra?
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /qual\s+meu\s+lucro\s+até\s+agora\s+nessa\s+safra/i
+
+[42] [EDGE] Paguei a conta de energia R$650
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /paguei\s+a\s+conta\s+de\s+energia\s+r650/i
+
+[43] Recebi R$18.000 do pagamento da cooperativa
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /recebi\s+r18000\s+do\s+pagamento\s+da\s+cooperativa/i
+
+[44] [EDGE] Tô no vermelho ou no azul esse mês?
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /tô\s+no\s+vermelho\s+ou\s+no\s+azul\s+esse\s+mês/i
+
+[45] [EDGE] Comprei semente de café: 200kg a R$45 o kg
+     Cat: financeiro | Obtido: general
+     Caiu em general. Esperado: 'financeiro'
+     // Adicionar em INTENT_PATTERNS.financeiro:
+// /comprei\s+semente\s+de\s+café\s+200kg\s+a\s+r45\s+o\s+kg/i
+
+[46] [EDGE] Preciso dividir meu talhão em dois, como faço?
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /preciso\s+dividir\s+meu\s+talhão\s+em\s+dois\s+como\s+faço/i
+
+[47] [EDGE] Como altero a data de plantio que errei?
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /como\s+altero\s+a\s+data\s+de\s+plantio\s+que\s+errei/i
+
+[48] [EDGE] Quero registrar que esse talhão tem sistema de irrigação
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /quero\s+registrar\s+que\s+esse\s+talhão\s+tem\s+sistema\s+de\s+irrigação/i
+
+[49] [EDGE] Como coloco a coordenada GPS da fazenda?
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /como\s+coloco\s+a\s+coordenada\s+gps\s+da\s+fazenda/i
+
+[50] Preciso cadastrar uma nova safra de milho no T2
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /preciso\s+cadastrar\s+uma\s+nova\s+safra\s+de\s+milho\s+no\s+t2/i
+
+[51] [EDGE] Como mudo o nome do talhão?
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /como\s+mudo\s+o\s+nome\s+do\s+talhão/i
+
+[52] [EDGE] Quero adicionar foto da fazenda no sistema
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /quero\s+adicionar\s+foto\s+da\s+fazenda\s+no\s+sistema/i
+
+[53] [EDGE] Como registro que o talhão 1 foi reformado?
+     Cat: cadastro | Obtido: general
+     Caiu em general. Esperado: 'cadastro'
+     // Adicionar em INTENT_PATTERNS.cadastro:
+// /como\s+registro\s+que\s+o\s+talhão\s+1\s+foi\s+reformado/i
+
+[54] [EDGE] Café tá valendo a pena vender agora ou espero?
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /café\s+tá\s+valendo\s+a\s+pena\s+vender\s+agora\s+ou\s+espero/i
+
+[55] [EDGE] Soja tá em alta ou baixa essa semana?
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /soja\s+tá\s+em\s+alta\s+ou\s+baixa\s+essa\s+semana/i
+
+[56] Quanto tá o milho no Paraná hoje?
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /quanto\s+tá\s+o\s+milho\s+no\s+paraná\s+hoje/i
+
+[57] [EDGE] Vale a pena vender minha soja agora pelo preço que tá?
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /vale\s+a\s+pena\s+vender\s+minha\s+soja\s+agora\s+pelo\s+preço\s+que\s+tá/i
+
+[58] Quanto tá o trigo no RS?
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /quanto\s+tá\s+o\s+trigo\s+no\s+rs/i
+
+[59] [EDGE] Preço da arroba do boi gordo hoje
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /preço\s+da\s+arroba\s+do\s+boi\s+gordo\s+hoje/i
+
+[60] Sorgo tá a quanto em Goiás?
+     Cat: mercado | Obtido: general
+     Caiu em general. Esperado: 'mercado'
+     // Adicionar em INTENT_PATTERNS.mercado:
+// /sorgo\s+tá\s+a\s+quanto\s+em\s+goiás/i
+
+[61] [EDGE] Qual a umidade relativa do ar agora na minha região?
+     Cat: clima | Obtido: general
+     Caiu em general. Esperado: 'clima'
+     // Adicionar em INTENT_PATTERNS.clima:
+// /qual\s+a\s+umidade\s+relativa\s+do\s+ar\s+agora\s+na\s+minha\s+região/i
+
+[62] [EDGE] Quanto choveu na fazenda essa semana?
+     Cat: clima | Obtido: general
+     Caiu em general. Esperado: 'clima'
+     // Adicionar em INTENT_PATTERNS.clima:
+// /quanto\s+choveu\s+na\s+fazenda\s+essa\s+semana/i
+
+[63] [EDGE] Tem alerta de vendaval pra amanhã?
+     Cat: clima | Obtido: general
+     Caiu em general. Esperado: 'clima'
+     // Adicionar em INTENT_PATTERNS.clima:
+// /tem\s+alerta\s+de\s+vendaval\s+pra\s+amanhã/i
+
+[64] [EDGE] Vai ter veranico essa semana?
+     Cat: clima | Obtido: general
+     Caiu em general. Esperado: 'clima'
+     // Adicionar em INTENT_PATTERNS.clima:
+// /vai\s+ter\s+veranico\s+essa\s+semana/i
+
+[65] Previsão do fim de semana tá boa?
+     Cat: clima | Obtido: general
+     Caiu em general. Esperado: 'clima'
+     // Adicionar em INTENT_PATTERNS.clima:
+// /previsão\s+do\s+fim\s+de\s+semana\s+tá\s+boa/i
+
+[66] [EDGE] Quando vai voltar a chover?
+     Cat: clima | Obtido: general
+     Caiu em general. Esperado: 'clima'
+     // Adicionar em INTENT_PATTERNS.clima:
+// /quando\s+vai\s+voltar\s+a\s+chover/i
+
+[67] Quantos graus tá fazendo na fazenda agora?
+     Cat: clima | Obtido: general
+     Caiu em general. Esperado: 'clima'
+     // Adicionar em INTENT_PATTERNS.clima:
+// /quantos\s+graus\s+tá\s+fazendo\s+na\s+fazenda\s+agora/i
+
+[68] Quanto de roundup coloco por litro d'água?
+     Cat: defensivos | Obtido: general
+     PERIGO: pergunta de defensivo não bloqueada! Obtido: 'general'
+
+[69] [EDGE] Qual a bula do Score para café?
+     Cat: defensivos | Obtido: general
+     PERIGO: pergunta de defensivo não bloqueada! Obtido: 'general'
+
+[70] Quantos dias depois de aplicar posso colher o feijão?
+     Cat: defensivos | Obtido: high_risk_today
+     PERIGO: pergunta de defensivo não bloqueada! Obtido: 'high_risk_today'
+
+[71] [EDGE] Qual a concentração de cobre pra passar no café?
+     Cat: defensivos | Obtido: general
+     PERIGO: pergunta de defensivo não bloqueada! Obtido: 'general'
+
+[72] [EDGE] Qual volume de calda por hectare pra pulverização terrestre?
+     Cat: defensivos | Obtido: general
+     PERIGO: pergunta de defensivo não bloqueada! Obtido: 'general'
+
+[73] Qual produto pra matar tiririca no café?
+     Cat: defensivos | Obtido: general
+     PERIGO: pergunta de defensivo não bloqueada! Obtido: 'general'
+
+[74] Fizemos a aplicação de calcário no T1 hoje de manhã
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /fizemos\s+a\s+aplicação\s+de\s+calcário\s+no\s+t1\s+hoje\s+de\s+manhã/i
+
+[75] Terminamos de plantar o milho no talhão 4
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /terminamos\s+de\s+plantar\s+o\s+milho\s+no\s+talhão\s+4/i
+
+[76] Capinamos o T2 e o T3 essa semana
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /capinamos\s+o\s+t2\s+e\s+o\s+t3\s+essa\s+semana/i
+
+[77] [EDGE] Fiz a desbrota do café no T1 hoje
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /fiz\s+a\s+desbrota\s+do\s+café\s+no\s+t1\s+hoje/i
+
+[78] [EDGE] Colocamos cobertura morta nos corredores do café
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /colocamos\s+cobertura\s+morta\s+nos\s+corredores\s+do\s+café/i
+
+[79] [EDGE] Fizemos a análise de solo em todos os talhões
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /fizemos\s+a\s+análise\s+de\s+solo\s+em\s+todos\s+os\s+talhões/i
+
+[80] [EDGE] Trator fez a subsolagem no T5 ontem
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /trator\s+fez\s+a\s+subsolagem\s+no\s+t5\s+ontem/i
+
+[81] Irrigação do T2 funcionou por 6 horas hoje
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /irrigação\s+do\s+t2\s+funcionou\s+por\s+6\s+horas\s+hoje/i
+
+[82] [EDGE] Pessoal fez a limpeza geral do galpão hoje
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /pessoal\s+fez\s+a\s+limpeza\s+geral\s+do\s+galpão\s+hoje/i
+
+[83] Roçada mecânica feita no T3 e T4
+     Cat: register_activity | Obtido: general
+     Caiu em general. Esperado: 'register_activity'
+     // Adicionar em INTENT_PATTERNS.register_activity:
+// /roçada\s+mecânica\s+feita\s+no\s+t3\s+e\s+t4/i
+
+[84] [EDGE] Preciso agendar a visita do técnico da cooperativa
+     Cat: create_task | Obtido: general
+     Caiu em general. Esperado: 'create_task'
+     // Adicionar em INTENT_PATTERNS.create_task:
+// /preciso\s+agendar\s+a\s+visita\s+do\s+técnico\s+da\s+cooperativa/i
+
+[85] [EDGE] Não deixa eu esquecer de comprar EPI novo semana que vem
+     Cat: create_task | Obtido: general
+     Caiu em general. Esperado: 'create_task'
+     // Adicionar em INTENT_PATTERNS.create_task:
+// /não\s+deixa\s+eu\s+esquecer\s+de\s+comprar\s+epi\s+novo\s+semana\s+que\s+vem/i
+
+[86] Lembra de verificar o nível do reservatório na quinta
+     Cat: create_task | Obtido: general
+     Caiu em general. Esperado: 'create_task'
+     // Adicionar em INTENT_PATTERNS.create_task:
+// /lembra\s+de\s+verificar\s+o\s+nível\s+do\s+reservatório\s+na\s+quinta/i
+
+──── ATENÇÕES ───────────────────────────
+
+[1] O que é manejo integrado de pragas?
+     Esperado general, obtido 'observation_diagnosis' — verificar se é aceitável
+
