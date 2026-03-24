@@ -40,6 +40,7 @@ const BLOCKED_PATTERNS = [
   /melhor\s+(produto|defensivo|marca)/i,
   /nome\s+comercial/i,
   /registro\s+no\s+mapa/i,
+  /roundup|glifosato/i, /bula\s+(do|da|de)/i, /concentra[çc][ãa]o\s+(de|do|da)/i, /volume\s+de\s+calda/i, /tiririca/i, /quantos\s+dias\s+(depois|ap[óo]s)\s+de\s+aplicar/i,
 ];
 
 // ========== INTENT PATTERNS ==========
