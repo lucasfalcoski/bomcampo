@@ -568,10 +568,10 @@
      /vai\s+esfriar/i
      /temperatura\s+m[íi]nima/i
 
-  📦 Backup salvo em: /home/runner/work/bomcampo/bomcampo/supabase/functions/ai-ask/index.backup-2026-03-18.ts
+  📦 Backup salvo em: /home/runner/work/bomcampo/bomcampo/supabase/functions/ai-ask/index.backup-2026-03-24.ts
   📝 ai-ask/index.ts atualizado (+33 padrões)
 
-  📄 Relatório: /home/runner/work/bomcampo/bomcampo/reports/2026-03-18-report.md
+  📄 Relatório: /home/runner/work/bomcampo/bomcampo/reports/2026-03-24-report.md
 
 ╔══════════════════════════════════════════════╗
 ║  Concluído — 8 patch(es) gerado(s)              ║
